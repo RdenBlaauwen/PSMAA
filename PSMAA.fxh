@@ -25,7 +25,7 @@ namespace PSMAA {
     float2 deltas;
     deltas.x = GetDelta(cLeft, cCurrent, rangeLeft, rangeCurrent);
     deltas.y = GetDelta(cTop, cCurrent, rangeTop, rangeCurrent);
-    
+
     return deltas;
   }
 
@@ -38,10 +38,11 @@ namespace PSMAA {
         offset[0] = mad(PSMAA_BUFFER_METRICS.xyxy, float4(-1.0, 0.0, 0.0, -1.0), texcoord.xyxy);
     }
 
-    void DeltaCalculationPS(float2 texcoord, float4 offset[1], PSMAATexture2D(colorTex), out float2 deltas) {
-      float3 current = PSMAASamplePoint(colorTex, texcoord).rgb;
-      float3 left = PSMAASamplePoint(colorTex, offset[0].xy).rgb;
-      float3 top = PSMAASamplePoint(colorTex, offset[0].zw).rgb;
+    // Perhaps `out float2 deltas` should be `inout float2 deltas` instead?
+    void DeltaCalculationPS(float2 texcoord, float4 offset[1], PSMAATexture2D(colorGammaTex), out float2 deltas) {
+      float3 current = PSMAASamplePoint(colorGammaTex, texcoord).rgb;
+      float3 left = PSMAASamplePoint(colorGammaTex, offset[0].xy).rgb;
+      float3 top = PSMAASamplePoint(colorGammaTex, offset[0].zw).rgb;
 
       float rangeCurrent = Functions::max(current) - Functions::min(current);
       float rangeLeft = Functions::max(left) - Functions::min(left);
