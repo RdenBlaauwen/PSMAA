@@ -2,7 +2,7 @@
 // TODO: replace this with language-specific values in te future
 // reshade-specific definition should eventually go into the main file, not here
 #define PSMAA_BUFFER_METRICS float4(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT, BUFFER_WIDTH, BUFFER_HEIGHT)
-#define PSMAATexture2D(texture) sampler2D 
+#define PSMAATexture2D(tex) sampler tex 
 #define PSMAASamplePoint(tex, coord) tex2D(tex, coord)
 
 namespace PSMAA {
@@ -49,6 +49,57 @@ namespace PSMAA {
       float rangeTop = Functions::max(top) - Functions::min(top);
 
       deltas = GetDeltas(left, top, current, rangeLeft, rangeTop, rangeCurrent);
+    }
+
+    void EdgeDetectionPS(
+      float2 texcoord,
+      float4 offset[3],
+      PSMAATexture2D(deltaTex),
+      float2 baseThreshold,
+      float localContrastAdaptationFactor,
+      inout float2 edgesOutput
+    ) {
+        // Calculate color deltas:
+        float4 delta;
+        float4 colorRange;
+
+        float2 C = PSMAASamplePoint(deltaTex, texcoord).rg;
+
+        delta.x = C.r;
+        delta.y = C.g;
+
+        // We do the usual threshold:
+        float2 edges = step(threshold, delta.xy);
+
+        // Early return if there is no edge:
+        if (!Lib::any(edges))
+            discard;
+
+        // Calculate right and bottom deltas:
+        float Cright = PSMAASamplePoint(deltaTex, offset[1].xy).r;
+        delta.z = Cright;
+
+        float Cbottom  = PSMAASamplePoint(deltaTex, offset[1].zw).g;
+        delta.w = Cbottom;
+
+        // Calculate the maximum delta in the direct neighborhood:
+        float2 maxDelta = max(delta.xy, delta.zw);
+
+        // Calculate left-left and top-top deltas:
+        float Cleftleft  = PSMAASamplePoint(deltaTex, offset[0].xy).r;
+        delta.z = Cleftleft;
+
+        float Ctoptop = PSMAASamplePoint(deltaTex, offset[0].zw).g;
+        delta.w = Ctoptop;
+
+        // Calculate the final maximum delta:
+        maxDelta = max(maxDelta.xy, delta.zw);
+        float finalDelta = max(maxDelta.x, maxDelta.y);
+
+        // Local contrast adaptation:
+        edges.xy *= step(finalDelta, localContrastAdaptationFactor * delta.xy);
+
+        edgesOutput = edges;
     }
   }
 }
