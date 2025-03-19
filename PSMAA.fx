@@ -1,4 +1,5 @@
 #define SMAA_PRESET_CUSTOM
+#define SMAA_CUSTOM_SL 1
 
 #include "ReShadeUI.fxh"
 
@@ -25,8 +26,22 @@ uniform int _Debug < __UNIFORM_COMBO_INT1
 #include ".\reshade-shared\color.fxh"
 
 // Sources files
-#include ".\SMAA.fxh"
 #include ".\PSMAA.fxh"
+
+#define SMAA_RT_METRICS PSMAA_BUFFER_METRICS
+
+#define SMAATexture2D(tex) PSMAATexture2D(tex)
+#define SMAATexturePass2D(tex) tex
+#define SMAASampleLevelZero(tex, coord) tex2Dlod(tex, float4(coord, 0.0, 0.0))
+#define SMAASampleLevelZeroPoint(tex, coord) tex2Dlod(tex, float4(coord, 0.0, 0.0))
+#define SMAASampleLevelZeroOffset(tex, coord, offset) tex2Dlod(tex, float4(coord + offset * SMAA_RT_METRICS.xy, 0.0, 0.0))
+#define SMAASample(tex, coord) tex2D(tex, coord)
+#define SMAASamplePoint(tex, coord) PSMAASamplePoint(tex, coord)
+#define SMAASampleOffset(tex, coord, offset) tex2D(tex, coord + offset * SMAA_RT_METRICS.xy)
+#define SMAA_FLATTEN [flatten]
+#define SMAA_BRANCH [branch]
+
+#include ".\SMAA.fxh"
 
 
 texture colorInputTex : COLOR;
@@ -41,8 +56,8 @@ texture deltaTex < pooled = true; >
   Width = BUFFER_WIDTH;
   Height = BUFFER_HEIGHT;
   Format = RG16F;
-}
-sampler deltaSampler = sampler_state
+};
+sampler deltaSampler
 {
   Texture = deltaTex;
 };
@@ -61,7 +76,7 @@ sampler edgesSampler
 void PSMAADeltaCalulationVSWrapper(
   in uint id : SV_VertexID, 
   out float4 position : SV_Position, 
-  float2 texcoord : TEXCOORD0, 
+  out float2 texcoord : TEXCOORD0, 
   out float4 offset[1] : TEXCOORD1
 )
 {
@@ -70,6 +85,7 @@ void PSMAADeltaCalulationVSWrapper(
 }
 
 void PSMAADeltaCalulationPSWrapper(
+  float4 position : SV_Position,
   float2 texcoord : TEXCOORD0, 
   float4 offset[1] : TEXCOORD1, 
   out float2 deltas : SV_Target0
@@ -79,28 +95,42 @@ void PSMAADeltaCalulationPSWrapper(
 }
 
 void PSMAAEdgeDetectionVSWrapper(
-  in uint id : SV_VertexID, 
-  out float4 position : SV_Position, 
-  out float2 texcoord : TEXCOORD0, 
-  out float4 offset[3] : TEXCOORD1
+	in uint id : SV_VertexID,
+	out float4 position : SV_Position,
+	out float2 texcoord : TEXCOORD0,
+	out float4 offset[3] : TEXCOORD1
 )
 {
-  PostProcessVS(id, position, texcoord);
-  SMAAEdgeDetectionVS(texcoord, offset);
+	PostProcessVS(id, position, texcoord);
+	SMAAEdgeDetectionVS(texcoord, offset);
 }
 
 void PSMAAEdgeDetectionPSWrapper(
+  float4 position : SV_Position,
   float2 texcoord : TEXCOORD0, 
   float4 offset[3] : TEXCOORD1, 
   out float2 edges : SV_Target
 )
 {
   PSMAA::Pass::EdgeDetectionPS(texcoord, offset, deltaSampler, _EdgeDetectionThreshold, _ContrastAdaptationFactor, edges);
+  // PSMAA::Pass::HybridDetection(texcoord, offset, colorGammaSampler, _EdgeDetectionThreshold, _ContrastAdaptationFactor, edges);
 }
 
+void SMAANeighborhoodBlendingWrapVS(
+	in uint id : SV_VertexID,
+	out float4 position : SV_Position,
+	out float2 texcoord : TEXCOORD0,
+	out float4 offset : TEXCOORD1)
+{
+	PostProcessVS(id, position, texcoord);
+	SMAANeighborhoodBlendingVS(texcoord, offset);
+}
+
+
 void PSMAABlendingPSWrapper(
+	float4 position : SV_Position,
   float2 texcoord : TEXCOORD0, 
-  float4 offset[1] : TEXCOORD1,
+  float4 offset : TEXCOORD1,  
   out float4 color : SV_Target
 )
 {
@@ -108,10 +138,8 @@ void PSMAABlendingPSWrapper(
 
   if(_Debug == 1) {
     color = tex2D(deltaSampler, texcoord).rgba;
-    return;
   } else if(_Debug == 2) {
     color = tex2D(edgesSampler, texcoord).rgba;
-    return;
   }
 }
 
@@ -144,7 +172,7 @@ technique PSMAA
   {
     // TODO: consider renaming this VSWrapper to something more generic
     // alternatively, Consider giving this pass it's own VS
-    VertexShader = PSMAADeltaCalulationVSWrapper;
+    VertexShader = SMAANeighborhoodBlendingWrapVS;
     PixelShader = PSMAABlendingPSWrapper;
 		SRGBWriteEnable = true;
   }

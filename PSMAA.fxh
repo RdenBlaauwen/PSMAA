@@ -10,11 +10,11 @@ namespace PSMAA {
   * Get the luma weighted delta between two vectors
   */
   float GetDelta(float3 cA, float3 cB, float rangeA, float rangeB) {
-    float colorfulness = max(rangeA, rangeB)
+    float colorfulness = max(rangeA, rangeB);
     float3 cDelta = abs(cA - cB);
 
     float colorDelta = colorfulness * Functions::max(cDelta);
-    float euclidianDelta = (1f - colorfulness) * Color::luma(colorDelta)
+    float euclidianDelta = (1f - colorfulness) * Color::luma(cDelta);
     return colorDelta + euclidianDelta;
   }
 
@@ -55,10 +55,11 @@ namespace PSMAA {
       float2 texcoord,
       float4 offset[3],
       PSMAATexture2D(deltaTex),
-      float2 baseThreshold,
+      float2 threshold,
       float localContrastAdaptationFactor,
-      inout float2 edgesOutput
+      out float2 edgesOutput
     ) {
+        // return texcoord;
         // Calculate color deltas:
         float4 delta;
         float4 colorRange;
@@ -72,7 +73,7 @@ namespace PSMAA {
         float2 edges = step(threshold, delta.xy);
 
         // Early return if there is no edge:
-        if (!Lib::any(edges))
+        if (!Functions::any(edges))
             discard;
 
         // Calculate right and bottom deltas:
@@ -91,6 +92,79 @@ namespace PSMAA {
 
         float Ctoptop = PSMAASamplePoint(deltaTex, offset[0].zw).g;
         delta.w = Ctoptop;
+
+        // Calculate the final maximum delta:
+        maxDelta = max(maxDelta.xy, delta.zw);
+        float finalDelta = max(maxDelta.x, maxDelta.y);
+
+        // Local contrast adaptation:
+        edges.xy *= step(finalDelta, localContrastAdaptationFactor * delta.xy);
+
+        edgesOutput = edges;
+    }
+
+    void HybridDetection(
+      float2 texcoord,
+      float4 offset[3],
+      PSMAATexture2D(colorTex),
+      float2 threshold,
+      float localContrastAdaptationFactor,
+      out float2 edgesOutput
+    ) {
+        // Calculate color deltas:
+        float4 delta;
+        float4 colorRange;
+
+        float3 C = PSMAASamplePoint(colorTex, texcoord).rgb;
+        float midRange = Functions::max(C) - Functions::min(C);
+
+        float3 Cleft = PSMAASamplePoint(colorTex, offset[0].xy).rgb;
+        float rangeLeft = Functions::max(Cleft) - Functions::min(Cleft);
+        float colorfulness = max(midRange, rangeLeft);
+        float3 t = abs(C - Cleft);
+        delta.x = (colorfulness * Functions::max(t)) + ((1.0 - colorfulness) * Color::luma(t)); // TODO: refactor to use luma function instead
+
+        float3 Ctop  = PSMAASamplePoint(colorTex, offset[0].zw).rgb;
+        float rangeTop = Functions::max(Ctop) - Functions::min(Ctop);
+        colorfulness = max(midRange, rangeTop);
+        t = abs(C - Ctop);
+        delta.y = (colorfulness * Functions::max(t)) + ((1.0 - colorfulness) * Color::luma(t));
+
+        // We do the usual threshold:
+        float2 edges = step(threshold, delta.xy);
+
+        // Early return if there is no edge:
+        if (!Functions::any(edges))
+            discard;
+
+        // Calculate right and bottom deltas:
+        float3 Cright = PSMAASamplePoint(colorTex, offset[1].xy).rgb;
+        t = abs(C - Cright);
+        float rangeRight = Functions::max(Cright) - Functions::min(Cright);
+        colorfulness = max(midRange, rangeRight);
+        delta.z = (colorfulness * Functions::max(t)) + ((1.0 - colorfulness) * Color::luma(t));
+
+        float3 Cbottom  = PSMAASamplePoint(colorTex, offset[1].zw).rgb;
+        t = abs(C - Cbottom);
+        float rangeBottom = Functions::max(Cright) - Functions::min(Cright);
+        colorfulness = max(midRange, rangeBottom);
+        delta.w = (colorfulness * Functions::max(t)) + ((1.0 - colorfulness) * Color::luma(t));
+
+        // Calculate the maximum delta in the direct neighborhood:
+        float2 maxDelta = max(delta.xy, delta.zw);
+
+        // Calculate left-left and top-top deltas:
+        float3 Cleftleft  = PSMAASamplePoint(colorTex, offset[2].xy).rgb;
+        t = abs(Cleft - Cleftleft);
+        float rangeLeftLeft = Functions::max(Cright) - Functions::min(Cright);
+        colorfulness = max(rangeLeft, rangeLeftLeft);
+        delta.z = (colorfulness * Functions::max(t)) + ((1.0 - colorfulness) * Color::luma(t));
+
+        float3 Ctoptop = PSMAASamplePoint(colorTex, offset[2].zw).rgb;
+        t = abs(Ctop - Ctoptop);
+        float rangeTopTop = Functions::max(Cright) - Functions::min(Cright);
+        colorfulness = max(rangeTop, rangeTopTop);
+        delta.w = (colorfulness * Functions::max(t)) + ((1.0 - colorfulness) * Color::luma(t));
 
         // Calculate the final maximum delta:
         maxDelta = max(maxDelta.xy, delta.zw);
