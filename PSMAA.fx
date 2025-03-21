@@ -3,6 +3,21 @@
 
 #include "ReShadeUI.fxh"
 
+uniform int _MaxSearchSteps < __UNIFORM_DRAG_INT1
+  ui_label = "Max Search Steps";
+  ui_min = 0; ui_max = 128; ui_step = 1;
+> = 32;
+
+uniform int _MaxSearchStepsDiag < __UNIFORM_DRAG_INT1
+  ui_label = "Max Diagonal Search Steps";
+  ui_min = 0; ui_max = 64; ui_step = 1;
+> = 20;
+
+uniform int _CornerRounding < __UNIFORM_DRAG_INT1
+  ui_label = "Corner Rounding";
+  ui_min = 0; ui_max = 100; ui_step = 1;
+> = 10;
+
 uniform float _EdgeDetectionThreshold < __UNIFORM_DRAG_FLOAT1
 	ui_label = "Edge Threshold";
 	ui_min = 0.050; ui_max = 0.15; ui_step = 0.001;
@@ -29,9 +44,9 @@ uniform int _Debug < __UNIFORM_COMBO_INT1
 #include ".\PSMAA.fxh"
 
 #ifdef SMAA_PRESET_CUSTOM
-	#define SMAA_MAX_SEARCH_STEPS 32
-	#define SMAA_MAX_SEARCH_STEPS_DIAG 20
-	#define SMAA_CORNER_ROUNDING 10
+	#define SMAA_MAX_SEARCH_STEPS _MaxSearchSteps
+	#define SMAA_MAX_SEARCH_STEPS_DIAG _MaxSearchStepsDiag
+	#define SMAA_CORNER_ROUNDING _CornerRounding
 #endif
 
 #define SMAA_RT_METRICS PSMAA_BUFFER_METRICS
@@ -57,6 +72,13 @@ sampler colorGammaSampler
 	MipFilter = POINT;
 };
 
+sampler colorLinearSampler
+{
+	Texture = colorInputTex;
+	MipFilter = Point;
+	SRGBTexture = true;
+};
+
 texture deltaTex < pooled = true; >
 {
   Width = BUFFER_WIDTH;
@@ -79,12 +101,15 @@ sampler edgesSampler
 	Texture = edgesTex;
 };
 
-
-texture blendTex < pooled = true; >
+texture weightTex < pooled = true; >
 {
 	Width = BUFFER_WIDTH;
 	Height = BUFFER_HEIGHT;
 	Format = RGBA8;
+};
+sampler weightSampler
+{
+	Texture = weightTex;
 };
 
 texture areaTex < source = "AreaTex.png"; >
@@ -93,42 +118,24 @@ texture areaTex < source = "AreaTex.png"; >
 	Height = 560;
 	Format = RG8;
 };
+sampler areaSampler
+{
+	Texture = areaTex;
+};
+
 texture searchTex < source = "SearchTex.png"; >
 {
 	Width = 64;
 	Height = 16;
 	Format = R8;
 };
-sampler colorLinearSampler
-{
-	Texture = ReShade::BackBufferTex;
-	AddressU = Clamp; AddressV = Clamp;
-	MipFilter = Point; MinFilter = Linear; MagFilter = Linear;
-	SRGBTexture = true;
-};
-sampler blendSampler
-{
-	Texture = blendTex;
-	AddressU = Clamp; AddressV = Clamp;
-	MipFilter = Linear; MinFilter = Linear; MagFilter = Linear;
-	SRGBTexture = false;
-};
-sampler areaSampler
-{
-	Texture = areaTex;
-	AddressU = Clamp; AddressV = Clamp; AddressW = Clamp;
-	MipFilter = Linear; MinFilter = Linear; MagFilter = Linear;
-	SRGBTexture = false;
-};
 sampler searchSampler
 {
 	Texture = searchTex;
-	AddressU = Clamp; AddressV = Clamp; AddressW = Clamp;
 	MipFilter = Point; MinFilter = Point; MagFilter = Point;
-	SRGBTexture = false;
 };
 
-
+// TODO: consider trying to calculate this in the PS instead.
 void PSMAADeltaCalulationVSWrapper(
   in uint id : SV_VertexID, 
   out float4 position : SV_Position, 
@@ -172,7 +179,7 @@ void PSMAAEdgeDetectionPSWrapper(
   // PSMAA::Pass::HybridDetection(texcoord, offset, colorGammaSampler, _EdgeDetectionThreshold, _ContrastAdaptationFactor, edges);
 }
 
-void SMAABlendingWeightCalculationWrapVS(
+void SMAABlendingWeightCalculationVSWrapper(
 	in uint id : SV_VertexID,
 	out float4 position : SV_Position,
 	out float2 texcoord : TEXCOORD0,
@@ -183,7 +190,7 @@ void SMAABlendingWeightCalculationWrapVS(
 	SMAABlendingWeightCalculationVS(texcoord, pixcoord, offset);
 }
 
-float4 SMAABlendingWeightCalculationWrapPS(
+float4 SMAABlendingWeightCalculationPSWrapper(
 	float4 position : SV_Position,
 	float2 texcoord : TEXCOORD0,
 	float2 pixcoord : TEXCOORD1,
@@ -192,7 +199,7 @@ float4 SMAABlendingWeightCalculationWrapPS(
 	return SMAABlendingWeightCalculationPS(texcoord, pixcoord, offset, edgesSampler, areaSampler, searchSampler, 0.0);
 }
 
-void SMAANeighborhoodBlendingWrapVS(
+void SMAANeighborhoodBlendingVSWrapper(
 	in uint id : SV_VertexID,
 	out float4 position : SV_Position,
 	out float2 texcoord : TEXCOORD0,
@@ -216,7 +223,7 @@ void PSMAABlendingPSWrapper(
   } else if(_Debug == 2) {
     color = tex2D(edgesSampler, texcoord).rgba;
   } else {
-    color = SMAANeighborhoodBlendingPS(texcoord, offset, colorLinearSampler, blendSampler).rgba;
+    color = SMAANeighborhoodBlendingPS(texcoord, offset, colorLinearSampler, weightSampler).rgba;
   }
 }
 
@@ -247,9 +254,9 @@ technique PSMAA
   }
   pass BlendWeightCalculationPass
 	{
-		VertexShader = SMAABlendingWeightCalculationWrapVS;
-		PixelShader = SMAABlendingWeightCalculationWrapPS;
-		RenderTarget = blendTex;
+		VertexShader = SMAABlendingWeightCalculationVSWrapper;
+		PixelShader = SMAABlendingWeightCalculationPSWrapper;
+		RenderTarget = weightTex;
 		ClearRenderTargets = true;
 		StencilEnable = true;
 		StencilPass = KEEP;
@@ -260,7 +267,7 @@ technique PSMAA
   {
     // TODO: consider renaming this VSWrapper to something more generic
     // alternatively, Consider giving this pass it's own VS
-    VertexShader = SMAANeighborhoodBlendingWrapVS;
+    VertexShader = SMAANeighborhoodBlendingVSWrapper;
     PixelShader = PSMAABlendingPSWrapper;
 		SRGBWriteEnable = true;
   }
