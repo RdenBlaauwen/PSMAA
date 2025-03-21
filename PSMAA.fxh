@@ -1,9 +1,14 @@
 
-// TODO: replace this with language-specific values in te future
-// reshade-specific definition should eventually go into the main file, not here
-#define PSMAA_BUFFER_METRICS float4(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT, BUFFER_WIDTH, BUFFER_HEIGHT)
-#define PSMAATexture2D(tex) sampler tex 
-#define PSMAASamplePoint(tex, coord) tex2D(tex, coord)
+// IMPLEMENTATION
+// The following preprocessor variables should be defined in the main file:
+// #define PSMAA_BUFFER_METRICS
+// #define PSMAATexture2D(tex)
+// #define PSMAASamplePoint(tex, coord)
+//
+// Reshade example:
+// #define PSMAA_BUFFER_METRICS float4(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT, BUFFER_WIDTH, BUFFER_HEIGHT)
+// #define PSMAATexture2D(tex) sampler tex 
+// #define PSMAASamplePoint(tex, coord) tex2D(tex, coord)
 
 namespace PSMAA {
   /**
@@ -32,13 +37,16 @@ namespace PSMAA {
   namespace Pass {
 
     /**
+    * Calculates the offsets for the current pixel.
     * Decided to leave the offset as an array, because I'll likely need more values in the future.
     */
     void DeltaCalculationVS(float2 texcoord, out float4 offset[1]) {
         offset[0] = mad(PSMAA_BUFFER_METRICS.xyxy, float4(-1.0, 0.0, 0.0, -1.0), texcoord.xyxy);
     }
 
-    // Perhaps `out float2 deltas` should be `inout float2 deltas` instead?
+    /**
+    * Calculate the top and left deltas for the current pixel.
+    */
     void DeltaCalculationPS(float2 texcoord, float4 offset[1], PSMAATexture2D(colorGammaTex), out float2 deltas) {
       float3 current = PSMAASamplePoint(colorGammaTex, texcoord).rgb;
       float3 left = PSMAASamplePoint(colorGammaTex, offset[0].xy).rgb;
@@ -51,6 +59,10 @@ namespace PSMAA {
       deltas = GetDeltas(left, top, current, rangeLeft, rangeTop, rangeCurrent);
     }
 
+    /**
+    * Calculate the edges for the current pixel. 
+    * Temporary implementation for testing purposes. Should not be used in production for now.
+    */
     void EdgeDetectionPS(
       float2 texcoord,
       float4 offset[3],
@@ -73,8 +85,7 @@ namespace PSMAA {
         float2 edges = step(threshold, delta.xy);
 
         // Early return if there is no edge:
-        if (!Functions::any(edges))
-            discard;
+        if (edges.x == -edges.y) discard;
 
         // Calculate right and bottom deltas:
         float Cright = PSMAASamplePoint(deltaTex, offset[1].xy).r;
@@ -103,6 +114,11 @@ namespace PSMAA {
         edgesOutput = edges;
     }
 
+    /**
+    * Conventional Edge detection algorithm which does not use a delta texture and does not rely
+    * on a separate delta pass. For testing purposes only, to compare the performance to that of
+    * the PSMAA edge detection method (which *does* separate the delta calculation from the edge detection).
+    */
     void HybridDetection(
       float2 texcoord,
       float4 offset[3],
@@ -134,8 +150,7 @@ namespace PSMAA {
         float2 edges = step(threshold, delta.xy);
 
         // Early return if there is no edge:
-        if (!Functions::any(edges))
-            discard;
+        if (edges.x == -edges.y) discard;
 
         // Calculate right and bottom deltas:
         float3 Cright = PSMAASamplePoint(colorTex, offset[1].xy).rgb;

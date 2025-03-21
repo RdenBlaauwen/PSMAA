@@ -40,6 +40,11 @@ uniform int _Debug < __UNIFORM_COMBO_INT1
 #include ".\reshade-shared\functions.fxh"
 #include ".\reshade-shared\color.fxh"
 
+// PSMAA preprocessor variables
+#define PSMAA_BUFFER_METRICS float4(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT, BUFFER_WIDTH, BUFFER_HEIGHT)
+#define PSMAATexture2D(tex) sampler tex 
+#define PSMAASamplePoint(tex, coord) tex2D(tex, coord)
+
 // Sources files
 #include ".\PSMAA.fxh"
 
