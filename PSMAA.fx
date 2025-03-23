@@ -42,8 +42,12 @@ uniform int _Debug < __UNIFORM_COMBO_INT1
 
 // PSMAA preprocessor variables
 #define PSMAA_BUFFER_METRICS float4(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT, BUFFER_WIDTH, BUFFER_HEIGHT)
+#define PSMAA_THRESHOLD_FLOOR 0.018
+#define PSMAA_SMAA_LCA_FACTOR_FLOOR 1.5
 #define PSMAATexture2D(tex) sampler tex 
 #define PSMAASamplePoint(tex, coord) tex2D(tex, coord)
+#define PSMAAGatherLeftEdges(tex, coord) tex2Dgather(tex, texcoord, 0);
+#define PSMAAGatherTopEdges(tex, coord) tex2Dgather(tex, texcoord, 1);
 
 // Sources files
 #include ".\PSMAA.fxh"

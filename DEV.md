@@ -10,4 +10,5 @@ This result may be acceptable, provided using depth edges in the delta pass comb
 
 # TODO
 
+- Implement and test newly implemented edge detection function
 - Test performance difference between edge detection (with CMAA2's local contrast adaptation) when delta pass is used vs when it is calculated directly.
