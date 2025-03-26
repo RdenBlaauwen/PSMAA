@@ -42,10 +42,26 @@ namespace PSMAA {
     return deltas;
   }
 
+  float calcAdaptationFactor(float luminosityAdaptationFactor, float localLuma) {
+    return mad(-luminosityAdaptationFactor, 1f - localLuma, 1f);
+  }
+
+  float adjustThreshold(float threshold, float adaptationFactor) {
+    threshold *= adaptationFactor;
+    return max(threshold, PSMAA_THRESHOLD_FLOOR); // floor
+  }
+
+  float adjustSMAALCAFactor(float SMAALCAFactor, float adaptationFactor) {
+    // calc portion of SMAA's LCA factor that can be adapted
+    float SMAALCAFactorAdaptableRange = saturate(SMAALCAFactor - PSMAA_SMAA_LCA_FACTOR_FLOOR);
+    // adapt LCA factor and add back to the floor
+    return mad(SMAALCAFactorAdaptableRange, adaptationFactor, PSMAA_SMAA_LCA_FACTOR_FLOOR);
+  }
+
   float2 GetEdges(
     float4 verticalDeltas,
     float4 horizontalDeltas,
-    float2 threshold,
+    float threshold,
     float CMAALCAFactor,
   )
   {
@@ -120,7 +136,7 @@ namespace PSMAA {
       float2 texcoord,
       float4 offset[3], // TODO: write dedicated VS function for this
       PSMAATexture2D(deltaTex),
-      float2 threshold,
+      float threshold,
       // x: CMAA's local contrast adaptation factor
       // y: local luminosity adaptation factor
       // z: SMAA's local contrast adaptation factor
@@ -140,11 +156,10 @@ namespace PSMAA {
       float4 vertDeltas = PSMAAGatherLeftEdges(deltaTex, offset[0].zw).wzxy; 
       
       //calculate factor which lowers threshold and SMAA's LCA factor according to local luminosity
-      float adaptationFactor = mad(-contrastAdaptationFactors.y, 1f - localLuma, 1f);
+      float adjustmentFactor = calcAdaptationFactor(contrastAdaptationFactors.y, localLuma);
 
       // Adjust threshold
-      threshold *= adaptationFactor
-      threshold = max(threshold, PSMAA_THRESHOLD_FLOOR); // floor
+      threshold = adjustThreshold(threshold, adjustmentFactor);
 
       float2 edges = GetEdges(vertDeltas, horzDeltas, threshold, contrastAdaptationFactors.x);
 
@@ -164,10 +179,8 @@ namespace PSMAA {
       // [  ]  [  ]   [  ]
       float3 vertDeltas2 = float3(vertDeltas.w, vertDeltas.z, leftLeftDelta);
 
-      // calc portion of SMAA's LCA factor that can be adapted
-      float SMAALCAFactorAdaptableRange = saturate(contrastAdaptationFactors.z - PSMAA_SMAA_LCA_FACTOR_FLOOR);
-      // adapt LCA factor and add back to the floor
-      float contrastAdaptationFactors.z = mad(SMAALCAFactorAdaptableRange, adaptationFactor, PSMAA_SMAA_LCA_FACTOR_FLOOR);
+      // adapt SMAA's LCA factor
+      float contrastAdaptationFactors.z = adjustSMAALCAFactor(contrastAdaptationFactors.z, adjustmentFactor);
 
       edgesOutput = ApplySMAALCA(edges, horzDeltas2, vertDeltas2, contrastAdaptationFactors.z);
 
