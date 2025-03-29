@@ -23,11 +23,23 @@ uniform float _EdgeDetectionThreshold < __UNIFORM_DRAG_FLOAT1
 	ui_min = 0.050; ui_max = 0.15; ui_step = 0.001;
 > = 0.09;
 
-uniform float _ContrastAdaptationFactor < __UNIFORM_DRAG_FLOAT1
-	ui_label = "Local Contrast Adaptation Factor";
+uniform float _SMAALCAFactor < __UNIFORM_DRAG_FLOAT1
+	ui_label = "SMAA LCA Factor";
 	ui_min = 1.5; ui_max = 4.0; ui_step = 0.1;
 	ui_tooltip = "High values increase anti-aliasing effect, but may increase artifacts.";
 > = 2.0;
+
+uniform float _CMAALCAFactor < __UNIFORM_DRAG_FLOAT1
+	ui_label = "CMAA LCA Factor";
+	ui_min = 0; ui_max = 0.15; ui_step = 0.01;
+	ui_tooltip = "High values increase anti-aliasing effect, but may increase artifacts.";
+> = .1;
+
+uniform float _LumaAdaptationFactor < __UNIFORM_DRAG_FLOAT1
+	ui_label = "Luma adaptation Factor";
+	ui_min = 0; ui_max = 1f; ui_step = 0.01;
+	ui_tooltip = "High values increase anti-aliasing effect, but may increase artifacts.";
+> = 0f;
 
 uniform int _Debug < __UNIFORM_COMBO_INT1
   ui_label = "Debug output";
@@ -184,8 +196,11 @@ void PSMAAEdgeDetectionPSWrapper(
   out float2 edges : SV_Target
 )
 {
-  PSMAA::Pass::EdgeDetectionPS(texcoord, offset, deltaSampler, _EdgeDetectionThreshold, _ContrastAdaptationFactor, edges);
-  // PSMAA::Pass::HybridDetection(texcoord, offset, colorGammaSampler, _EdgeDetectionThreshold, _ContrastAdaptationFactor, edges);
+	float LCAFactors = float3(
+		_CMAALCAFactor, _LumaAdaptationFactor, _SMAALCAFactor
+	);
+  PSMAA::Pass::EdgeDetectionPS(texcoord, offset, deltaSampler, _EdgeDetectionThreshold, LCAFactors, edges);
+  // PSMAA::Pass::HybridDetection(texcoord, offset, colorGammaSampler, _EdgeDetectionThreshold, _SMAALCAFactor, edges);
 }
 
 void SMAABlendingWeightCalculationVSWrapper(
@@ -257,9 +272,9 @@ technique PSMAA
     PixelShader = PSMAAEdgeDetectionPSWrapper;
     RenderTarget = edgesTex;
     ClearRenderTargets = true;
-		StencilEnable = true;
-		StencilPass = REPLACE;
-		StencilRef = 1;
+	StencilEnable = true;
+	StencilPass = REPLACE;
+	StencilRef = 1;
   }
   pass BlendWeightCalculationPass
 	{
