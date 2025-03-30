@@ -1,6 +1,7 @@
 
 // IMPLEMENTATION
 // The following preprocessor variables should be defined in the main file:
+// #define PSMAA_USE_SIMPLIFIED_DELTA_CALCULATION
 // #define PSMAA_BUFFER_METRICS
 // #define PSMAA_PIXEL_SIZE
 // #define PSMAA_THRESHOLD_FLOOR
@@ -11,6 +12,7 @@
 // #define PSMAAGatherTopEdges(tex, coord)
 //
 // Reshade example:
+// #define PSMAA_USE_SIMPLIFIED_DELTA_CALCULATION 0 
 // #define PSMAA_BUFFER_METRICS float4(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT, BUFFER_WIDTH, BUFFER_HEIGHT)
 // #define PSMAA_PIXEL_SIZE BUFFER_PIXEL_SIZE
 // #define PSMAA_THRESHOLD_FLOOR 0.018
@@ -25,12 +27,21 @@ namespace PSMAA {
   * Get the luma weighted delta between two vectors
   */
   float GetDelta(float3 cA, float3 cB, float rangeA, float rangeB) {
-    float colorfulness = max(rangeA, rangeB);
     float3 cDelta = abs(cA - cB);
+    float deltaLuma = Color::luma(cDelta);
 
+    #if PSMAA_USE_SIMPLIFIED_DELTA_CALCULATION == 1
+
+    return deltaLuma;
+
+    #else
+
+    float colorfulness = max(rangeA, rangeB);
     float colorDelta = colorfulness * Functions::max(cDelta);
-    float euclidianDelta = (1f - colorfulness) * Color::luma(cDelta);
+    float euclidianDelta = (1f - colorfulness) * deltaLuma;
     return colorDelta + euclidianDelta;
+
+    #endif
   }
 
   /**
