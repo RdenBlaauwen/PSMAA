@@ -20,8 +20,8 @@ uniform int _CornerRounding < __UNIFORM_DRAG_INT1
 
 uniform float _EdgeDetectionThreshold < __UNIFORM_DRAG_FLOAT1
 	ui_label = "Edge Threshold";
-	ui_min = 0.050; ui_max = 0.15; ui_step = 0.001;
-> = 0.09;
+	ui_min = 0.030; ui_max = 0.15; ui_step = 0.001;
+> = 0.07;
 
 uniform float _SMAALCAFactor < __UNIFORM_DRAG_FLOAT1
 	ui_label = "SMAA LCA Factor";
@@ -31,7 +31,7 @@ uniform float _SMAALCAFactor < __UNIFORM_DRAG_FLOAT1
 
 uniform float _CMAALCAFactor < __UNIFORM_DRAG_FLOAT1
 	ui_label = "CMAA LCA Factor";
-	ui_min = 0; ui_max = 0.15; ui_step = 0.01;
+	ui_min = 0; ui_max = 0.15; ui_step = 0.05;
 	ui_tooltip = "High values increase anti-aliasing effect, but may increase artifacts.";
 > = .1;
 
@@ -45,6 +45,10 @@ uniform int _Debug < __UNIFORM_COMBO_INT1
   ui_label = "Debug output";
   ui_items = "None\0Deltas\0Edges\0";
 > = 0;
+
+#ifndef PSMAA_USE_SIMPLIFIED_DELTA_CALCULATION
+	#define PSMAA_USE_SIMPLIFIED_DELTA_CALCULATION 0 
+#endif
 
 #include "ReShade.fxh"
 
