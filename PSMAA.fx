@@ -182,11 +182,12 @@ void PSMAAEdgeDetectionVSWrapper(
 	in uint id : SV_VertexID,
 	out float4 position : SV_Position,
 	out float2 texcoord : TEXCOORD0,
-	out float4 offset[3] : TEXCOORD1
+	out float4 offset[2] : TEXCOORD1
 )
 {
 	PostProcessVS(id, position, texcoord);
-	SMAAEdgeDetectionVS(texcoord, offset);
+	// SMAAEdgeDetectionVS(texcoord, offset);
+	PSMAA::Pass::EdgeDetectionVS(texcoord, offset);
 }
 
 void PSMAAEdgeDetectionPSWrapper(

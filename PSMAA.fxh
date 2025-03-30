@@ -2,6 +2,7 @@
 // IMPLEMENTATION
 // The following preprocessor variables should be defined in the main file:
 // #define PSMAA_BUFFER_METRICS
+// #define PSMAA_PIXEL_SIZE
 // #define PSMAA_THRESHOLD_FLOOR
 // #define PSMAA_SMAA_LCA_FACTOR_FLOOR
 // #define PSMAATexture2D(tex)
@@ -11,6 +12,7 @@
 //
 // Reshade example:
 // #define PSMAA_BUFFER_METRICS float4(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT, BUFFER_WIDTH, BUFFER_HEIGHT)
+// #define PSMAA_PIXEL_SIZE BUFFER_PIXEL_SIZE
 // #define PSMAA_THRESHOLD_FLOOR 0.018
 // #define PSMAA_SMAA_LCA_FACTOR_FLOOR 1.5
 // #define PSMAATexture2D(tex) sampler tex 
@@ -128,13 +130,18 @@ namespace PSMAA {
       deltas = GetDeltas(left, top, current, rangeLeft, rangeTop, rangeCurrent);
     }
 
+
+    void EdgeDetectionVS(float2 texcoord, out float4 offset[2]) {
+      offset[0] = mad(PSMAA_PIXEL_SIZE.xyxy, float4(-.5, 0.0, 0.0, -.5), texcoord.xyxy);
+      offset[1] = mad(PSMAA_BUFFER_METRICS.xyxy, float4(-1.0, 0.0, 0.0, -1.0), texcoord.xyxy);
+    }
     /**
     * Calculate the edges for the current pixel. 
     * Temporary implementation for testing purposes. Should not be used in production for now.
     */
     void EdgeDetectionPS(
       float2 texcoord,
-      float4 offset[3], // TODO: write dedicated VS function for this
+      float4 offset[2],
       PSMAATexture2D(deltaTex),
       float threshold,
       // x: CMAA's local contrast adaptation factor
@@ -149,14 +156,16 @@ namespace PSMAA {
       // [hx]  [hy]   [  ]
       // [hz]  [hw]   [  ]
       // float4 horzDeltas = PSMAAGatherTopEdges(deltaTex, offset[0].xy);
-      float4 horzDeltas = tex2Dgather(deltaTex, texcoord + BUFFER_PIXEL_SIZE * float2(-0.5, 0f), 1);
+      // float4 horzDeltas = tex2Dgather(deltaTex, texcoord + BUFFER_PIXEL_SIZE * float2(-0.5, 0f), 1);
+      float4 horzDeltas = tex2Dgather(deltaTex, offset[0].xy, 1);
       horzDeltas = horzDeltas.wzxy;
       // gather from top
       // [  ]  [vx]   [vy]
       // [  ]  [vz]   [vw]
       // [  ]  [  ]   [  ]
       // float4 vertDeltas = PSMAAGatherLeftEdges(deltaTex, offset[0].zw); 
-      float4 vertDeltas = tex2Dgather(deltaTex, texcoord + BUFFER_PIXEL_SIZE * float2(0f, -.5f), 0);
+      // float4 vertDeltas = tex2Dgather(deltaTex, texcoord + BUFFER_PIXEL_SIZE * float2(0f, -.5f), 0);
+      float4 vertDeltas = tex2Dgather(deltaTex, offset[0].zw, 0);
       vertDeltas = vertDeltas.wzxy;
 
       float localLuma = 1f; // temp value for testing purposes. TODO: implement luma caching and use it here
@@ -174,8 +183,8 @@ namespace PSMAA {
       // if (edges.x == -edges.y) discard;
 
       // // get leftmost and topmost extremes for SMAA LCA
-      // float leftLeftDelta = PSMAASamplePoint(deltaTex, offset[0].xy).r;
-      // float topTopDelta = PSMAASamplePoint(deltaTex, offset[0].zw).g;
+      // float leftLeftDelta = PSMAASamplePoint(deltaTex, offset[1].xy).r;
+      // float topTopDelta = PSMAASamplePoint(deltaTex, offset[1].zw).g;
 
       // // [  ]  [ttd]  [  ]
       // // [  ]  [hy]   [  ]
