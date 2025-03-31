@@ -36,10 +36,9 @@ namespace PSMAA {
 
     #else
 
+    float colorDelta = Functions::max(cDelta);
     float colorfulness = max(rangeA, rangeB);
-    float colorDelta = colorfulness * Functions::max(cDelta);
-    float euclidianDelta = (1f - colorfulness) * deltaLuma;
-    return colorDelta + euclidianDelta;
+    return lerp(deltaLuma, colorDelta, colorfulness);
 
     #endif
   }

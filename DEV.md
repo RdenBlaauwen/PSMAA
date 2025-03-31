@@ -10,8 +10,6 @@ This result may be acceptable, provided using depth edges in the delta pass comb
 
 # TODO
 
-- Implement and test newly implemented edge detection function
 - Test performance difference between edge detection (with CMAA2's local contrast adaptation) when delta pass is used vs when it is calculated directly.
 - Consider adding modifier to delta deetction which boosts luma weights, just like in Marty's SMAA:
   - ```dot(abs(A - B), float3(0.229, 0.587, 0.114) * 1.33);```
-- optimize delta calc to use lerp

@@ -191,7 +191,6 @@ void PSMAAEdgeDetectionVSWrapper(
 )
 {
 	PostProcessVS(id, position, texcoord);
-	// SMAAEdgeDetectionVS(texcoord, offset);
 	PSMAA::Pass::EdgeDetectionVS(texcoord, offset);
 }
 
