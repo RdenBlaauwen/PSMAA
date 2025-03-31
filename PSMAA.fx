@@ -31,7 +31,7 @@ uniform float _SMAALCAFactor < __UNIFORM_DRAG_FLOAT1
 
 uniform float _CMAALCAFactor < __UNIFORM_DRAG_FLOAT1
 	ui_label = "CMAA LCA Factor";
-	ui_min = 0; ui_max = 0.15; ui_step = 0.05;
+	ui_min = 0; ui_max = 1f; ui_step = 0.01;
 	ui_tooltip = "High values increase anti-aliasing effect, but may increase artifacts.";
 > = .1;
 
@@ -63,8 +63,8 @@ uniform int _Debug < __UNIFORM_COMBO_INT1
 #define PSMAA_PIXEL_SIZE BUFFER_PIXEL_SIZE
 #define PSMAATexture2D(tex) sampler tex 
 #define PSMAASamplePoint(tex, coord) tex2D(tex, coord)
-#define PSMAAGatherLeftEdges(tex, coord) tex2Dgather(tex, texcoord, 0);
-#define PSMAAGatherTopEdges(tex, coord) tex2Dgather(tex, texcoord, 1);
+#define PSMAAGatherLeftEdges(tex, coord) tex2Dgather(tex, coord, 0);
+#define PSMAAGatherTopEdges(tex, coord) tex2Dgather(tex, coord, 1);
 
 // Sources files
 #include ".\PSMAA.fxh"
