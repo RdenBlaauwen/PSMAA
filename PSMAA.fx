@@ -98,11 +98,15 @@ sampler colorGammaSampler
 	MipFilter = POINT;
 };
 
-sampler colorLinearSampler
+texture lumaTex < pooled = true; >
 {
-	Texture = colorInputTex;
-	MipFilter = Point;
-	SRGBTexture = true;
+	Width = BUFFER_WIDTH;
+	Height = BUFFER_HEIGHT;
+	Format = R8;
+};
+sampler lumaSampler
+{
+	Texture = lumaTex;
 };
 
 texture deltaTex < pooled = true; >
@@ -160,6 +164,45 @@ sampler searchSampler
 	Texture = searchTex;
 	MipFilter = Point; MinFilter = Point; MagFilter = Point;
 };
+
+sampler colorLinearSampler
+{
+	Texture = colorInputTex;
+	MipFilter = Point;
+	SRGBTexture = true;
+};
+
+void PSMAAPreProcessingPSWrapper(
+	float4 position : SV_POSITION,
+	float2 texcoord : TEXCOORD0,
+	out float luma : SV_TARGET0
+)
+{
+	// NW N NE
+	// W  C  E
+	// SW S SE
+	float3 NW = SMAASampleLevelZeroOffset(colorGammaSampler, texcoord, float2(-1, -1)).rgb;
+	float3 W = SMAASampleLevelZeroOffset(colorGammaSampler, texcoord, float2(-1, 0)).rgb;
+	float3 SW = SMAASampleLevelZeroOffset(colorGammaSampler, texcoord, float2(-1, 1)).rgb;
+	float3 N = SMAASampleLevelZeroOffset(colorGammaSampler, texcoord, float2(0, -1)).rgb;
+	float3 C = SMAASampleLevelZero(colorGammaSampler, texcoord).rgb;
+	float3 S = SMAASampleLevelZeroOffset(colorGammaSampler, texcoord, float2(0, 1)).rgb;
+	float3 NE = SMAASampleLevelZeroOffset(colorGammaSampler, texcoord, float2(1, -1)).rgb;
+	float3 E = SMAASampleLevelZeroOffset(colorGammaSampler, texcoord, float2(1, 0)).rgb;
+	float3 SE = SMAASampleLevelZeroOffset(colorGammaSampler, texcoord, float2(1, 1)).rgb;
+
+	float lNW = Functions::luma(NW);
+	float lW = Functions::luma(W);
+	float lSW = Functions::luma(SW);
+	float lN = Functions::luma(N);
+	float lC = Functions::luma(C);
+	float lS = Functions::luma(S);
+	float lNE = Functions::luma(NE);
+	float lE = Functions::luma(E);
+	float lSE = Functions::luma(SE);
+
+	luma = Functions::max(lNW, lW, lSW, lN, lC, lS, lNE, lE, lSE);
+}
 
 // TODO: consider trying to calculate this in the PS instead.
 void PSMAADeltaCalulationVSWrapper(
@@ -251,13 +294,22 @@ void PSMAABlendingPSWrapper(
     color = tex2D(deltaSampler, texcoord).rgba;
   } else if(_Debug == 2) {
     color = tex2D(edgesSampler, texcoord).rgba;
-  } else {
+	} else if (_Debug == 3)	{
+		color = tex2D(lumaSampler, texcoord).rrrr;
+	} else {
     color = SMAANeighborhoodBlendingPS(texcoord, offset, colorLinearSampler, weightSampler).rgba;
   }
 }
 
 technique PSMAA
 {
+	pass PreProcessing
+  {
+    VertexShader = PostProcessVS;
+    PixelShader = PSMAAPreProcessingPSWrapper;
+    RenderTarget = lumaTex;
+		// ClearRenderTargets = true;
+  }
   pass DeltaCalculation
   {
     VertexShader = PSMAADeltaCalulationVSWrapper;
@@ -277,9 +329,9 @@ technique PSMAA
     PixelShader = PSMAAEdgeDetectionPSWrapper;
     RenderTarget = edgesTex;
     ClearRenderTargets = true;
-	StencilEnable = true;
-	StencilPass = REPLACE;
-	StencilRef = 1;
+		StencilEnable = true;
+		StencilPass = REPLACE;
+		StencilRef = 1;
   }
   pass BlendWeightCalculationPass
 	{
