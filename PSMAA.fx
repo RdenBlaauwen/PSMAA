@@ -43,7 +43,7 @@ uniform float _LumaAdaptationFactor < __UNIFORM_DRAG_FLOAT1
 
 uniform int _Debug < __UNIFORM_COMBO_INT1
   ui_label = "Debug output";
-  ui_items = "None\0Deltas\0Edges\0";
+  ui_items = "None\0Local Luma\0Deltas\0Edges\0";
 > = 0;
 
 #ifndef PSMAA_USE_SIMPLIFIED_DELTA_CALCULATION
@@ -247,7 +247,7 @@ void PSMAAEdgeDetectionPSWrapper(
 	float3 LCAFactors = float3(
 		_CMAALCAFactor, _LumaAdaptationFactor, _SMAALCAFactor
 	);
-  PSMAA::Pass::EdgeDetectionPS(texcoord, offset, deltaSampler, _EdgeDetectionThreshold, LCAFactors, edges);
+  PSMAA::Pass::EdgeDetectionPS(texcoord, offset, deltaSampler, lumaSampler, _EdgeDetectionThreshold, LCAFactors, edges);
   // PSMAA::Pass::HybridDetection(texcoord, offset, colorGammaSampler, _EdgeDetectionThreshold, _SMAALCAFactor, edges);
 }
 
@@ -290,14 +290,14 @@ void PSMAABlendingPSWrapper(
 {
   // if(_Debug == 0) discard;
 
-  if(_Debug == 1) {
-    color = tex2D(deltaSampler, texcoord).rgba;
-  } else if(_Debug == 2) {
-    color = tex2D(edgesSampler, texcoord).rgba;
-	} else if (_Debug == 3)	{
+	if(_Debug == 0){
+		color = SMAANeighborhoodBlendingPS(texcoord, offset, colorLinearSampler, weightSampler).rgba;
+	} else if(_Debug == 1) {
 		color = tex2D(lumaSampler, texcoord).rrrr;
+  } else if(_Debug == 2) {
+    color = tex2D(deltaSampler, texcoord).rgba;
 	} else {
-    color = SMAANeighborhoodBlendingPS(texcoord, offset, colorLinearSampler, weightSampler).rgba;
+    color = tex2D(edgesSampler, texcoord).rgba;
   }
 }
 
