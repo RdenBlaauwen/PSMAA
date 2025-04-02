@@ -116,6 +116,35 @@ namespace PSMAA {
   }
 
   namespace Pass {
+    void PreProcessingPS(
+      float3 NW,
+      float3 W,
+      float3 SW,
+      float3 N,
+      float3 C,
+      float3 S,
+      float3 NE,
+      float3 E,
+      float3 SE,
+      out float3 filteredCopy,  // output current color (C)
+      out float luma            // output maximum luma from all nine samples
+    )
+    { 
+      float lNW = Color::luma(NW);
+      float lW  = Color::luma(W);
+      float lSW = Color::luma(SW);
+      float lN  = Color::luma(N);
+      float lC  = Color::luma(C);
+      float lS  = Color::luma(S);
+      float lNE = Color::luma(NE);
+      float lE  = Color::luma(E);
+      float lSE = Color::luma(SE);
+
+      // Calculate the maximum luma among all samples
+      luma = Functions::max(lNW, lW, lSW, lN, lC, lS, lNE, lE, lSE);
+      // Set the filtered copy as the current texel color: C.
+      filteredCopy = C;
+    }
 
     /**
     * Calculates the offsets for the current pixel.

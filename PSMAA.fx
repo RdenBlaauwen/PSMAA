@@ -44,7 +44,7 @@ uniform float _LumaAdaptationFactor < __UNIFORM_DRAG_FLOAT1
 
 uniform int _Debug < __UNIFORM_COMBO_INT1
   ui_label = "Debug output";
-  ui_items = "None\0Local Luma\0Deltas\0Edges\0";
+  ui_items = "None\0Local Luma\0Filtered Copy\0Deltas\0Edges\0";
 > = 0;
 
 #ifndef PSMAA_USE_SIMPLIFIED_DELTA_CALCULATION
@@ -99,6 +99,17 @@ sampler colorGammaSampler
 {
 	Texture = colorInputTex;
 	MipFilter = POINT;
+};
+
+texture filteredCopyTex < pooled = true; >
+{
+	Width = BUFFER_WIDTH;
+	Height = BUFFER_HEIGHT;
+	Format = RGB10A2;
+};
+sampler filteredCopySampler < pooled = true; > 
+{
+	Texture = filteredCopyTex;
 };
 
 texture lumaTex < pooled = true; >
@@ -178,7 +189,8 @@ sampler colorLinearSampler
 void PSMAAPreProcessingPSWrapper(
 	float4 position : SV_POSITION,
 	float2 texcoord : TEXCOORD0,
-	out float luma : SV_TARGET0
+	out float luma : SV_TARGET0,
+	out float3 filteredCopy : SV_TARGET1
 )
 {
 	// NW N NE
@@ -194,17 +206,32 @@ void PSMAAPreProcessingPSWrapper(
 	float3 E = SMAASampleLevelZeroOffset(colorGammaSampler, texcoord, float2(1, 0)).rgb;
 	float3 SE = SMAASampleLevelZeroOffset(colorGammaSampler, texcoord, float2(1, 1)).rgb;
 
-	float lNW = Color::luma(NW);
-	float lW = Color::luma(W);
-	float lSW = Color::luma(SW);
-	float lN = Color::luma(N);
-	float lC = Color::luma(C);
-	float lS = Color::luma(S);
-	float lNE = Color::luma(NE);
-	float lE = Color::luma(E);
-	float lSE = Color::luma(SE);
+	// float lNW = Color::luma(NW);
+	// float lW = Color::luma(W);
+	// float lSW = Color::luma(SW);
+	// float lN = Color::luma(N);
+	// float lC = Color::luma(C);
+	// float lS = Color::luma(S);
+	// float lNE = Color::luma(NE);
+	// float lE = Color::luma(E);
+	// float lSE = Color::luma(SE);
 
-	luma = Functions::max(lNW, lW, lSW, lN, lC, lS, lNE, lE, lSE);
+	// luma = Functions::max(lNW, lW, lSW, lN, lC, lS, lNE, lE, lSE);
+  // filteredCopy = C;
+
+	PSMAA::Pass::PreProcessingPS(
+      NW,
+      W,
+      SW,
+      N,
+      C,
+      S,
+      NE,
+      E,
+      SE,
+      filteredCopy,  // ut current color (C)
+      luma            // ut maximum luma from all nine samples
+    );
 }
 
 // TODO: consider trying to calculate this in the PS instead.
@@ -226,7 +253,7 @@ void PSMAADeltaCalulationPSWrapper(
   out float2 deltas : SV_Target0
 )
 {
-  PSMAA::Pass::DeltaCalculationPS(texcoord, offset, colorGammaSampler, deltas);
+  PSMAA::Pass::DeltaCalculationPS(texcoord, offset, filteredCopySampler, deltas);
 }
 
 void PSMAAEdgeDetectionVSWrapper(
@@ -297,7 +324,20 @@ void PSMAABlendingPSWrapper(
 		color = SMAANeighborhoodBlendingPS(texcoord, offset, colorLinearSampler, weightSampler).rgba;
 	} else if(_Debug == 1) {
 		color = tex2D(lumaSampler, texcoord).rrrr;
-  } else if(_Debug == 2) {
+	} else if(_Debug == 2) {
+		float4 gammaColor = tex2D(filteredCopySampler, texcoord).rgba;
+
+		// Convert to linear color space (standard sRGB conversion)
+		float4 linearColor;
+		float3 sRGB = gammaColor.rgb;
+    float3 isDark = sRGB <= 0.04045; // Handle dark values differently
+    float3 linearDark = sRGB / 12.92;
+    float3 linearBright = pow((sRGB + 0.055) / 1.055, 2.4);
+    linearColor.rgb = lerp(linearBright, linearDark, isDark);
+		linearColor.a = gammaColor.a;
+
+		color = linearColor;
+  } else if(_Debug == 3) {
     color = tex2D(deltaSampler, texcoord).rgba;
 	} else {
     color = tex2D(edgesSampler, texcoord).rgba;
@@ -310,7 +350,8 @@ technique PSMAA
   {
     VertexShader = PostProcessVS;
     PixelShader = PSMAAPreProcessingPSWrapper;
-    RenderTarget = lumaTex;
+    RenderTarget0 = lumaTex;
+    RenderTarget1 = filteredCopyTex;
 		// ClearRenderTargets = true;
   }
   pass DeltaCalculation
