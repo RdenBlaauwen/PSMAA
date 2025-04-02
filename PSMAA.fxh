@@ -175,8 +175,8 @@ namespace PSMAA {
       float4 vertDeltas = PSMAAGatherLeftEdges(deltaTex, offset[0].zw); 
       vertDeltas = vertDeltas.wzxy;
 
-      // float localLuma = PSMAASamplePoint(lumaTex, texcoord).r;
-      float localLuma = 1f; // temp val for debugging
+      float localLuma = PSMAASamplePoint(lumaTex, texcoord).r;
+      // float localLuma = 1f; // temp val for debugging
       
       //calculate factor which lowers threshold and SMAA's LCA factor according to local luminosity
       float adjustmentFactor = calcAdaptationFactor(contrastAdaptationFactors.y, localLuma);

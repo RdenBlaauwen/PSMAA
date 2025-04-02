@@ -11,7 +11,7 @@ uniform int _MaxSearchSteps < __UNIFORM_DRAG_INT1
 uniform int _MaxSearchStepsDiag < __UNIFORM_DRAG_INT1
   ui_label = "Max Diagonal Search Steps";
   ui_min = 0; ui_max = 64; ui_step = 1;
-> = 20;
+> = 19;
 
 uniform int _CornerRounding < __UNIFORM_DRAG_INT1
   ui_label = "Corner Rounding";
@@ -21,25 +21,26 @@ uniform int _CornerRounding < __UNIFORM_DRAG_INT1
 uniform float _EdgeDetectionThreshold < __UNIFORM_DRAG_FLOAT1
 	ui_label = "Edge Threshold";
 	ui_min = 0.030; ui_max = 0.15; ui_step = 0.001;
-> = 0.07;
+> = 0.05;
 
 uniform float _SMAALCAFactor < __UNIFORM_DRAG_FLOAT1
 	ui_label = "SMAA LCA Factor";
 	ui_min = 1.5; ui_max = 4.0; ui_step = 0.1;
 	ui_tooltip = "High values increase anti-aliasing effect, but may increase artifacts.";
-> = 2.0;
+> = 3.5;
 
-uniform float _CMAALCAFactor < __UNIFORM_DRAG_FLOAT1
+uniform float _CMAALCAFactor <
 	ui_label = "CMAA LCA Factor";
-	ui_min = 0; ui_max = 1f; ui_step = 0.01;
+	ui_type = "slider";
+	ui_min = 0; ui_max = .3; ui_step = 0.01;
 	ui_tooltip = "High values increase anti-aliasing effect, but may increase artifacts.";
-> = .1;
+> = .15;
 
 uniform float _LumaAdaptationFactor < __UNIFORM_DRAG_FLOAT1
 	ui_label = "Luma adaptation Factor";
-	ui_min = 0; ui_max = 1f; ui_step = 0.01;
+	ui_min = 0f; ui_max = 1f; ui_step = 0.01;
 	ui_tooltip = "High values increase anti-aliasing effect, but may increase artifacts.";
-> = 0f;
+> = 0.85;
 
 uniform int _Debug < __UNIFORM_COMBO_INT1
   ui_label = "Debug output";
@@ -59,7 +60,9 @@ uniform int _Debug < __UNIFORM_COMBO_INT1
 // PSMAA preprocessor variables
 #define PSMAA_BUFFER_METRICS float4(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT, BUFFER_WIDTH, BUFFER_HEIGHT)
 #define PSMAA_THRESHOLD_FLOOR 0.018
-#define PSMAA_SMAA_LCA_FACTOR_FLOOR 1.5
+#ifndef PSMAA_SMAA_LCA_FACTOR_FLOOR
+	#define PSMAA_SMAA_LCA_FACTOR_FLOOR 2.5
+#endif
 #define PSMAA_PIXEL_SIZE BUFFER_PIXEL_SIZE
 #define PSMAATexture2D(tex) sampler tex 
 #define PSMAASamplePoint(tex, coord) tex2D(tex, coord)
@@ -191,15 +194,15 @@ void PSMAAPreProcessingPSWrapper(
 	float3 E = SMAASampleLevelZeroOffset(colorGammaSampler, texcoord, float2(1, 0)).rgb;
 	float3 SE = SMAASampleLevelZeroOffset(colorGammaSampler, texcoord, float2(1, 1)).rgb;
 
-	float lNW = Functions::luma(NW);
-	float lW = Functions::luma(W);
-	float lSW = Functions::luma(SW);
-	float lN = Functions::luma(N);
-	float lC = Functions::luma(C);
-	float lS = Functions::luma(S);
-	float lNE = Functions::luma(NE);
-	float lE = Functions::luma(E);
-	float lSE = Functions::luma(SE);
+	float lNW = Color::luma(NW);
+	float lW = Color::luma(W);
+	float lSW = Color::luma(SW);
+	float lN = Color::luma(N);
+	float lC = Color::luma(C);
+	float lS = Color::luma(S);
+	float lNE = Color::luma(NE);
+	float lE = Color::luma(E);
+	float lSE = Color::luma(SE);
 
 	luma = Functions::max(lNW, lW, lSW, lN, lC, lS, lNE, lE, lSE);
 }
