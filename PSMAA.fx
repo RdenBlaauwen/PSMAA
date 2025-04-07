@@ -45,7 +45,7 @@ uniform float2 _CMAALCAforSMAALCAFactor <
 uniform float _ThreshFloor < __UNIFORM_DRAG_FLOAT1
 	ui_label = "Threshold floor";
 	ui_min = 0; ui_max = .03; ui_step = .001;
-> = .018;
+> = .01;
 
 uniform int _Debug < __UNIFORM_COMBO_INT1
   ui_label = "Debug output";
