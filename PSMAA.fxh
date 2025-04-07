@@ -5,7 +5,6 @@
 // #define PSMAA_BUFFER_METRICS
 // #define PSMAA_PIXEL_SIZE
 // #define PSMAA_THRESHOLD_FLOOR
-// #define PSMAA_SMAA_LCA_FACTOR_FLOOR
 // #define PSMAATexture2D(tex)
 // #define PSMAASamplePoint(tex, coord)
 // #define PSMAAGatherLeftEdges(tex, coord)
@@ -16,7 +15,6 @@
 // #define PSMAA_BUFFER_METRICS float4(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT, BUFFER_WIDTH, BUFFER_HEIGHT)
 // #define PSMAA_PIXEL_SIZE BUFFER_PIXEL_SIZE
 // #define PSMAA_THRESHOLD_FLOOR 0.018
-// #define PSMAA_SMAA_LCA_FACTOR_FLOOR 1.5
 // #define PSMAATexture2D(tex) sampler tex 
 // #define PSMAASamplePoint(tex, coord) tex2D(tex, coord)
 // #define PSMAAGatherLeftEdges(tex, coord) tex2Dgather(tex, texcoord, 0);
@@ -197,9 +195,10 @@ namespace PSMAA {
       float localLuma = PSMAASamplePoint(lumaTex, texcoord).r;
       // Adjust threshold and LCA factors according to the max local luma
       float4 detectionFactors = lerp(detectionFactorsLowLuma, detectionFactorsHighLuma, localLuma);
+      detectionFactors.x = max(detectionFactors.x, PSMAA_THRESHOLD_FLOOR);
 
       float2 cmaaLCA = CalculateCMAALocalContrast(vertDeltas, horzDeltas, detectionFactors.y);
-      float2 edges = DetectEdges(float2(vertDeltas.y, horzDeltas.y), detectionFactors.x, cmaaLCA);
+      float2 edges = DetectEdges(float2(vertDeltas.z, horzDeltas.y), detectionFactors.x, cmaaLCA);
       
       // discard if there is no edge
       if (dot(edges,float2(1.0, 1.0)) == 0f) discard;

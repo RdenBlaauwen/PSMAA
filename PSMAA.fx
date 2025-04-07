@@ -22,32 +22,30 @@ uniform float2 _EdgeDetectionThreshold <
 	ui_label = "Edge Threshold";
 	ui_type = "slider";
 	ui_min = .003; ui_max = .15; ui_step = .001;
-> = float2(.05, .005);
+> = float2(.005, .05);
 
 uniform float2 _CMAALCAFactor <
 	ui_label = "CMAA LCA Factor";
 	ui_type = "slider";
 	ui_min = 0; ui_max = .3; ui_step = .01;
-> = float2(.15,.15);
+> = float2(.22,.15);
 
 uniform float2 _SMAALCAFactor <
 	ui_label = "SMAA LCA Factor";
 	ui_type = "slider";
-	ui_min = 1.5; ui_max = 4.0; ui_step = .1;
-> = float2(3.5, 2.5);
+	ui_min = 1.5; ui_max = 4f; ui_step = .1;
+> = float2( 2f, 2f);
 
-uniform float2 _CMAALCAAdjustSMAALCA <
+uniform float2 _CMAALCAforSMAALCAFactor <
 	ui_label = "CMAA LCA adjust. of SMAA LCA";
 	ui_type = "slider";
-	ui_min = -.3; ui_max = .3; ui_step = .01;
-> = float2(0, 0);
+	ui_min = -1; ui_max = 1; ui_step = .01;
+> = float2(-.45, 0);
 
-// uniform float _LumaAdaptationFactor < __UNIFORM_DRAG_FLOAT1
-// 	ui_label = "Luma adaptation Factor";
-// 	ui_type = "slider";
-// 	ui_min = 0; ui_max = 1; ui_step = 0.01;
-// 	ui_tooltip = "High values increase anti-aliasing effect, but may increase artifacts.";
-// > = 0.85;
+uniform float _ThreshFloor < __UNIFORM_DRAG_FLOAT1
+	ui_label = "Threshold floor";
+	ui_min = 0; ui_max = .03; ui_step = .001;
+> = .018;
 
 uniform int _Debug < __UNIFORM_COMBO_INT1
   ui_label = "Debug output";
@@ -61,15 +59,13 @@ uniform int _Debug < __UNIFORM_COMBO_INT1
 #include "ReShade.fxh"
 
 // Libraries
+#include ".\reshade-shared\macros.fxh"
 #include ".\reshade-shared\functions.fxh"
 #include ".\reshade-shared\color.fxh"
 
 // PSMAA preprocessor variables
 #define PSMAA_BUFFER_METRICS float4(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT, BUFFER_WIDTH, BUFFER_HEIGHT)
-#define PSMAA_THRESHOLD_FLOOR 0.018
-#ifndef PSMAA_SMAA_LCA_FACTOR_FLOOR
-	#define PSMAA_SMAA_LCA_FACTOR_FLOOR 2.5
-#endif
+#define PSMAA_THRESHOLD_FLOOR _ThreshFloor
 #define PSMAA_PIXEL_SIZE BUFFER_PIXEL_SIZE
 #define PSMAATexture2D(tex) sampler tex 
 #define PSMAASamplePoint(tex, coord) tex2D(tex, coord)
@@ -282,10 +278,10 @@ void PSMAAEdgeDetectionPSWrapper(
 )
 {
 	float4 detectionFactorsHigh = float4(
-		_EdgeDetectionThreshold.x, _CMAALCAFactor.x, _SMAALCAFactor.x, _CMAALCAAdjustSMAALCA.x
+		_EdgeDetectionThreshold.y, _CMAALCAFactor.y, _SMAALCAFactor.y, _CMAALCAforSMAALCAFactor.y
 	);
 	float4 detectionFactorsLow = float4(
-		_EdgeDetectionThreshold.y, _CMAALCAFactor.y, _SMAALCAFactor.y, _CMAALCAAdjustSMAALCA.y
+		_EdgeDetectionThreshold.x, _CMAALCAFactor.x, _SMAALCAFactor.x, _CMAALCAforSMAALCAFactor.x
 	);
   PSMAA::Pass::EdgeDetectionPS(texcoord, offset, deltaSampler, lumaSampler, detectionFactorsHigh, detectionFactorsLow, edges);
   // PSMAA::Pass::HybridDetection(texcoord, offset, colorGammaSampler, _EdgeDetectionThreshold, _SMAALCAFactor, edges);
