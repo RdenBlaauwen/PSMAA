@@ -18,29 +18,36 @@ uniform int _CornerRounding < __UNIFORM_DRAG_INT1
   ui_min = 0; ui_max = 100; ui_step = 1;
 > = 10;
 
-uniform float _EdgeDetectionThreshold < __UNIFORM_DRAG_FLOAT1
+uniform float2 _EdgeDetectionThreshold <
 	ui_label = "Edge Threshold";
-	ui_min = 0.030; ui_max = 0.15; ui_step = 0.001;
-> = 0.05;
+	ui_type = "slider";
+	ui_min = .003; ui_max = .15; ui_step = .001;
+> = float2(.05, .005);
 
-uniform float _SMAALCAFactor < __UNIFORM_DRAG_FLOAT1
-	ui_label = "SMAA LCA Factor";
-	ui_min = 1.5; ui_max = 4.0; ui_step = 0.1;
-	ui_tooltip = "High values increase anti-aliasing effect, but may increase artifacts.";
-> = 3.5;
-
-uniform float _CMAALCAFactor <
+uniform float2 _CMAALCAFactor <
 	ui_label = "CMAA LCA Factor";
 	ui_type = "slider";
-	ui_min = 0; ui_max = .3; ui_step = 0.01;
-	ui_tooltip = "High values increase anti-aliasing effect, but may increase artifacts.";
-> = .15;
+	ui_min = 0; ui_max = .3; ui_step = .01;
+> = float2(.15,.15);
 
-uniform float _LumaAdaptationFactor < __UNIFORM_DRAG_FLOAT1
-	ui_label = "Luma adaptation Factor";
-	ui_min = 0f; ui_max = 1f; ui_step = 0.01;
-	ui_tooltip = "High values increase anti-aliasing effect, but may increase artifacts.";
-> = 0.85;
+uniform float2 _SMAALCAFactor <
+	ui_label = "SMAA LCA Factor";
+	ui_type = "slider";
+	ui_min = 1.5; ui_max = 4.0; ui_step = .1;
+> = float2(3.5, 2.5);
+
+uniform float2 _CMAALCAAdjustSMAALCA <
+	ui_label = "CMAA LCA adjust. of SMAA LCA";
+	ui_type = "slider";
+	ui_min = -.3; ui_max = .3; ui_step = .01;
+> = float2(0, 0);
+
+// uniform float _LumaAdaptationFactor < __UNIFORM_DRAG_FLOAT1
+// 	ui_label = "Luma adaptation Factor";
+// 	ui_type = "slider";
+// 	ui_min = 0; ui_max = 1; ui_step = 0.01;
+// 	ui_tooltip = "High values increase anti-aliasing effect, but may increase artifacts.";
+// > = 0.85;
 
 uniform int _Debug < __UNIFORM_COMBO_INT1
   ui_label = "Debug output";
@@ -274,10 +281,13 @@ void PSMAAEdgeDetectionPSWrapper(
   out float2 edges : SV_Target
 )
 {
-	float3 LCAFactors = float3(
-		_CMAALCAFactor, _LumaAdaptationFactor, _SMAALCAFactor
+	float4 detectionFactorsHigh = float4(
+		_EdgeDetectionThreshold.x, _CMAALCAFactor.x, _SMAALCAFactor.x, _CMAALCAAdjustSMAALCA.x
 	);
-  PSMAA::Pass::EdgeDetectionPS(texcoord, offset, deltaSampler, lumaSampler, _EdgeDetectionThreshold, LCAFactors, edges);
+	float4 detectionFactorsLow = float4(
+		_EdgeDetectionThreshold.y, _CMAALCAFactor.y, _SMAALCAFactor.y, _CMAALCAAdjustSMAALCA.y
+	);
+  PSMAA::Pass::EdgeDetectionPS(texcoord, offset, deltaSampler, lumaSampler, detectionFactorsHigh, detectionFactorsLow, edges);
   // PSMAA::Pass::HybridDetection(texcoord, offset, colorGammaSampler, _EdgeDetectionThreshold, _SMAALCAFactor, edges);
 }
 

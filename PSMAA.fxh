@@ -54,46 +54,43 @@ namespace PSMAA {
     return deltas;
   }
 
-  float calcAdaptationFactor(float luminosityAdaptationFactor, float localLuma) {
-    return mad(-luminosityAdaptationFactor, 1f - localLuma, 1f);
+  void GatherNeighborDeltas(
+      PSMAATexture2D(deltaTex), 
+      float4 gatherOffset,
+      out float4 horzDeltas,
+      out float4 vertDeltas
+  ) {
+      horzDeltas = PSMAAGatherTopEdges(deltaTex, gatherOffset.xy);
+      horzDeltas = horzDeltas.wzxy;
+      // gathered from left
+      // [  ]  [  ]   [  ]
+      // [hx]  [hy]   [  ]
+      // [hz]  [hw]   [  ]
+      vertDeltas = PSMAAGatherLeftEdges(deltaTex, gatherOffset.zw);
+      vertDeltas = vertDeltas.wzxy;
+      // gathered from top
+      // [  ]  [vx]   [vy]
+      // [  ]  [vz]   [vw]
+      // [  ]  [  ]   [  ]
   }
 
-  float adjustThreshold(float threshold, float adaptationFactor) {
-    threshold *= adaptationFactor;
-    return max(threshold, PSMAA_THRESHOLD_FLOOR); // floor
+  float2 CalculateCMAALocalContrast(float4 vertDeltas, float4 horzDeltas, float cmaaLCAFactor) {
+      float2 cmaaLCA;
+      cmaaLCA.r = Functions::max(vertDeltas.x, vertDeltas.y, vertDeltas.z, horzDeltas.w);
+      cmaaLCA.g = Functions::max(horzDeltas.x, horzDeltas.y, horzDeltas.z, vertDeltas.w);
+      return cmaaLCA * cmaaLCAFactor;
   }
 
-  float adjustSMAALCAFactor(float SMAALCAFactor, float adaptationFactor) {
-    // calc portion of SMAA's LCA factor that can be adapted
-    float SMAALCAFactorAdaptableRange = saturate(SMAALCAFactor - PSMAA_SMAA_LCA_FACTOR_FLOOR);
-    // adapt LCA factor and add back to the floor
-    return mad(SMAALCAFactorAdaptableRange, adaptationFactor, PSMAA_SMAA_LCA_FACTOR_FLOOR);
+  float2 DetectEdges(float4 vertDeltas, float4 horzDeltas, float threshold, float2 cmaaLCA) {
+      float2 currDeltas = float2(vertDeltas.z, horzDeltas.y) - cmaaLCA.rg;
+      return step(threshold, currDeltas);
   }
 
-  float2 GetEdges(
-    float4 verticalDeltas,
-    float4 horizontalDeltas,
-    float threshold,
-    float CMAALCAFactor
-  )
-  {
-    // v = Vertical deltas
-    // h = Horizontal deltas
-    // [  ]  [vx]   [vy]
-    // [hx] [vz hy] [vw]
-    // [hz]  [hw]   [  ]
-    float2 cmaaLocalContrast;
-    cmaaLocalContrast.r = Functions::max(verticalDeltas.x,verticalDeltas.y,verticalDeltas.z,horizontalDeltas.w);
-    cmaaLocalContrast.g = Functions::max(horizontalDeltas.x,horizontalDeltas.y,horizontalDeltas.z,verticalDeltas.w);
-
-    cmaaLocalContrast *= CMAALCAFactor;
-
-    float2 currDeltas = float2(verticalDeltas.z, horizontalDeltas.y) - cmaaLocalContrast;
-
-    // threshold *= mad(-contrastAdaptationFactors.y, 1f - localLuma, 1f);
-    // threshold = max(threshold, PSMAA_THRESHOLD_FLOOR);
-
-    return step(threshold, currDeltas);
+  float2 GetSMAAExtremesDeltas(PSMAATexture2D(deltaTex), float4 offset) {
+      return float2(
+          PSMAASamplePoint(deltaTex, offset.xy).r,  // leftLeftDelta
+          PSMAASamplePoint(deltaTex, offset.zw).g   // topTopDelta
+      );
   }
 
   float2 ApplySMAALCA(
@@ -102,15 +99,17 @@ namespace PSMAA {
     float3 horizontalDeltas,
     // x = right, y = left, z = leftleft
     float3 verticalDeltas,
-    float SMAALCAFactor
+    // x: SMAA's local contrast adaptation factor
+    // y: SMAA LCA adjustment bias by CMAA local contrast
+    float2 LCAFactors,
+    float2 cmaaLocalContrast
   )
   {
     float2 maxDeltas = float2(Functions::max(verticalDeltas), Functions::max(horizontalDeltas));
     float finalDelta = max(maxDeltas.r, maxDeltas.g);
 
-    float2 currDeltas = float2(verticalDeltas.y, horizontalDeltas.y);
-
-    edges.rg *= step(finalDelta, SMAALCAFactor * currDeltas.rg); //TODO: try removing the .rg's
+    float2 currDeltas = mad(cmaaLocalContrast, LCAFactors.y, float2(verticalDeltas.y, horizontalDeltas.y));
+    edges.rg *= step(finalDelta, LCAFactors.x * currDeltas.rg); //TODO: try removing the .rg's
 
     return edges;
   }
@@ -183,57 +182,42 @@ namespace PSMAA {
       float4 offset[2],
       PSMAATexture2D(deltaTex),
       PSMAATexture2D(lumaTex),
-      float threshold,
-      // x: CMAA's local contrast adaptation factor
-      // y: local luminosity adaptation factor
-      // z: SMAA's local contrast adaptation factor
-      float3 contrastAdaptationFactors,
+      // x: threshold
+      // y: CMAA LCA factor
+      // z: SMAA LCA factor
+      // w: SMAA LCA adjustment bias by CMAA local contrast
+      float4 detectionFactorsHighLuma,
+      float4 detectionFactorsLowLuma,
       out float2 edgesOutput
-    ) 
-    {
-      // gather from left
-      // [  ]  [  ]   [  ]
-      // [hx]  [hy]   [  ]
-      // [hz]  [hw]   [  ]
-      float4 horzDeltas = PSMAAGatherTopEdges(deltaTex, offset[0].xy);
-      horzDeltas = horzDeltas.wzxy;
-      // gather from top
-      // [  ]  [vx]   [vy]
-      // [  ]  [vz]   [vw]
-      // [  ]  [  ]   [  ]
-      float4 vertDeltas = PSMAAGatherLeftEdges(deltaTex, offset[0].zw); 
-      vertDeltas = vertDeltas.wzxy;
+  ) 
+  {
+      float4 horzDeltas, vertDeltas;
+      GatherNeighborDeltas(deltaTex, offset[0], horzDeltas, vertDeltas);
 
       float localLuma = PSMAASamplePoint(lumaTex, texcoord).r;
-      // float localLuma = 1f; // temp val for debugging
+      // Adjust threshold and LCA factors according to the max local luma
+      float4 detectionFactors = lerp(detectionFactorsLowLuma, detectionFactorsHighLuma, localLuma);
+
+      float2 cmaaLCA = CalculateCMAALocalContrast(vertDeltas, horzDeltas, detectionFactors.y);
+      float2 edges = DetectEdges(vertDeltas, horzDeltas, detectionFactors.x, cmaaLCA);
       
-      //calculate factor which lowers threshold and SMAA's LCA factor according to local luminosity
-      float adjustmentFactor = calcAdaptationFactor(contrastAdaptationFactors.y, localLuma);
+      // discard if there is no edge
+      if (dot(edges,float2(1.0, 1.0)) == 0f) discard;
 
-      threshold = adjustThreshold(threshold, adjustmentFactor);
+      // TODO: consider encapsulating everything after this into a function
+      // Get extremes for SMAA LCA
+      float2 extremesDeltas = GetSMAAExtremesDeltas(deltaTex, offset[1]);
 
-      float2 edges = GetEdges(vertDeltas, horzDeltas, threshold, contrastAdaptationFactors.x);
-
-      // Early return if there is no edge:
-      if (edges.x == -edges.y) discard;
-
-      // get leftmost and topmost extremes for SMAA LCA
-      float leftLeftDelta = PSMAASamplePoint(deltaTex, offset[1].xy).r;
-      float topTopDelta = PSMAASamplePoint(deltaTex, offset[1].zw).g;
-
-      // [  ]  [ttd]  [  ]
+      // [  ]  [  ]   [  ]
+      // [e.y] [vz]   [vw]
+      // [  ]  [  ]   [  ]
+      float3 vertDeltas2 = float3(vertDeltas.w, vertDeltas.z, extremesDeltas.x);
+      // [  ]  [e.y]  [  ]
       // [  ]  [hy]   [  ]
       // [  ]  [hw]   [  ]
-      float3 horzDeltas2 = float3(horzDeltas.w, horzDeltas.y, topTopDelta);
-      // [  ]  [  ]   [  ]
-      // [lld] [vz]   [vw]
-      // [  ]  [  ]   [  ]
-      float3 vertDeltas2 = float3(vertDeltas.w, vertDeltas.z, leftLeftDelta);
+      float3 horzDeltas2 = float3(horzDeltas.w, horzDeltas.y, extremesDeltas.y);
 
-      // adapt SMAA's LCA factor
-      contrastAdaptationFactors.z = adjustSMAALCAFactor(contrastAdaptationFactors.z, adjustmentFactor);
-
-      edgesOutput = ApplySMAALCA(edges, horzDeltas2, vertDeltas2, contrastAdaptationFactors.z);
+      edgesOutput = ApplySMAALCA(edges, horzDeltas2, vertDeltas2, detectionFactors.zw, cmaaLCA);
     }
 
     /**
