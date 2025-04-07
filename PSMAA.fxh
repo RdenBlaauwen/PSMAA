@@ -81,8 +81,8 @@ namespace PSMAA {
       return cmaaLCA * cmaaLCAFactor;
   }
 
-  float2 DetectEdges(float4 vertDeltas, float4 horzDeltas, float threshold, float2 cmaaLCA) {
-      float2 currDeltas = float2(vertDeltas.z, horzDeltas.y) - cmaaLCA.rg;
+  float2 DetectEdges(float2 deltas, float threshold, float2 cmaaLCA) {
+      float2 currDeltas = deltas - cmaaLCA.rg;
       return step(threshold, currDeltas);
   }
 
@@ -199,12 +199,11 @@ namespace PSMAA {
       float4 detectionFactors = lerp(detectionFactorsLowLuma, detectionFactorsHighLuma, localLuma);
 
       float2 cmaaLCA = CalculateCMAALocalContrast(vertDeltas, horzDeltas, detectionFactors.y);
-      float2 edges = DetectEdges(vertDeltas, horzDeltas, detectionFactors.x, cmaaLCA);
+      float2 edges = DetectEdges(float2(vertDeltas.y, horzDeltas.y), detectionFactors.x, cmaaLCA);
       
       // discard if there is no edge
       if (dot(edges,float2(1.0, 1.0)) == 0f) discard;
 
-      // TODO: consider encapsulating everything after this into a function
       // Get extremes for SMAA LCA
       float2 extremesDeltas = GetSMAAExtremesDeltas(deltaTex, offset[1]);
 
