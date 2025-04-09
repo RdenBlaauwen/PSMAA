@@ -47,10 +47,17 @@ uniform float _ThreshFloor < __UNIFORM_DRAG_FLOAT1
 	ui_min = 0; ui_max = .03; ui_step = .001;
 > = .01;
 
-uniform int _Debug < __UNIFORM_COMBO_INT1
+uniform int _Debug < 
+	ui_category = "Debug";
   ui_label = "Debug output";
-  ui_items = "None\0Local Luma\0Filtered Copy\0Deltas\0Edges\0";
+  ui_items = "None\0Local Luma\0Filtered Copy\0Deltas\0Edges\0Delta extremes\0";
 > = 0;
+
+uniform float _DebugDeltaExtremeThreshold < __UNIFORM_DRAG_FLOAT1
+	ui_category = "Debug";
+	ui_label = "Delta extreme threshold";
+	ui_min = 0; ui_max = 1; ui_step = .001;
+> = .5;
 
 #ifndef PSMAA_USE_SIMPLIFIED_DELTA_CALCULATION
 	#define PSMAA_USE_SIMPLIFIED_DELTA_CALCULATION 0 
@@ -345,9 +352,12 @@ void PSMAABlendingPSWrapper(
 		color = linearColor;
   } else if(_Debug == 3) {
     color = tex2D(deltaSampler, texcoord).rgba;
-	} else {
+	} else if(_Debug == 4) {
     color = tex2D(edgesSampler, texcoord).rgba;
-  }
+  } else {
+		float4 passedDeltas = step(_DebugDeltaExtremeThreshold, tex2D(deltaSampler, texcoord).rgba);
+		color = lerp(float(0).xxxx, float(1).xxxx, passedDeltas);
+	}
 }
 
 technique PSMAA
