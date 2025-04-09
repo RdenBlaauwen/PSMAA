@@ -21,7 +21,7 @@ uniform int _CornerRounding < __UNIFORM_DRAG_INT1
 uniform float2 _EdgeDetectionThreshold <
 	ui_label = "Edge Threshold";
 	ui_type = "slider";
-	ui_min = .003; ui_max = .15; ui_step = .001;
+	ui_min = .004; ui_max = .15; ui_step = .001;
 > = float2(.005, .05);
 
 uniform float2 _CMAALCAFactor <
@@ -44,20 +44,17 @@ uniform float2 _CMAALCAforSMAALCAFactor <
 
 uniform float _ThreshFloor < __UNIFORM_DRAG_FLOAT1
 	ui_label = "Threshold floor";
-	ui_min = 0; ui_max = .03; ui_step = .001;
+	// TODO: build comprehensive texture + bitrate macro system to replace this sad ui_min value
+	ui_min = .004; ui_max = .03; ui_step = .001;
 > = .01;
 
 uniform int _Debug < 
 	ui_category = "Debug";
+	ui_type = "combo";
   ui_label = "Debug output";
-  ui_items = "None\0Local Luma\0Filtered Copy\0Deltas\0Edges\0Delta extremes\0";
+  ui_items = "None\0Local Luma\0Filtered Copy\0Deltas\0Edges\0";
 > = 0;
 
-uniform float _DebugDeltaExtremeThreshold < __UNIFORM_DRAG_FLOAT1
-	ui_category = "Debug";
-	ui_label = "Delta extreme threshold";
-	ui_min = 0; ui_max = 1; ui_step = .001;
-> = .5;
 
 #ifndef PSMAA_USE_SIMPLIFIED_DELTA_CALCULATION
 	#define PSMAA_USE_SIMPLIFIED_DELTA_CALCULATION 0 
@@ -137,7 +134,7 @@ texture deltaTex < pooled = true; >
 {
   Width = BUFFER_WIDTH;
   Height = BUFFER_HEIGHT;
-  Format = RG16F;
+	Format = RG8;
 };
 sampler deltaSampler
 {
@@ -352,11 +349,8 @@ void PSMAABlendingPSWrapper(
 		color = linearColor;
   } else if(_Debug == 3) {
     color = tex2D(deltaSampler, texcoord).rgba;
-	} else if(_Debug == 4) {
-    color = tex2D(edgesSampler, texcoord).rgba;
   } else {
-		float4 passedDeltas = step(_DebugDeltaExtremeThreshold, tex2D(deltaSampler, texcoord).rgba);
-		color = lerp(float(0).xxxx, float(1).xxxx, passedDeltas);
+    color = tex2D(edgesSampler, texcoord).rgba;
 	}
 }
 
