@@ -76,6 +76,9 @@ uniform int _Debug <
 #define PSMAAGatherLeftEdges(tex, coord) tex2Dgather(tex, coord, 0);
 #define PSMAAGatherTopEdges(tex, coord) tex2Dgather(tex, coord, 1);
 
+#define PSMAA_EDGE_DETECTION_FACTORS_HIGH_LUMA float4(_EdgeDetectionThreshold.y, _CMAALCAFactor.y, _SMAALCAFactor.y, _CMAALCAforSMAALCAFactor.y)
+#define PSMAA_EDGE_DETECTION_FACTORS_LOW_LUMA float4(_EdgeDetectionThreshold.x, _CMAALCAFactor.x, _SMAALCAFactor.x, _CMAALCAforSMAALCAFactor.x)
+
 // Sources files
 #include ".\PSMAA.fxh"
 
@@ -281,13 +284,7 @@ void PSMAAEdgeDetectionPSWrapper(
   out float2 edges : SV_Target
 )
 {
-	float4 detectionFactorsHigh = float4(
-		_EdgeDetectionThreshold.y, _CMAALCAFactor.y, _SMAALCAFactor.y, _CMAALCAforSMAALCAFactor.y
-	);
-	float4 detectionFactorsLow = float4(
-		_EdgeDetectionThreshold.x, _CMAALCAFactor.x, _SMAALCAFactor.x, _CMAALCAforSMAALCAFactor.x
-	);
-  PSMAA::Pass::EdgeDetectionPS(texcoord, offset, deltaSampler, lumaSampler, detectionFactorsHigh, detectionFactorsLow, edges);
+  PSMAA::Pass::EdgeDetectionPS(texcoord, offset, deltaSampler, lumaSampler, edges);
   // PSMAA::Pass::HybridDetection(texcoord, offset, colorGammaSampler, _EdgeDetectionThreshold, _SMAALCAFactor, edges);
 }
 

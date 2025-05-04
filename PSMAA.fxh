@@ -4,21 +4,30 @@
 // #define PSMAA_USE_SIMPLIFIED_DELTA_CALCULATION
 // #define PSMAA_BUFFER_METRICS
 // #define PSMAA_PIXEL_SIZE
-// #define PSMAA_THRESHOLD_FLOOR
 // #define PSMAATexture2D(tex)
 // #define PSMAASamplePoint(tex, coord)
 // #define PSMAAGatherLeftEdges(tex, coord)
 // #define PSMAAGatherTopEdges(tex, coord)
+// #define PSMAA_THRESHOLD_FLOOR
+// #define PSMAA_EDGE_DETECTION_FACTORS_HIGH_LUMA
+// #define PSMAA_EDGE_DETECTION_FACTORS_LOW_LUM
+// These are float4's with the following values:
+// x: threshold
+// y: CMAA LCA factor
+// z: SMAA LCA factor
+// w: SMAA LCA adjustment bias by CMAA local contrast
 //
 // Reshade example:
 // #define PSMAA_USE_SIMPLIFIED_DELTA_CALCULATION 0 
 // #define PSMAA_BUFFER_METRICS float4(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT, BUFFER_WIDTH, BUFFER_HEIGHT)
 // #define PSMAA_PIXEL_SIZE BUFFER_PIXEL_SIZE
-// #define PSMAA_THRESHOLD_FLOOR 0.018
 // #define PSMAATexture2D(tex) sampler tex 
 // #define PSMAASamplePoint(tex, coord) tex2D(tex, coord)
 // #define PSMAAGatherLeftEdges(tex, coord) tex2Dgather(tex, texcoord, 0);
 // #define PSMAAGatherTopEdges(tex, coord) tex2Dgather(tex, texcoord, 1);
+// #define PSMAA_THRESHOLD_FLOOR 0.018
+// #define PSMAA_EDGE_DETECTION_FACTORS_HIGH_LUMA float4(threshold, CMAALCAFactor, SMAALCAFactor, SMAALCAAdjustmentBiasByCMAALocalContrast)
+// #define PSMAA_EDGE_DETECTION_FACTORS_LOW_LUMA float4(threshold, CMAALCAFactor, SMAALCAFactor, SMAALCAAdjustmentBiasByCMAALocalContrast)
 
 namespace PSMAA {
   /**
@@ -180,12 +189,6 @@ namespace PSMAA {
       float4 offset[2],
       PSMAATexture2D(deltaTex),
       PSMAATexture2D(lumaTex),
-      // x: threshold
-      // y: CMAA LCA factor
-      // z: SMAA LCA factor
-      // w: SMAA LCA adjustment bias by CMAA local contrast
-      float4 detectionFactorsHighLuma,
-      float4 detectionFactorsLowLuma,
       out float2 edgesOutput
   ) 
   {
@@ -194,7 +197,7 @@ namespace PSMAA {
 
       float localLuma = PSMAASamplePoint(lumaTex, texcoord).r;
       // Adjust threshold and LCA factors according to the max local luma
-      float4 detectionFactors = lerp(detectionFactorsLowLuma, detectionFactorsHighLuma, localLuma);
+      float4 detectionFactors = lerp(PSMAA_EDGE_DETECTION_FACTORS_LOW_LUMA, PSMAA_EDGE_DETECTION_FACTORS_HIGH_LUMA, localLuma);
       detectionFactors.x = max(detectionFactors.x, PSMAA_THRESHOLD_FLOOR);
 
       float2 cmaaLCA = CalculateCMAALocalContrast(vertDeltas, horzDeltas, detectionFactors.y);
