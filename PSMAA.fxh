@@ -190,8 +190,8 @@ namespace PSMAA {
       PSMAATexture2D(deltaTex),
       PSMAATexture2D(lumaTex),
       out float2 edgesOutput
-  ) 
-  {
+    ) 
+    {
       float4 horzDeltas, vertDeltas;
       GatherNeighborDeltas(deltaTex, offset[0], horzDeltas, vertDeltas);
 

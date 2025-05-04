@@ -216,19 +216,6 @@ void PSMAAPreProcessingPSWrapper(
 	float3 E = SMAASampleLevelZeroOffset(colorGammaSampler, texcoord, float2(1, 0)).rgb;
 	float3 SE = SMAASampleLevelZeroOffset(colorGammaSampler, texcoord, float2(1, 1)).rgb;
 
-	// float lNW = Color::luma(NW);
-	// float lW = Color::luma(W);
-	// float lSW = Color::luma(SW);
-	// float lN = Color::luma(N);
-	// float lC = Color::luma(C);
-	// float lS = Color::luma(S);
-	// float lNE = Color::luma(NE);
-	// float lE = Color::luma(E);
-	// float lSE = Color::luma(SE);
-
-	// luma = Functions::max(lNW, lW, lSW, lN, lC, lS, lNE, lE, lSE);
-  // filteredCopy = C;
-
 	PSMAA::Pass::PreProcessingPS(
       NW,
       W,
