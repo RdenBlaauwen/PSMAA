@@ -8,6 +8,7 @@
 // #define PSMAAGatherLeftEdges(tex, coord)
 // #define PSMAAGatherTopEdges(tex, coord)
 // #define PSMAA_PRE_PROCESSING_DELTA_WEIGHT_CEIL
+// #define PSMAA_PRE_PROCESSING_BLEND_STRENGTH
 // #define PSMAA_THRESHOLD_FLOOR
 // #define PSMAA_EDGE_DETECTION_FACTORS_HIGH_LUMA
 // #define PSMAA_EDGE_DETECTION_FACTORS_LOW_LUM
@@ -26,6 +27,7 @@
 // #define PSMAAGatherLeftEdges(tex, coord) tex2Dgather(tex, texcoord, 0);
 // #define PSMAAGatherTopEdges(tex, coord) tex2Dgather(tex, texcoord, 1);
 // #define PSMAA_PRE_PROCESSING_DELTA_WEIGHT_CEIL_MULTIPLIER 2f
+// #define PSMAA_PRE_PROCESSING_BLEND_STRENGTH .7
 // #define PSMAA_THRESHOLD_FLOOR 0.018
 // #define PSMAA_EDGE_DETECTION_FACTORS_HIGH_LUMA float4(threshold, CMAALCAFactor, SMAALCAFactor, SMAALCAAdjustmentBiasByCMAALocalContrast)
 // #define PSMAA_EDGE_DETECTION_FACTORS_LOW_LUMA float4(threshold, CMAALCAFactor, SMAALCAFactor, SMAALCAAdjustmentBiasByCMAALocalContrast)
@@ -140,10 +142,10 @@ namespace PSMAA {
       float3 E,
       float3 SE,
       out float3 filteredCopy,  // output current color (C)
-      out float localLuma            // output maximum luma from all nine samples
+      out float localLuma,       // output maximum luma from all nine samples
+      out float3 color // actual output
     )
     {
-      // TODO: move outside of the function and pass them as parameters
       float lNW = Color::luma(NW);
       float lW  = Color::luma(W);
       float lSW = Color::luma(SW);
@@ -154,6 +156,7 @@ namespace PSMAA {
       float lE  = Color::luma(E);
       float lSE = Color::luma(SE);
 
+      // TODO: move most logic beyond this point in dedicted functions which can be used in both CS and PS
       float4 deltas;
       deltas.r = GetDelta(lW, lC);
       deltas.g = GetDelta(lN, lC);
@@ -171,10 +174,6 @@ namespace PSMAA {
       bool edgesTooFew = Functions::sum(edges) < 2.0;
 
       if(!oneCorner && !edgesTooFew) {
-        float deltaCeil = detectionFactors.x * PSMAA_PRE_PROCESSING_DELTA_WEIGHT_CEIL_MULTIPLIER;
-        // deltas equal to the threshold equal 1.0. Max value equals deltaCeil
-        float4 weightedDeltas = max(deltas / detectionFactors.x, deltaCeil);
-
         // pattern:
         //  e f g
         //  h a b
@@ -227,6 +226,7 @@ namespace PSMAA {
         float minLuma = Lib::luma(minLine);
         float origLuma = Lib::luma(C);
         float localavgLuma = Lib::luma(localavg);
+        // TODO: try using delta between origLuma and localavgLuma to determine strength and direction of the boost/weakening
         // Calculate boost/weaken with consistent saturate usage
         float boost = saturate(maxLuma - localavgLuma);
         float weaken = saturate(minLuma - localavgLuma);
@@ -235,21 +235,14 @@ namespace PSMAA {
         float mod = lerp(weaken, boost, balancer);
         localavg *= 1f + mod;
 
-        // TODO: convert this to new calulation using the weighted deltas instead of edges
-        // 	// Calculate strength by # of edges above 1
-        // float strength = signifEdges / 3.0; 
-
-        // // calculate # of corners
-        // float corners = (edgeData.r + edgeData.b) * (edgeData.g + edgeData.a);
-        
-        // // Reduce strength for straight lines of 1 pixel thick and their endings, to preserve detail
-        // const float LINE_PRESERVATION_FACTOR = 0.6f; // TODO: consider turning into preprocessor constant and adding ui
-        // strength *= (corners == 0.0 || corners == 2.0) ? LINE_PRESERVATION_FACTOR : 1.0;
-
-        // // Calculate blend strength based on weight and edge data
-        // float scaledStrength = scaleSofteningStrength(strength);
-        // float maxblending = scaledStrength * ESMAASofteningStrength;
-      	// return lerp(original, localavg, maxblending);
+        static const float deltaCeil = detectionFactors.x * PSMAA_PRE_PROCESSING_DELTA_WEIGHT_CEIL_MULTIPLIER;
+        // deltas equal to the threshold equal 1.0. Max value equals deltaCeil
+        float4 weightedDeltas = min(deltas / detectionFactors.x, deltaCeil);
+        float maxblending = Functions::sum(weightedDeltas) * ESMAASofteningStrength;
+        // put into filtered copy tex
+      	filteredCopy = lerp(C, localavg, maxblending);
+        // Blend filtered result into output color to some extent
+        color = lerp(C, filteredCopy, PSMAA_PRE_PROCESSING_BLEND_STRENGTH);
       } else {
         // Set the filtered copy as the current texel color: C.
         filteredCopy = C;

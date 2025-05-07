@@ -75,7 +75,8 @@ uniform int _Debug <
 #define PSMAASamplePoint(tex, coord) tex2D(tex, coord)
 #define PSMAAGatherLeftEdges(tex, coord) tex2Dgather(tex, coord, 0);
 #define PSMAAGatherTopEdges(tex, coord) tex2Dgather(tex, coord, 1);
-
+#define PSMAA_PRE_PROCESSING_DELTA_WEIGHT_CEIL_MULTIPLIER 2f // TODO: make UI control
+#define PSMAA_PRE_PROCESSING_BLEND_STRENGTH .7 // TODO: make UI control
 #define PSMAA_EDGE_DETECTION_FACTORS_HIGH_LUMA float4(_EdgeDetectionThreshold.y, _CMAALCAFactor.y, _SMAALCAFactor.y, _CMAALCAforSMAALCAFactor.y)
 #define PSMAA_EDGE_DETECTION_FACTORS_LOW_LUMA float4(_EdgeDetectionThreshold.x, _CMAALCAFactor.x, _SMAALCAFactor.x, _CMAALCAforSMAALCAFactor.x)
 
