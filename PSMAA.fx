@@ -91,6 +91,8 @@ uniform int _Debug <
 #define PSMAA_PIXEL_SIZE BUFFER_PIXEL_SIZE
 #define PSMAATexture2D(tex) sampler tex 
 #define PSMAASamplePoint(tex, coord) tex2D(tex, coord)
+#define PSMAASampleLevelZero(tex, coord) tex2Dlod(tex, float4(coord, 0.0, 0.0))
+#define PSMAASampleLevelZeroOffset(tex, coord, offset) tex2Dlodoffset(tex, float4(coord, coord), offset)
 #define PSMAAGatherLeftEdges(tex, coord) tex2Dgather(tex, coord, 0);
 #define PSMAAGatherTopEdges(tex, coord) tex2Dgather(tex, coord, 1);
 #define PSMAA_PRE_PROCESSING_THRESHOLD_MULTIPLIER _PreProcessingThresholdMultiplier
@@ -113,9 +115,9 @@ uniform int _Debug <
 
 #define SMAATexture2D(tex) PSMAATexture2D(tex)
 #define SMAATexturePass2D(tex) tex
-#define SMAASampleLevelZero(tex, coord) tex2Dlod(tex, float4(coord, 0.0, 0.0))
+#define SMAASampleLevelZero(tex, coord) PSMAASampleLevelZero(tex, coord)
 #define SMAASampleLevelZeroPoint(tex, coord) tex2Dlod(tex, float4(coord, 0.0, 0.0))
-#define SMAASampleLevelZeroOffset(tex, coord, offset) tex2Dlod(tex, float4(coord + offset * SMAA_RT_METRICS.xy, 0.0, 0.0))
+#define SMAASampleLevelZeroOffset(tex, coord, offset) PSMAASampleLevelZeroOffset(tex, coord, offset)
 #define SMAASample(tex, coord) tex2D(tex, coord)
 #define SMAASamplePoint(tex, coord) PSMAASamplePoint(tex, coord)
 #define SMAASampleOffset(tex, coord, offset) tex2D(tex, coord + offset * SMAA_RT_METRICS.xy)
@@ -229,44 +231,15 @@ void PSMAAPreProcessingPSWrapper(
 	out float4 filteredCopy : SV_TARGET1
 )
 {
-	// NW N NE
-	// W  C  E
-	// SW S SE
-	float3 NW = SMAASampleLevelZeroOffset(colorGammaSampler, texcoord, float2(-1, -1)).rgb;
-	float3 W = SMAASampleLevelZeroOffset(colorGammaSampler, texcoord, float2(-1, 0)).rgb;
-	float3 SW = SMAASampleLevelZeroOffset(colorGammaSampler, texcoord, float2(-1, 1)).rgb;
-	float3 N = SMAASampleLevelZeroOffset(colorGammaSampler, texcoord, float2(0, -1)).rgb;
-	float3 C = SMAASampleLevelZero(colorGammaSampler, texcoord).rgb;
-	float3 S = SMAASampleLevelZeroOffset(colorGammaSampler, texcoord, float2(0, 1)).rgb;
-	float3 NE = SMAASampleLevelZeroOffset(colorGammaSampler, texcoord, float2(1, -1)).rgb;
-	float3 E = SMAASampleLevelZeroOffset(colorGammaSampler, texcoord, float2(1, 0)).rgb;
-	float3 SE = SMAASampleLevelZeroOffset(colorGammaSampler, texcoord, float2(1, 1)).rgb;
-
-	PSMAA::Pass::PreProcessingPS(
-      NW,
-      W,
-      SW,
-      N,
-      C,
-      S,
-      NE,
-      E,
-      SE,
-      filteredCopy,  // ut current color (C)
-      luma            // ut maximum luma from all nine samples
-    );
+	PSMAA::Pass::PreProcessingPS(texcoord, colorGammaSampler, filteredCopy,luma);
 }
 
-void PSMAAPreProcessingOutputPS(
+void PSMAAPreProcessingOutputPSWrapper(
     float4 position : SV_Position,
     float2 texcoord : TEXCOORD0,
     out float4 color : SV_Target
 ) {
-    PSMAA::Pass::PreProcessingOutput(
-				texcoord,
-				filteredCopySampler,
-				color
-		);
+    PSMAA::Pass::PreProcessingOutputPS(texcoord, filteredCopySampler, color);
 }
 
 // TODO: consider trying to calculate this in the PS instead.
@@ -389,7 +362,7 @@ technique PSMAA
   pass OutputProcess
   {
     VertexShader = PostProcessVS;
-    PixelShader = PSMAAPreProcessingOutputPS;
+    PixelShader = PSMAAPreProcessingOutputPSWrapper;
     // SRGBWriteEnable = true;
   }
   pass DeltaCalculation
