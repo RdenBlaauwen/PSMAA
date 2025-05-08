@@ -261,6 +261,14 @@ namespace PSMAA {
       }
     }
 
+    void PreProcessingOutput(
+      float2 texcoord,
+      PSMAATexture2D(filteredCopyTex),
+      out float4 color
+    ){
+      color = PSMAASamplePoint(filteredCopyTex, texcoord);
+    }
+
     /**
     * Calculates the offsets for the current pixel.
     * Decided to leave the offset as an array, because I'll likely need more values in the future.
