@@ -5,6 +5,8 @@
 // #define PSMAA_PIXEL_SIZE
 // #define PSMAATexture2D(tex)
 // #define PSMAASamplePoint(tex, coord)
+// #define PSMAASampleLevelZero(tex, coord) 
+// #define PSMAASampleLevelZeroOffset(tex, coord, offset)
 // #define PSMAAGatherLeftEdges(tex, coord)
 // #define PSMAAGatherTopEdges(tex, coord)
 // #define PSMAA_PRE_PROCESSING_THRESHOLD_MULTIPLIER
@@ -27,6 +29,8 @@
 // #define PSMAA_PIXEL_SIZE BUFFER_PIXEL_SIZE
 // #define PSMAATexture2D(tex) sampler tex 
 // #define PSMAASamplePoint(tex, coord) tex2D(tex, coord)
+// #define PSMAASampleLevelZero(tex, coord) tex2Dlod(tex, float4(coord, 0.0, 0.0))
+// #define PSMAASampleLevelZeroOffset(tex, coord, offset) tex2Dlodoffset(tex, float4(coord, coord), offset)
 // #define PSMAAGatherLeftEdges(tex, coord) tex2Dgather(tex, texcoord, 0);
 // #define PSMAAGatherTopEdges(tex, coord) tex2Dgather(tex, texcoord, 1);
 // #define PSMAA_PRE_PROCESSING_THRESHOLD_MULTIPLIER 1f
@@ -138,20 +142,26 @@ namespace PSMAA {
 
   namespace Pass {
     void PreProcessingPS(
-      float3 NW,
-      float3 W,
-      float3 SW,
-      float3 N,
-      float3 C,
-      float3 S,
-      float3 NE,
-      float3 E,
-      float3 SE,
+      float2 texcoord,
+      PSMAATexture2D(colorGammaTex), // input color texture (C)
       out float4 filteredCopy,  // output current color (C)
       out float maxLocalLuma // output maximum luma from all nine samples
       // out float3 color // actual output
     )
     {
+      // NW N NE
+      // W  C  E
+      // SW S SE
+      float3 NW = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(-1, -1)).rgb;
+      float3 W = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(-1, 0)).rgb;
+      float3 SW = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(-1, 1)).rgb;
+      float3 N = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(0, -1)).rgb;
+      float3 C = PSMAASampleLevelZero(colorGammaTex, texcoord).rgb;
+      float3 S = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(0, 1)).rgb;
+      float3 NE = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(1, -1)).rgb;
+      float3 E = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(1, 0)).rgb;
+      float3 SE = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(1, 1)).rgb;
+      
       float lNW = Color::luma(NW);
       float lW  = Color::luma(W);
       float lSW = Color::luma(SW);
@@ -261,7 +271,7 @@ namespace PSMAA {
       }
     }
 
-    void PreProcessingOutput(
+    void PreProcessingOutputPS(
       float2 texcoord,
       PSMAATexture2D(filteredCopyTex),
       out float4 color
