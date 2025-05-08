@@ -52,22 +52,19 @@ uniform float _PreProcessingThresholdMultiplier <
 	ui_category = "Pre-Processing";
 	ui_label = "ThresholdMultiplier";
 	ui_type = "slider";
-	ui_min = 1f; ui_max = 10f; ui_step = .01;
-> = 1f;
+	ui_min = 1f; ui_max = 10f; ui_step = .1;
+	ui_tooltip = "How much higher is the pre-processing threshold than the edge detection threshold?\n"
+		"Recommended values [2..5]";
+> = 2.5f;
 
 uniform float _PreProcessingStrength <
 	ui_category = "Pre-Processing";
 	ui_label = "Strength";
 	ui_type = "slider";
-	ui_min = 0f; ui_max = 1f; ui_step = .1;
-> = 1f;
-
-uniform float _PreProcessingBlendStrength <
-	ui_category = "Pre-Processing";
-	ui_label = "BlendingStrength";
-	ui_type = "slider";
-	ui_min = 0f; ui_max = 1f; ui_step = .1;
-> = 1f;
+	ui_min = 0f; ui_max = 1f; ui_step = .01;
+	ui_tooltip = "Strength of the pre-processing step.\n"
+		"Recommended values [0.4..0.8]";
+> = .6;
 
 uniform int _Debug < 
 	ui_category = "Debug";
@@ -100,7 +97,6 @@ uniform int _Debug <
 #define PSMAA_PRE_PROCESSING_EXTRA_PIXEL_SOFTENING .15
 #define PSMAA_PRE_PROCESSING_LUMA_PRESERVATION_BIAS .5
 #define PSMAA_PRE_PROCESSING_STRENGTH _PreProcessingStrength
-#define PSMAA_PRE_PROCESSING_BLEND_STRENGTH _PreProcessingBlendStrength
 #define PSMAA_EDGE_DETECTION_FACTORS_HIGH_LUMA float4(_EdgeDetectionThreshold.y, _CMAALCAFactor.y, _SMAALCAFactor.y, _CMAALCAforSMAALCAFactor.y)
 #define PSMAA_EDGE_DETECTION_FACTORS_LOW_LUMA float4(_EdgeDetectionThreshold.x, _CMAALCAFactor.x, _SMAALCAFactor.x, _CMAALCAforSMAALCAFactor.x)
 
@@ -135,6 +131,12 @@ sampler colorGammaSampler
 	Texture = colorInputTex;
 	MipFilter = POINT;
 };
+sampler colorLinearSampler
+{
+	Texture = colorInputTex;
+	MipFilter = Point;
+	SRGBTexture = true;
+};
 
 texture filteredCopyTex < pooled = true; >
 {
@@ -142,10 +144,16 @@ texture filteredCopyTex < pooled = true; >
 	Height = BUFFER_HEIGHT;
 	Format = RGB10A2;
 };
-sampler filteredCopySampler < pooled = true; > 
+sampler filteredCopySampler
 {
 	Texture = filteredCopyTex;
 };
+// sampler filteredCopyLinearSampler
+// {
+// 	Texture = filteredCopyTex;
+// 	MipFilter = Point;
+// 	SRGBTexture = true;
+// };
 
 texture lumaTex < pooled = true; >
 {
@@ -214,13 +222,6 @@ sampler searchSampler
 	MipFilter = Point; MinFilter = Point; MagFilter = Point;
 };
 
-sampler colorLinearSampler
-{
-	Texture = colorInputTex;
-	MipFilter = Point;
-	SRGBTexture = true;
-};
-
 void PSMAAPreProcessingPSWrapper(
 	float4 position : SV_POSITION,
 	float2 texcoord : TEXCOORD0,
@@ -254,6 +255,18 @@ void PSMAAPreProcessingPSWrapper(
       filteredCopy,  // ut current color (C)
       luma            // ut maximum luma from all nine samples
     );
+}
+
+void PSMAAPreProcessingOutputPS(
+    float4 position : SV_Position,
+    float2 texcoord : TEXCOORD0,
+    out float4 color : SV_Target
+) {
+    PSMAA::Pass::PreProcessingOutput(
+				texcoord,
+				filteredCopySampler,
+				color
+		);
 }
 
 // TODO: consider trying to calculate this in the PS instead.
@@ -372,6 +385,12 @@ technique PSMAA
     RenderTarget0 = lumaTex;
     RenderTarget1 = filteredCopyTex;
 		// ClearRenderTargets = true;
+  }
+  pass OutputProcess
+  {
+    VertexShader = PostProcessVS;
+    PixelShader = PSMAAPreProcessingOutputPS;
+    // SRGBWriteEnable = true;
   }
   pass DeltaCalculation
   {
