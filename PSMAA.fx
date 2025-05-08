@@ -48,6 +48,27 @@ uniform float _ThreshFloor < __UNIFORM_DRAG_FLOAT1
 	ui_min = .004; ui_max = .03; ui_step = .001;
 > = .01;
 
+uniform float _PreProcessingThresholdMultiplier <
+	ui_category = "Pre-Processing";
+	ui_label = "ThresholdMultiplier";
+	ui_type = "slider";
+	ui_min = 1f; ui_max = 10f; ui_step = .01;
+> = 1f;
+
+uniform float _PreProcessingStrength <
+	ui_category = "Pre-Processing";
+	ui_label = "Strength";
+	ui_type = "slider";
+	ui_min = 0f; ui_max = 1f; ui_step = .1;
+> = 1f;
+
+uniform float _PreProcessingBlendStrength <
+	ui_category = "Pre-Processing";
+	ui_label = "BlendingStrength";
+	ui_type = "slider";
+	ui_min = 0f; ui_max = 1f; ui_step = .1;
+> = 1f;
+
 uniform int _Debug < 
 	ui_category = "Debug";
 	ui_type = "combo";
@@ -75,8 +96,11 @@ uniform int _Debug <
 #define PSMAASamplePoint(tex, coord) tex2D(tex, coord)
 #define PSMAAGatherLeftEdges(tex, coord) tex2Dgather(tex, coord, 0);
 #define PSMAAGatherTopEdges(tex, coord) tex2Dgather(tex, coord, 1);
-#define PSMAA_PRE_PROCESSING_DELTA_WEIGHT_CEIL_MULTIPLIER 2f // TODO: make UI control
-#define PSMAA_PRE_PROCESSING_BLEND_STRENGTH .7 // TODO: make UI control
+#define PSMAA_PRE_PROCESSING_THRESHOLD_MULTIPLIER _PreProcessingThresholdMultiplier
+#define PSMAA_PRE_PROCESSING_EXTRA_PIXEL_SOFTENING .15
+#define PSMAA_PRE_PROCESSING_LUMA_PRESERVATION_BIAS .5
+#define PSMAA_PRE_PROCESSING_STRENGTH _PreProcessingStrength
+#define PSMAA_PRE_PROCESSING_BLEND_STRENGTH _PreProcessingBlendStrength
 #define PSMAA_EDGE_DETECTION_FACTORS_HIGH_LUMA float4(_EdgeDetectionThreshold.y, _CMAALCAFactor.y, _SMAALCAFactor.y, _CMAALCAforSMAALCAFactor.y)
 #define PSMAA_EDGE_DETECTION_FACTORS_LOW_LUMA float4(_EdgeDetectionThreshold.x, _CMAALCAFactor.x, _SMAALCAFactor.x, _CMAALCAforSMAALCAFactor.x)
 
@@ -201,7 +225,7 @@ void PSMAAPreProcessingPSWrapper(
 	float4 position : SV_POSITION,
 	float2 texcoord : TEXCOORD0,
 	out float luma : SV_TARGET0,
-	out float3 filteredCopy : SV_TARGET1
+	out float4 filteredCopy : SV_TARGET1
 )
 {
 	// NW N NE
