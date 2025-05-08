@@ -64,7 +64,16 @@ uniform float _PreProcessingStrength <
 	ui_min = 0f; ui_max = 1f; ui_step = .01;
 	ui_tooltip = "Strength of the pre-processing step.\n"
 		"Recommended values [0.4..0.8]";
-> = .6;
+> = .65;
+
+uniform float _PreProcessingExtraPixelSoftening <
+	ui_category = "Pre-Processing";
+	ui_label = "ExtraPixelSoftening";
+	ui_type = "slider";
+	ui_min = 0f; ui_max = 1f; ui_step = .01;
+	ui_tooltip = "Strength of the pre-processing step.\n"
+		"Recommended values [0.1..0.3]";
+> = .15;
 
 uniform int _Debug < 
 	ui_category = "Debug";
@@ -96,7 +105,7 @@ uniform int _Debug <
 #define PSMAAGatherLeftEdges(tex, coord) tex2Dgather(tex, coord, 0);
 #define PSMAAGatherTopEdges(tex, coord) tex2Dgather(tex, coord, 1);
 #define PSMAA_PRE_PROCESSING_THRESHOLD_MULTIPLIER _PreProcessingThresholdMultiplier
-#define PSMAA_PRE_PROCESSING_EXTRA_PIXEL_SOFTENING .15
+#define PSMAA_PRE_PROCESSING_EXTRA_PIXEL_SOFTENING _PreProcessingExtraPixelSoftening
 #define PSMAA_PRE_PROCESSING_LUMA_PRESERVATION_BIAS .5
 #define PSMAA_PRE_PROCESSING_STRENGTH _PreProcessingStrength
 #define PSMAA_EDGE_DETECTION_FACTORS_HIGH_LUMA float4(_EdgeDetectionThreshold.y, _CMAALCAFactor.y, _SMAALCAFactor.y, _CMAALCAforSMAALCAFactor.y)
