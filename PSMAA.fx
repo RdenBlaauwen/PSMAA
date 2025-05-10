@@ -54,8 +54,15 @@ uniform float _PreProcessingThresholdMultiplier <
 	ui_type = "slider";
 	ui_min = 1f; ui_max = 10f; ui_step = .1;
 	ui_tooltip = "How much higher is the pre-processing threshold than the edge detection threshold?\n"
-		"Recommended values [2..5]";
-> = 2.5f;
+		"Recommended values [2..6]";
+> = 3.5f;
+
+uniform float _PreProcessingCmaaLCAMultiplier <
+	ui_category = "Pre-Processing";
+	ui_label = "CmaaLCAMultiplier";
+	ui_type = "slider";
+	ui_min = 0f; ui_max = 1f; ui_step = .05;
+> = .75;
 
 uniform float _PreProcessingStrength <
 	ui_category = "Pre-Processing";
@@ -63,7 +70,7 @@ uniform float _PreProcessingStrength <
 	ui_type = "slider";
 	ui_min = 0f; ui_max = 1f; ui_step = .01;
 	ui_tooltip = "Strength of the pre-processing step.\n"
-		"Recommended values [0.4..0.8]";
+		"Recommended values [0.5..0.85]";
 > = .65;
 
 uniform float _PreProcessingExtraPixelSoftening <
@@ -74,6 +81,27 @@ uniform float _PreProcessingExtraPixelSoftening <
 	ui_tooltip = "Strength of the pre-processing step.\n"
 		"Recommended values [0.1..0.3]";
 > = .15;
+
+uniform float _PreProcessingLumaPreservationBias <
+	ui_category = "Pre-Processing";
+	ui_label = "LumaPreservationBias";
+	ui_type = "slider";
+	ui_min = -.8f; ui_max = .8f; ui_step = .05;
+> = .5f;
+
+uniform float _PreProcessingLumaPreservationStrength <
+	ui_category = "Pre-Processing";
+	ui_label = "LumaPreservationStrength";
+	ui_type = "slider";
+	ui_min = 1f; ui_max = 3f; ui_step = .05;
+	ui_tooltip = "1 = normal strength, 5 = max";
+> = 1.5f;
+
+uniform bool _ShowOldPreProcessing <
+	ui_category = "Pre-Processing";
+	ui_label = "Show Old Pre-Processing";
+	ui_tooltip = "Use the old pre-processing method.";
+> = false;
 
 uniform int _Debug < 
 	ui_category = "Debug";
@@ -105,8 +133,10 @@ uniform int _Debug <
 #define PSMAAGatherLeftEdges(tex, coord) tex2Dgather(tex, coord, 0);
 #define PSMAAGatherTopEdges(tex, coord) tex2Dgather(tex, coord, 1);
 #define PSMAA_PRE_PROCESSING_THRESHOLD_MULTIPLIER _PreProcessingThresholdMultiplier
+#define PSMAA_PRE_PROCESSING_CMAA_LCA_FACTOR_MULTIPLIER _PreProcessingCmaaLCAMultiplier
 #define PSMAA_PRE_PROCESSING_EXTRA_PIXEL_SOFTENING _PreProcessingExtraPixelSoftening
-#define PSMAA_PRE_PROCESSING_LUMA_PRESERVATION_BIAS .5
+#define PSMAA_PRE_PROCESSING_LUMA_PRESERVATION_BIAS _PreProcessingLumaPreservationBias
+#define PSMAA_PRE_PROCESSING_LUMA_PRESERVATION_STRENGTH _PreProcessingLumaPreservationStrength
 #define PSMAA_PRE_PROCESSING_STRENGTH _PreProcessingStrength
 #define PSMAA_EDGE_DETECTION_FACTORS_HIGH_LUMA float4(_EdgeDetectionThreshold.y, _CMAALCAFactor.y, _SMAALCAFactor.y, _CMAALCAforSMAALCAFactor.y)
 #define PSMAA_EDGE_DETECTION_FACTORS_LOW_LUMA float4(_EdgeDetectionThreshold.x, _CMAALCAFactor.x, _SMAALCAFactor.x, _CMAALCAforSMAALCAFactor.x)
@@ -240,7 +270,13 @@ void PSMAAPreProcessingPSWrapper(
 	out float4 filteredCopy : SV_TARGET1
 )
 {
-	PSMAA::Pass::PreProcessingPS(texcoord, colorGammaSampler, filteredCopy,luma);
+	if(_ShowOldPreProcessing){
+		PSMAA::Pass::PreProcessingPSOld(texcoord, colorGammaSampler, filteredCopy,luma);
+
+	} else {
+		PSMAA::Pass::PreProcessingPS(texcoord, colorGammaSampler, filteredCopy,luma);
+
+	}
 }
 
 void PSMAAPreProcessingOutputPSWrapper(

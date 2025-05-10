@@ -1,3 +1,13 @@
+# TODO
+
+- Implement pre-processing blending strength ui control to prevent blur while improving detection.
+- Test performance difference between edge detection (with CMAA2's local contrast adaptation) when delta pass is used vs when it is calculated directly.
+- Consider adding modifier to delta deetction which boosts luma weights, just like in Marty's SMAA:
+  - `dot(abs(A - B), float3(0.229, 0.587, 0.114) * 1.33);`
+- Test difference between `SMAASampleLevelZeroOffset` and `SMAASampleOffset`
+- Test perf difference between using Offset sample methods (LordBean) vs using pre-calculated offsets calculated in a VS (native SMAA)
+- Try optimizing the library so that it's the max functions can be used
+
 # Testing
 
 ## sRGB textures
@@ -28,11 +38,3 @@ Tried seeing how many detlas would go above a value of 1/2 using a quickly built
 
 Fortunately, it wasn't necessary. Testing showed that just using an RG8 buffer, without any hoops and special cramming methods, produced a virtually indistinguishable result from using RG16f. So I'm just using RG8 from now on.
 
-# TODO
-
-- Test performance difference between edge detection (with CMAA2's local contrast adaptation) when delta pass is used vs when it is calculated directly.
-- Consider adding modifier to delta deetction which boosts luma weights, just like in Marty's SMAA:
-  - `dot(abs(A - B), float3(0.229, 0.587, 0.114) * 1.33);`
-- Test difference between `SMAASampleLevelZeroOffset` and `SMAASampleOffset`
-- Test perf difference between using Offset sample methods (LordBean) vs using pre-calculated offsets calculated in a VS (native SMAA)
-- Try optimizing the library so that it's the max functions can be used
