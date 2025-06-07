@@ -82,6 +82,25 @@ namespace PSMAA {
     return deltas;
   }
 
+  /**
+  * Calculates a weighted average of a 9 tap pattern of pixels.
+  * returns float3 localavg
+  */
+  float3 CalcLocalAvg(
+    float3 NW,
+    float3 N,
+    float3 NE,
+    float3 W,
+    float3 C,
+    float3 E,
+    float3 SW,
+    float3 S,
+    float3 SE,
+    float3 maxNeighbourColor,
+    float4 deltas
+  )
+  {}
+
   void GatherNeighborDeltas(
       PSMAATexture2D(deltaTex), 
       float4 gatherOffset,
@@ -165,6 +184,13 @@ namespace PSMAA {
       float3 SE = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(1, 1)).rgb;
       
       float3 maxNeighbourColor = Functions::max(NW, W, SW, N, S, NE, E, SE);
+
+      float4 deltas;
+      deltas.r = GetDelta(W, C);
+      deltas.g = GetDelta(N, C);
+      deltas.b = GetDelta(E, C);
+      deltas.a = GetDelta(S, C);
+
       float3 maxLocalColor = max(maxNeighbourColor, C);
       // These make sure that Red and Blue don't count as much as Green,
       // without making all results darker when taking the greatest component
@@ -179,12 +205,6 @@ namespace PSMAA {
       // Minimum threshold to prevent blending in very dark areas
       float threshold = max(detectionFactors.x, PSMAA_THRESHOLD_FLOOR); 
       float cmaaLCAFactor = detectionFactors.y;
-
-      float4 deltas;
-      deltas.r = GetDelta(W, C);
-      deltas.g = GetDelta(N, C);
-      deltas.b = GetDelta(E, C);
-      deltas.a = GetDelta(S, C);
 
       float4 maxLocalDeltas;
       maxLocalDeltas.r = Functions::max(deltas.gba);

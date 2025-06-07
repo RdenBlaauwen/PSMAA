@@ -1,6 +1,7 @@
 # TODO
 
-- Implement pre-processing blending strength ui control to prevent blur while improving detection.
+- Replace maxLocalLuma by avgLocalLuma and test the difference.
+- Have the blending pass sample the filteredcopy instead of the backbuffer. This way you can delete the extra output pass after the precprocessing pass and you may turn the blending pass into a computeshader too.
 - Test performance difference between edge detection (with CMAA2's local contrast adaptation) when delta pass is used vs when it is calculated directly.
 - Consider adding modifier to delta deetction which boosts luma weights, just like in Marty's SMAA:
   - `dot(abs(A - B), float3(0.229, 0.587, 0.114) * 1.33);`
@@ -27,4 +28,3 @@ Tried seeing how many detlas would go above a value of 1/2 using a quickly built
 ### Just use RG8
 
 Fortunately, it wasn't necessary. Testing showed that just using an RG8 buffer, without any hoops and special cramming methods, produced a virtually indistinguishable result from using RG16f. So I'm just using RG8 from now on.
-
