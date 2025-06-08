@@ -1,5 +1,6 @@
 # TODO
 
+- Build solution for calculating luminosity from color, and weighting components for luma
 - Replace maxLocalLuma by avgLocalLuma and test the difference.
 - Have the blending pass sample the filteredcopy instead of the backbuffer. This way you can delete the extra output pass after the precprocessing pass and you may turn the blending pass into a computeshader too.
 - Test performance difference between edge detection (with CMAA2's local contrast adaptation) when delta pass is used vs when it is calculated directly.
@@ -7,7 +8,7 @@
   - `dot(abs(A - B), float3(0.229, 0.587, 0.114) * 1.33);`
 - Test difference between `SMAASampleLevelZeroOffset` and `SMAASampleOffset`
 - Test perf difference between using Offset sample methods (LordBean) vs using pre-calculated offsets calculated in a VS (native SMAA)
-- Try optimizing the library so that it's the max functions can be used
+- Optimise delta calculation's colorfulness min and max calculation to use 3 float2 calcs instead of 4 float calcs
 
 # Testing
 
