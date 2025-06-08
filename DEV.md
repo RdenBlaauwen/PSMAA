@@ -1,6 +1,7 @@
 # TODO
 
 - Build solution for calculating luminosity from color, and weighting components for luma
+- Try having the blending pass sample from the filteredCopy buffer instead of the backbuffer (god i hope this works)
 - Replace maxLocalLuma by avgLocalLuma and test the difference.
 - Have the blending pass sample the filteredcopy instead of the backbuffer. This way you can delete the extra output pass after the precprocessing pass and you may turn the blending pass into a computeshader too.
 - Test performance difference between edge detection (with CMAA2's local contrast adaptation) when delta pass is used vs when it is calculated directly.
