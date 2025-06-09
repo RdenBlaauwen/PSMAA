@@ -15,6 +15,7 @@
 // #define PSMAA_PRE_PROCESSING_LUMA_PRESERVATION_BIAS
 // #define PSMAA_PRE_PROCESSING_LUMA_PRESERVATION_STRENGTH
 // #define PSMAA_PRE_PROCESSING_STRENGTH
+// #define PSMAA_PRE_PROCESSING_MIN_STRENGTH
 // #define PSMAA_THRESHOLD_FLOOR
 // #define PSMAA_EDGE_DETECTION_FACTORS_HIGH_LUMA
 // #define PSMAA_EDGE_DETECTION_FACTORS_LOW_LUM
@@ -40,6 +41,7 @@
 // #define PSMAA_PRE_PROCESSING_LUMA_PRESERVATION_BIAS .5
 // #define PSMAA_PRE_PROCESSING_LUMA_PRESERVATION_STRENGTH 1f
 // #define PSMAA_PRE_PROCESSING_STRENGTH 1f
+// #define PSMAA_PRE_PROCESSING_MIN_STRENGTH .15
 // #define PSMAA_THRESHOLD_FLOOR 0.018
 // #define PSMAA_EDGE_DETECTION_FACTORS_HIGH_LUMA float4(threshold, CMAALCAFactor, SMAALCAFactor, SMAALCAAdjustmentBiasByCMAALocalContrast)
 // #define PSMAA_EDGE_DETECTION_FACTORS_LOW_LUMA float4(threshold, CMAALCAFactor, SMAALCAFactor, SMAALCAAdjustmentBiasByCMAALocalContrast)
@@ -91,15 +93,9 @@ namespace PSMAA
    * returns float3 localavg
    */
   float3 CalcLocalAvg(
-      float3 NW,
-      float3 N,
-      float3 NE,
-      float3 W,
-      float3 C,
-      float3 E,
-      float3 SW,
-      float3 S,
-      float3 SE,
+      float3 NW, float3 N, float3 NE,
+      float3 W, float3 C, float3 E,
+      float3 SW, float3 S, float3 SE,
       float3 maxNeighbourColor,
       float4 deltas)
   {
@@ -129,13 +125,13 @@ namespace PSMAA
     float4 edges = step(threshold, deltas);
     float cornerNumber = (edges.r + edges.b) * (edges.g + edges.a);
     float edgeNumber = Functions::sum(edges);
-    bool edgesTooFew = edgeNumber < 2f;
-    bool singleCorner = cornerNumber == 1f;
+    bool skipProcessing = (edgeNumber < 2f) || (cornerNumber == 1f);
 
-    // filteredCopy = singleCorner && !edgesTooFew ? float(1f).xxxx : C; // temp output of edges for testing
-    float3 outputColor;
-
-    if (!edgesTooFew && !singleCorner)
+    if (skipProcessing)
+    {
+      return C; // If there are not enough edges, return the current pixel color
+    }
+    else
     {
       // pattern:
       //  e f g
@@ -174,19 +170,19 @@ namespace PSMAA
       float3 minUndesired = min(surround, diagSurround);
 
       // Constants for local average calculation
+      static const float undesiredAmount = 2f;
       static const float DesiredPatternsWeight = 2f;
       static const float LineWeight = 1.3f;
-      static const float LOCAL_AVG_DENOMINATOR = mad(DesiredPatternsWeight + LineWeight, 2f, -2f - PSMAA_PRE_PROCESSING_EXTRA_PIXEL_SOFTENING);
+      // Multiply by 2f, because each sum is from a pair of values
+      static const float LocalAvgDenominator = mad(DesiredPatternsWeight + LineWeight, 2f, -undesiredAmount);
 
       float3 undesiredSum = -maxUndesired - minUndesired;
       float3 lineSum = maxLine + minLine;
       float3 desiredSum = maxDesired + minDesired;
 
-      // Calculate local average using MAD operations
-      undesiredSum -= C * PSMAA_PRE_PROCESSING_EXTRA_PIXEL_SOFTENING;
       lineSum = mad(lineSum, LineWeight, undesiredSum);
       desiredSum = mad(desiredSum, DesiredPatternsWeight, lineSum);
-      float3 localavg = desiredSum / LOCAL_AVG_DENOMINATOR;
+      float3 localavg = desiredSum / LocalAvgDenominator;
 
       // If the new target pixel value is less bright than the max desired shape, boost it's value accordingly
       float maxLuma = Color::luma(maxLine);
@@ -200,22 +196,14 @@ namespace PSMAA
       float direction = PSMAA_PRE_PROCESSING_LUMA_PRESERVATION_BIAS + origLuma - localLuma;
       direction = saturate(mad(direction, PSMAA_PRE_PROCESSING_LUMA_PRESERVATION_STRENGTH, .5));
       float mod = lerp(weaken, boost, direction);
-      localavg *= 1f + mod;
+      localavg *= 1f + mod; // add to 1, because the operation must increase the local avg, not take fraction of it
 
       // Determine blending strength based on the number of edges detected
-      float strength = max(cornerNumber, .6) / 4f; // TODO: fix magic numbers, especially the .6, which is the strength for lines.
+      float strength = max(cornerNumber / 4f, PSMAA_PRE_PROCESSING_MIN_STRENGTH);
       strength *= PSMAA_PRE_PROCESSING_STRENGTH;
 
-      // put into filtered copy tex
-      outputColor = lerp(C, localavg, strength);
+      return lerp(C, localavg, strength);
     }
-    else
-    {
-      // Set the filtered copy as the current texel color
-      outputColor = C;
-    }
-
-    return outputColor;
   }
 
   void GatherNeighborDeltas(
@@ -310,13 +298,14 @@ namespace PSMAA
       deltas.b = GetDelta(E, C);
       deltas.a = GetDelta(S, C);
 
-      float3 filteredCopy = CalcLocalAvg(
+      float3 localAvg = CalcLocalAvg(
           NW, N, NE, W, C, E, SW, S, SE,
           maxNeighbourColor, deltas);
 
       static const float3 LumaCorrection = float3(.297, 1f, .101);
-      float3 finalMaxLocalColor = max(maxNeighbourColor, filteredCopy);
-      maxLocalLuma = Functions::max(finalMaxLocalColor * LumaCorrection); // final luma output
+      float3 finalMaxLocalColor = max(maxNeighbourColor, localAvg);
+      maxLocalLuma = Functions::max(finalMaxLocalColor * LumaCorrection);
+      filteredCopy = float4(localAvg, 0f);
     }
 
     void PreProcessingPSOld(
