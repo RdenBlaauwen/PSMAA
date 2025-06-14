@@ -102,7 +102,7 @@ namespace PSMAA
     float3 maxLocalColor = max(maxNeighbourColor, C);
     // These make sure that Red and Blue don't count as much as Green,
     // without making all results darker when taking the greatest component
-    static const float3 LumaCorrection = float3(.297, 1f, .101);
+    static const float3 LumaCorrection = float3(.297, 1f, .101); // TODO: replace by library func
     float maxLocalLuma = Functions::max(maxLocalColor * LumaCorrection); // output luma
 
     // Use detection factors for edge detection here too, so that the results of this pass scale proportionally to the needs of edge detection.
@@ -121,7 +121,7 @@ namespace PSMAA
 
     deltas -= maxLocalDeltas * cmaaLCAFactor;
 
-    // skip check for corners (prevents interference with AA) and single lines (prevents blur)
+    // skip check for corners (to prevent interference with AA) and single lines (to prevent blur)
     float4 edges = step(threshold, deltas);
     float cornerNumber = (edges.r + edges.b) * (edges.g + edges.a);
     float edgeNumber = Functions::sum(edges);
@@ -302,9 +302,14 @@ namespace PSMAA
           NW, N, NE, W, C, E, SW, S, SE,
           maxNeighbourColor, deltas);
 
+      // These make sure that Red and Blue don't count as much as Green,
+      // without making all results darker when taking the greatest component
       static const float3 LumaCorrection = float3(.297, 1f, .101);
+
+      // use result for local luma instead of the original color for more accurate results
       float3 finalMaxLocalColor = max(maxNeighbourColor, localAvg);
       maxLocalLuma = Functions::max(finalMaxLocalColor * LumaCorrection);
+
       filteredCopy = float4(localAvg, 0f);
     }
 
@@ -336,7 +341,6 @@ namespace PSMAA
       static const float3 LumaCorrection = float3(.3, 1f, .1);
       maxLocalLuma = Functions::max(maxLocalColor * LumaCorrection); // output luma
 
-      // TODO: move most logic beyond this point in dedicated functions which can be used in both CS and PS
       // Use detection factors for edge detection here too, so that the results of this pass scale proportionally to the needs of edge detection.
       float2 detectionFactors = lerp(PSMAA_EDGE_DETECTION_FACTORS_LOW_LUMA.xy, PSMAA_EDGE_DETECTION_FACTORS_HIGH_LUMA.xy, maxLocalLuma);
       // scale with multipliers specific to this pass
@@ -357,16 +361,15 @@ namespace PSMAA
       maxLocalDeltas.b = Functions::max(deltas.arg);
       maxLocalDeltas.a = Functions::max(deltas.rgb);
 
+      // Deltas with large nearby deltas count less
       deltas -= maxLocalDeltas * cmaaLCAFactor;
 
-      // skip check for corners (prevents interference with AA) and single lines (prevents blur)
+      // skip check for corners (to prevent interference with AA) and single edges (to prevent blur)
       float4 edges = step(threshold, deltas);
       float cornerNumber = (edges.r + edges.b) * (edges.g + edges.a);
       float edgeNumber = Functions::sum(edges);
       bool edgesTooFew = edgeNumber < 2f;
       bool singleCorner = cornerNumber == 1f;
-
-      // filteredCopy = singleCorner && !edgesTooFew ? float(1f).xxxx : C; // temp output of edges for testing
 
       if (!edgesTooFew && !singleCorner)
       {
@@ -442,7 +445,7 @@ namespace PSMAA
         // put into filtered copy tex
         filteredCopy = lerp(C, localavg, strength);
 
-        float3 finalMaxLocalColor = max(maxNeighbourColor, filteredCopy);
+        float3 finalMaxLocalColor = max(maxNeighbourColor, filteredCopy); 
         maxLocalLuma = Functions::max(finalMaxLocalColor * LumaCorrection); // final luma output
       }
       else
