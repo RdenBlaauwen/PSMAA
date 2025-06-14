@@ -16,6 +16,7 @@
 // #define PSMAA_PRE_PROCESSING_LUMA_PRESERVATION_STRENGTH
 // #define PSMAA_PRE_PROCESSING_STRENGTH
 // #define PSMAA_PRE_PROCESSING_MIN_STRENGTH
+// #define PSMAA_ALPHA_PASSTHROUGH
 // #define PSMAA_THRESHOLD_FLOOR
 // #define PSMAA_EDGE_DETECTION_FACTORS_HIGH_LUMA
 // #define PSMAA_EDGE_DETECTION_FACTORS_LOW_LUM
@@ -42,6 +43,7 @@
 // #define PSMAA_PRE_PROCESSING_LUMA_PRESERVATION_STRENGTH 1f
 // #define PSMAA_PRE_PROCESSING_STRENGTH 1f
 // #define PSMAA_PRE_PROCESSING_MIN_STRENGTH .15
+// #define PSMAA_ALPHA_PASSTHROUGH 0
 // #define PSMAA_THRESHOLD_FLOOR 0.018
 // #define PSMAA_EDGE_DETECTION_FACTORS_HIGH_LUMA float4(threshold, CMAALCAFactor, SMAALCAFactor, SMAALCAAdjustmentBiasByCMAALocalContrast)
 // #define PSMAA_EDGE_DETECTION_FACTORS_LOW_LUMA float4(threshold, CMAALCAFactor, SMAALCAFactor, SMAALCAAdjustmentBiasByCMAALocalContrast)
@@ -303,15 +305,96 @@ namespace PSMAA
       float3 finalMaxLocalColor = max(maxNeighbourColor, localAvg);
       maxLocalLuma = Functions::max(finalMaxLocalColor * LumaCorrection); //TODO: try using luma instead of max comp
 
+      static const float minChange = (1f/6f); // TODO: add comprehensive way of dealing with min texture channel values
+      // multiplying and then saturating prevents high values from being treated too strongly
+      // and makes sure lower values can be presented more precisely in the limited range of values of a 2bit channel
+      float change = GetDelta(C, localAvg) * 1.5f;
+      // minChange makes sure that any change is treated as more than 0f
+      change = change > 0f ? minChange + change : 0f; // TODO: turn this into format function for library
+      change = saturate(change);
+
+      filteredCopy = float4(localAvg, change);
+    }
+
+    void PreProcessingPSOld(
+        float2 texcoord,
+        PSMAATexture2D(colorGammaTex), // input color texture (C)
+        out float4 filteredCopy,       // output current color (C)
+        out float maxLocalLuma         // output maximum luma from all nine samples
+    )
+    {
+      // NW N NE
+      // W  C  E
+      // SW S SE
+      float3 NW = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(-1, -1)).rgb;
+      float3 W = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(-1, 0)).rgb;
+      float3 SW = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(-1, 1)).rgb;
+      float3 N = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(0, -1)).rgb;
+      float3 C = PSMAASampleLevelZero(colorGammaTex, texcoord).rgb;
+      float3 S = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(0, 1)).rgb;
+      float3 NE = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(1, -1)).rgb;
+      float3 E = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(1, 0)).rgb;
+      float3 SE = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(1, 1)).rgb;
+
+      float3 maxNeighbourColor = Functions::max(NW, W, SW, N, S, NE, E, SE);
+      float3 maxLocalColor = max(maxNeighbourColor, C);
+      // These make sure that Red and Blue don't count as much as Green,
+      // without making all results darker when taking the greatest component
+      static const float3 LumaCorrection = float3(.297, 1f, .101);
+      float prelimMaxLocalLuma = Functions::max(maxLocalColor * LumaCorrection);
+
+      float4 deltas;
+      deltas.r = GetDelta(W, C);
+      deltas.g = GetDelta(N, C);
+      deltas.b = GetDelta(E, C);
+      deltas.a = GetDelta(S, C);
+
+      // Use detection factors for edge detection here too, so that the results of this pass scale proportionally to the needs of edge detection.
+      float2 detectionFactors = lerp(PSMAA_EDGE_DETECTION_FACTORS_LOW_LUMA.xy, PSMAA_EDGE_DETECTION_FACTORS_HIGH_LUMA.xy, prelimMaxLocalLuma);
+      // scale with multipliers specific to this pass
+      detectionFactors *= float2(PSMAA_PRE_PROCESSING_THRESHOLD_MULTIPLIER, PSMAA_PRE_PROCESSING_CMAA_LCA_FACTOR_MULTIPLIER);
+      // Minimum threshold to prevent blending in very dark areas
+      float threshold = max(detectionFactors.x, PSMAA_THRESHOLD_FLOOR);
+      float cmaaLCAFactor = detectionFactors.y;
+
+      float4 maxLocalDeltas;
+      maxLocalDeltas.r = Functions::max(deltas.gba);
+      maxLocalDeltas.g = Functions::max(deltas.bar);
+      maxLocalDeltas.b = Functions::max(deltas.arg);
+      maxLocalDeltas.a = Functions::max(deltas.rgb);
+
+      deltas -= maxLocalDeltas * cmaaLCAFactor;
+
+      float4 edges = step(threshold, deltas);
+
+      float3 localAvg = CalcLocalAvg(
+          NW, N, NE, W, C, E, SW, S, SE,
+          edges);
+
+      // use result for local luma instead of the original color for more accurate results
+      float3 finalMaxLocalColor = max(maxNeighbourColor, localAvg);
+      maxLocalLuma = Functions::max(finalMaxLocalColor * LumaCorrection); //TODO: try using luma instead of max comp
+
       filteredCopy = float4(localAvg, 0f);
     }
 
     void PreProcessingOutputPS(
         float2 texcoord,
         PSMAATexture2D(filteredCopyTex),
+        PSMAATexture2D(colorTex),
         out float4 color)
     {
-      color = PSMAASamplePoint(filteredCopyTex, texcoord);
+      #if PSMAA_ALPHA_PASSTHROUGH
+
+      float oldAlpha = PSMAASamplePoint(colorTex, texcoord).a;
+      float3 filteredColor = PSMAASamplePoint(filteredCopyTex, texcoord).rgb;
+      color = float4(filteredColor, oldAlpha);
+
+      #else
+
+      color = PSMAASamplePoint(filteredCopyTex, texcoord).a;
+
+      #endif
     }
 
     /**

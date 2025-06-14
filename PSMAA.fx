@@ -88,6 +88,13 @@ uniform float _PreProcessingLumaPreservationStrength <
 	ui_tooltip = "1 = normal strength, 5 = max";
 > = 1.5f;
 
+// uniform float _RangeCramTarget <
+// 	ui_category = "Pre-Processing";
+// 	ui_label = "_RangeCramTarget";
+// 	ui_type = "slider";
+// 	ui_min = 0f; ui_max = 2f; ui_step = 0.01f;
+// > = 1f;
+
 uniform bool _ShowOldPreProcessing <
 	ui_category = "Pre-Processing";
 	ui_label = "Show Old Pre-Processing";
@@ -130,6 +137,9 @@ uniform int _Debug <
 #define PSMAA_PRE_PROCESSING_LUMA_PRESERVATION_STRENGTH _PreProcessingLumaPreservationStrength
 #define PSMAA_PRE_PROCESSING_STRENGTH _PreProcessingStrength
 #define PSMAA_PRE_PROCESSING_MIN_STRENGTH .15
+#ifndef PSMAA_ALPHA_PASSTHROUGH
+	#define PSMAA_ALPHA_PASSTHROUGH 0
+#endif
 #define PSMAA_EDGE_DETECTION_FACTORS_HIGH_LUMA float4(_EdgeDetectionThreshold.y, _CMAALCAFactor.y, _SMAALCAFactor.y, _CMAALCAforSMAALCAFactor.y)
 #define PSMAA_EDGE_DETECTION_FACTORS_LOW_LUMA float4(_EdgeDetectionThreshold.x, _CMAALCAFactor.x, _SMAALCAFactor.x, _CMAALCAforSMAALCAFactor.x)
 
@@ -181,12 +191,6 @@ sampler filteredCopySampler
 {
 	Texture = filteredCopyTex;
 };
-// sampler filteredCopyLinearSampler
-// {
-// 	Texture = filteredCopyTex;
-// 	MipFilter = Point;
-// 	SRGBTexture = true;
-// };
 
 texture lumaTex < pooled = true; >
 {
@@ -262,12 +266,12 @@ void PSMAAPreProcessingPSWrapper(
 	out float4 filteredCopy : SV_TARGET1
 )
 {
-	// if(_ShowOldPreProcessing){
-	// 	PSMAA::Pass::PreProcessingPSOld(texcoord, colorGammaSampler, filteredCopy,luma);
+	if(_ShowOldPreProcessing){
+		PSMAA::Pass::PreProcessingPSOld(texcoord, colorGammaSampler, filteredCopy,luma);
 
-	// } else {
+	} else {
 		PSMAA::Pass::PreProcessingPS(texcoord, colorGammaSampler, filteredCopy,luma);
-	// }
+	}
 }
 
 void PSMAAPreProcessingOutputPSWrapper(
@@ -275,7 +279,7 @@ void PSMAAPreProcessingOutputPSWrapper(
     float2 texcoord : TEXCOORD0,
     out float4 color : SV_Target
 ) {
-    PSMAA::Pass::PreProcessingOutputPS(texcoord, filteredCopySampler, color);
+    PSMAA::Pass::PreProcessingOutputPS(texcoord, filteredCopySampler, colorGammaSampler, color);
 }
 
 // TODO: consider trying to calculate this in the PS instead.
