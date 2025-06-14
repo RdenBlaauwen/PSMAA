@@ -392,7 +392,7 @@ namespace PSMAA
 
       #else
 
-      color = PSMAASamplePoint(filteredCopyTex, texcoord).a;
+      color = PSMAASamplePoint(filteredCopyTex, texcoord);
 
       #endif
     }
