@@ -262,13 +262,12 @@ void PSMAAPreProcessingPSWrapper(
 	out float4 filteredCopy : SV_TARGET1
 )
 {
-	if(_ShowOldPreProcessing){
-		PSMAA::Pass::PreProcessingPSOld(texcoord, colorGammaSampler, filteredCopy,luma);
+	// if(_ShowOldPreProcessing){
+	// 	PSMAA::Pass::PreProcessingPSOld(texcoord, colorGammaSampler, filteredCopy,luma);
 
-	} else {
+	// } else {
 		PSMAA::Pass::PreProcessingPS(texcoord, colorGammaSampler, filteredCopy,luma);
-
-	}
+	// }
 }
 
 void PSMAAPreProcessingOutputPSWrapper(
