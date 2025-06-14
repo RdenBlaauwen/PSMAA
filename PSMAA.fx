@@ -367,6 +367,11 @@ void PSMAABlendingPSWrapper(
 
 	if(_Debug == 0){
 		color = SMAANeighborhoodBlendingPS(texcoord, offset, colorLinearSampler, weightSampler).rgba;
+		// experimental gamma correction. Needs a more robust 
+		// (and conditional) implementation if ever used for real
+		color = color <= 0.0031308 ? 
+                        color * 12.92 : 
+                        1.055 * pow(abs(color), 1.0/2.4) - 0.055;
 	} else if(_Debug == 1) {
 		color = tex2D(lumaSampler, texcoord).rrrr;
 	} else if(_Debug == 2) {
@@ -445,6 +450,6 @@ technique PSMAA
     // alternatively, Consider giving this pass it's own VS
     VertexShader = SMAANeighborhoodBlendingVSWrapper;
     PixelShader = PSMAABlendingPSWrapper;
-		SRGBWriteEnable = true;
+		// SRGBWriteEnable = true;
   }
 }
