@@ -1,5 +1,15 @@
 # Testing
 
+## sRGB textures
+
+Only RGBA8 textures can be written to using sRGB passes. And only RGBA8 textures can be used in sRGB (aka linear) samplers. And the backbuffer of course. 
+
+I originally wanted to use RGB10A2 textures for the filtered copies, but after seeing the blending pass wouldn't be able to write to them or samples from them, I decided to let that go and settle for RGBA8.
+
+I tried to make a workaround by sampling with a normal sampler and then correcting to linear space manually. But that didn't work at all.
+
+Alternatively I could just add extra passes before and after the blending let all three of them write to and read from one or two zwischen passes or the backbuffer, buf that would've come with a lot of overhead and extram complexity. RGBA8 seems like the best solution.
+
 ## Separate delta calc vs unified edge calc
 
 Testing reveals very few differences when using a separate delta and edge calculation pass vs using a more conventional unified edge calc pass. It is however slightly inferior, with a few missing edges so here and there in the resulting buffer.
