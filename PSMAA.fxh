@@ -96,33 +96,9 @@ namespace PSMAA
       float3 NW, float3 N, float3 NE,
       float3 W, float3 C, float3 E,
       float3 SW, float3 S, float3 SE,
-      float3 maxNeighbourColor,
-      float4 deltas)
+      float4 edges)
   {
-    float3 maxLocalColor = max(maxNeighbourColor, C);
-    // These make sure that Red and Blue don't count as much as Green,
-    // without making all results darker when taking the greatest component
-    static const float3 LumaCorrection = float3(.297, 1f, .101); // TODO: replace by library func
-    float maxLocalLuma = Functions::max(maxLocalColor * LumaCorrection); // output luma
-
-    // Use detection factors for edge detection here too, so that the results of this pass scale proportionally to the needs of edge detection.
-    float2 detectionFactors = lerp(PSMAA_EDGE_DETECTION_FACTORS_LOW_LUMA.xy, PSMAA_EDGE_DETECTION_FACTORS_HIGH_LUMA.xy, maxLocalLuma);
-    // scale with multipliers specific to this pass
-    detectionFactors *= float2(PSMAA_PRE_PROCESSING_THRESHOLD_MULTIPLIER, PSMAA_PRE_PROCESSING_CMAA_LCA_FACTOR_MULTIPLIER);
-    // Minimum threshold to prevent blending in very dark areas
-    float threshold = max(detectionFactors.x, PSMAA_THRESHOLD_FLOOR);
-    float cmaaLCAFactor = detectionFactors.y;
-
-    float4 maxLocalDeltas;
-    maxLocalDeltas.r = Functions::max(deltas.gba);
-    maxLocalDeltas.g = Functions::max(deltas.bar);
-    maxLocalDeltas.b = Functions::max(deltas.arg);
-    maxLocalDeltas.a = Functions::max(deltas.rgb);
-
-    deltas -= maxLocalDeltas * cmaaLCAFactor;
-
     // skip check for corners (to prevent interference with AA) and single lines (to prevent blur)
-    float4 edges = step(threshold, deltas);
     float cornerNumber = (edges.r + edges.b) * (edges.g + edges.a);
     float edgeNumber = Functions::sum(edges);
     bool skipProcessing = (edgeNumber < 2f) || (cornerNumber == 1f);
@@ -131,79 +107,77 @@ namespace PSMAA
     {
       return C; // If there are not enough edges, return the current pixel color
     }
-    else
-    {
-      // pattern:
-      //  e f g
-      //  h a b
-      //  i c d
-      // TODO: optimise by caching repeating values, and by calculating inverse of the constants
-      // and applying them to the sums using MAD operations where possible.
-      // Reinforced
-      float3 bottomHalf = (W + C + E + SW + S + SE) / 6f;
-      float3 topHalf = (N + C + E + NW + W + NE) / 6f;
-      float3 leftHalf = (NW + W + SW + N + C + S) / 6f;
-      float3 rightHalf = (N + C + S + NE + E + SE) / 6f;
 
-      float3 diagHalfNW = (SW + C + NE + N + W + NW) / 6f;
-      float3 diagHalfSE = (SW + C + NE + E + SE + S) / 6f;
-      float3 diagHalfNE = (NW + C + SE + NE + E + N) / 6f;
-      float3 diagHalfSW = (NW + C + SE + W + S + SW) / 6f;
+    // pattern:
+    //  e f g
+    //  h a b
+    //  i c d
+    // TODO: optimise by caching repeating values, and by calculating inverse of the constants
+    // and applying them to the sums using MAD operations where possible.
+    // Reinforced
+    float3 bottomHalf = (W + C + E + SW + S + SE) / 6f;
+    float3 topHalf = (N + C + E + NW + W + NE) / 6f;
+    float3 leftHalf = (NW + W + SW + N + C + S) / 6f;
+    float3 rightHalf = (N + C + S + NE + E + SE) / 6f;
 
-      float3 diag1 = (NW + C + SE) / 3f;
-      float3 diag2 = (SW + C + NE) / 3f;
+    float3 diagHalfNW = (SW + C + NE + N + W + NW) / 6f;
+    float3 diagHalfSE = (SW + C + NE + E + SE + S) / 6f;
+    float3 diagHalfNE = (NW + C + SE + NE + E + N) / 6f;
+    float3 diagHalfSW = (NW + C + SE + W + S + SW) / 6f;
 
-      float3 horz = (W + C + E) / 3f;
-      float3 vert = (N + C + S) / 3f;
+    float3 diag1 = (NW + C + SE) / 3f;
+    float3 diag2 = (SW + C + NE) / 3f;
 
-      float3 maxDesired = Functions::max(leftHalf, bottomHalf, diag1, diag2, topHalf, rightHalf, diagHalfNE, diagHalfNW, diagHalfSE, diagHalfSW);
-      float3 minDesired = Functions::min(leftHalf, bottomHalf, diag1, diag2, topHalf, rightHalf, diagHalfNE, diagHalfNW, diagHalfSE, diagHalfSW);
+    float3 horz = (W + C + E) / 3f;
+    float3 vert = (N + C + S) / 3f;
 
-      float3 maxLine = Functions::max(horz, vert, maxDesired);
-      float3 minLine = Functions::min(horz, vert, minDesired);
+    float3 maxDesired = Functions::max(leftHalf, bottomHalf, diag1, diag2, topHalf, rightHalf, diagHalfNE, diagHalfNW, diagHalfSE, diagHalfSW);
+    float3 minDesired = Functions::min(leftHalf, bottomHalf, diag1, diag2, topHalf, rightHalf, diagHalfNE, diagHalfNW, diagHalfSE, diagHalfSW);
 
-      // Weakened
-      float3 surround = (W + N + E + S + C) / 5f;
-      float3 diagSurround = (NW + NE + SW + SE + C) / 5f;
+    float3 maxLine = Functions::max(horz, vert, maxDesired);
+    float3 minLine = Functions::min(horz, vert, minDesired);
 
-      float3 maxUndesired = max(surround, diagSurround);
-      float3 minUndesired = min(surround, diagSurround);
+    // Weakened
+    float3 surround = (W + N + E + S + C) / 5f;
+    float3 diagSurround = (NW + NE + SW + SE + C) / 5f;
 
-      // Constants for local average calculation
-      static const float undesiredAmount = 2f;
-      static const float DesiredPatternsWeight = 2f;
-      static const float LineWeight = 1.3f;
-      // Multiply by 2f, because each sum is from a pair of values
-      static const float LocalAvgDenominator = mad(DesiredPatternsWeight + LineWeight, 2f, -undesiredAmount);
+    float3 maxUndesired = max(surround, diagSurround);
+    float3 minUndesired = min(surround, diagSurround);
 
-      float3 undesiredSum = -maxUndesired - minUndesired;
-      float3 lineSum = maxLine + minLine;
-      float3 desiredSum = maxDesired + minDesired;
+    // Constants for local average calculation
+    static const float undesiredAmount = 2f;
+    static const float DesiredPatternsWeight = 2f;
+    static const float LineWeight = 1.3f;
+    // Multiply by 2f, because each sum is from a pair of values
+    static const float LocalAvgDenominator = mad(DesiredPatternsWeight + LineWeight, 2f, -undesiredAmount);
 
-      lineSum = mad(lineSum, LineWeight, undesiredSum);
-      desiredSum = mad(desiredSum, DesiredPatternsWeight, lineSum);
-      float3 localavg = desiredSum / LocalAvgDenominator;
+    float3 undesiredSum = -maxUndesired - minUndesired;
+    float3 lineSum = maxLine + minLine;
+    float3 desiredSum = maxDesired + minDesired;
 
-      // If the new target pixel value is less bright than the max desired shape, boost it's value accordingly
-      float maxLuma = Color::luma(maxLine);
-      float minLuma = Color::luma(minLine);
-      float localLuma = Color::luma(localavg);
-      // TODO: try using delta between origLuma and localLuma to determine strength and direction of the boost/weakening
-      // if new value is brighter than max desired shape, boost strength is 0f and localavg should be multiplied by 1f. Else, boost it.
-      float boost = saturate(maxLuma - localLuma);
-      float weaken = minLuma - localLuma;
-      float origLuma = Color::luma(C);
-      float direction = PSMAA_PRE_PROCESSING_LUMA_PRESERVATION_BIAS + origLuma - localLuma;
-      direction = saturate(mad(direction, PSMAA_PRE_PROCESSING_LUMA_PRESERVATION_STRENGTH, .5));
-      float mod = lerp(weaken, boost, direction);
-      localavg *= 1f + mod; // add to 1, because the operation must increase the local avg, not take fraction of it
+    lineSum = mad(lineSum, LineWeight, undesiredSum);
+    desiredSum = mad(desiredSum, DesiredPatternsWeight, lineSum);
+    float3 localavg = desiredSum / LocalAvgDenominator;
 
-      // Determine blending strength based on the number of edges detected
-      float strength = max(cornerNumber / 4f, PSMAA_PRE_PROCESSING_MIN_STRENGTH);
-      strength *= PSMAA_PRE_PROCESSING_STRENGTH;
+    // If the new target pixel value is less bright than the max desired shape, boost it's value accordingly
+    float maxLuma = Color::luma(maxLine);
+    float minLuma = Color::luma(minLine);
+    float localLuma = Color::luma(localavg);
+    // TODO: try using delta between origLuma and localLuma to determine strength and direction of the boost/weakening
+    // if new value is brighter than max desired shape, boost strength is 0f and localavg should be multiplied by 1f. Else, boost it.
+    float boost = saturate(maxLuma - localLuma);
+    float weaken = minLuma - localLuma;
+    float origLuma = Color::luma(C);
+    float direction = PSMAA_PRE_PROCESSING_LUMA_PRESERVATION_BIAS + origLuma - localLuma;
+    direction = saturate(mad(direction, PSMAA_PRE_PROCESSING_LUMA_PRESERVATION_STRENGTH, .5));
+    float mod = lerp(weaken, boost, direction);
+    localavg *= 1f + mod; // add to 1, because the operation must increase the local avg, not take fraction of it
 
-      return lerp(C, localavg, strength);
-    }
+    // Determine blending strength based on the number of edges detected
+    float strength = max(cornerNumber / 4f, PSMAA_PRE_PROCESSING_MIN_STRENGTH);
+    strength *= PSMAA_PRE_PROCESSING_STRENGTH;
+
+    return lerp(C, localavg, strength);
   }
 
   void GatherNeighborDeltas(
@@ -291,6 +265,11 @@ namespace PSMAA
       float3 SE = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(1, 1)).rgb;
 
       float3 maxNeighbourColor = Functions::max(NW, W, SW, N, S, NE, E, SE);
+      float3 maxLocalColor = max(maxNeighbourColor, C);
+      // These make sure that Red and Blue don't count as much as Green,
+      // without making all results darker when taking the greatest component
+      static const float3 LumaCorrection = float3(.297, 1f, .101);
+      float prelimMaxLocalLuma = Functions::max(maxLocalColor * LumaCorrection);
 
       float4 deltas;
       deltas.r = GetDelta(W, C);
@@ -298,62 +277,13 @@ namespace PSMAA
       deltas.b = GetDelta(E, C);
       deltas.a = GetDelta(S, C);
 
-      float3 localAvg = CalcLocalAvg(
-          NW, N, NE, W, C, E, SW, S, SE,
-          maxNeighbourColor, deltas);
-
-      // These make sure that Red and Blue don't count as much as Green,
-      // without making all results darker when taking the greatest component
-      static const float3 LumaCorrection = float3(.297, 1f, .101);
-
-      // use result for local luma instead of the original color for more accurate results
-      float3 finalMaxLocalColor = max(maxNeighbourColor, localAvg);
-      maxLocalLuma = Functions::max(finalMaxLocalColor * LumaCorrection);
-
-      filteredCopy = float4(localAvg, 0f);
-    }
-
-    void PreProcessingPSOld(
-        float2 texcoord,
-        PSMAATexture2D(colorGammaTex), // input color texture (C)
-        out float4 filteredCopy,       // output current color (C)
-        out float maxLocalLuma         // output maximum luma from all nine samples
-                                       // out float3 color // actual output
-    )
-    {
-      // NW N NE
-      // W  C  E
-      // SW S SE
-      float3 NW = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(-1, -1)).rgb;
-      float3 W = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(-1, 0)).rgb;
-      float3 SW = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(-1, 1)).rgb;
-      float3 N = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(0, -1)).rgb;
-      float3 C = PSMAASampleLevelZero(colorGammaTex, texcoord).rgb;
-      float3 S = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(0, 1)).rgb;
-      float3 NE = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(1, -1)).rgb;
-      float3 E = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(1, 0)).rgb;
-      float3 SE = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(1, 1)).rgb;
-
-      float3 maxNeighbourColor = Functions::max(NW, W, SW, N, S, NE, E, SE);
-      float3 maxLocalColor = max(maxNeighbourColor, C);
-      // These make sure that Red and Blue don't count as much as Green,
-      // without making all results darker when taking the greatest component
-      static const float3 LumaCorrection = float3(.3, 1f, .1);
-      maxLocalLuma = Functions::max(maxLocalColor * LumaCorrection); // output luma
-
       // Use detection factors for edge detection here too, so that the results of this pass scale proportionally to the needs of edge detection.
-      float2 detectionFactors = lerp(PSMAA_EDGE_DETECTION_FACTORS_LOW_LUMA.xy, PSMAA_EDGE_DETECTION_FACTORS_HIGH_LUMA.xy, maxLocalLuma);
+      float2 detectionFactors = lerp(PSMAA_EDGE_DETECTION_FACTORS_LOW_LUMA.xy, PSMAA_EDGE_DETECTION_FACTORS_HIGH_LUMA.xy, prelimMaxLocalLuma);
       // scale with multipliers specific to this pass
       detectionFactors *= float2(PSMAA_PRE_PROCESSING_THRESHOLD_MULTIPLIER, PSMAA_PRE_PROCESSING_CMAA_LCA_FACTOR_MULTIPLIER);
       // Minimum threshold to prevent blending in very dark areas
       float threshold = max(detectionFactors.x, PSMAA_THRESHOLD_FLOOR);
       float cmaaLCAFactor = detectionFactors.y;
-
-      float4 deltas;
-      deltas.r = GetDelta(W, C);
-      deltas.g = GetDelta(N, C);
-      deltas.b = GetDelta(E, C);
-      deltas.a = GetDelta(S, C);
 
       float4 maxLocalDeltas;
       maxLocalDeltas.r = Functions::max(deltas.gba);
@@ -361,98 +291,19 @@ namespace PSMAA
       maxLocalDeltas.b = Functions::max(deltas.arg);
       maxLocalDeltas.a = Functions::max(deltas.rgb);
 
-      // Deltas with large nearby deltas count less
       deltas -= maxLocalDeltas * cmaaLCAFactor;
 
-      // skip check for corners (to prevent interference with AA) and single edges (to prevent blur)
       float4 edges = step(threshold, deltas);
-      float cornerNumber = (edges.r + edges.b) * (edges.g + edges.a);
-      float edgeNumber = Functions::sum(edges);
-      bool edgesTooFew = edgeNumber < 2f;
-      bool singleCorner = cornerNumber == 1f;
 
-      if (!edgesTooFew && !singleCorner)
-      {
-        // pattern:
-        //  e f g
-        //  h a b
-        //  i c d
-        // TODO: optimise by caching repeating values, and by calculating inverse of the constants
-        // and applying them to the sums using MAD operations where possible.
-        // Reinforced
-        float3 bottomHalf = (W + C + E + SW + S + SE) / 6f;
-        float3 topHalf = (N + C + E + NW + W + NE) / 6f;
-        float3 leftHalf = (NW + W + SW + N + C + S) / 6f;
-        float3 rightHalf = (N + C + S + NE + E + SE) / 6f;
+      float3 localAvg = CalcLocalAvg(
+          NW, N, NE, W, C, E, SW, S, SE,
+          edges);
 
-        float3 diagHalfNW = (SW + C + NE + N + W + NW) / 6f;
-        float3 diagHalfSE = (SW + C + NE + E + SE + S) / 6f;
-        float3 diagHalfNE = (NW + C + SE + NE + E + N) / 6f;
-        float3 diagHalfSW = (NW + C + SE + W + S + SW) / 6f;
+      // use result for local luma instead of the original color for more accurate results
+      float3 finalMaxLocalColor = max(maxNeighbourColor, localAvg);
+      maxLocalLuma = Functions::max(finalMaxLocalColor * LumaCorrection); //TODO: try using luma instead of max comp
 
-        float3 diag1 = (NW + C + SE) / 3f;
-        float3 diag2 = (SW + C + NE) / 3f;
-
-        float3 horz = (W + C + E) / 3f;
-        float3 vert = (N + C + S) / 3f;
-
-        float3 maxDesired = Functions::max(leftHalf, bottomHalf, diag1, diag2, topHalf, rightHalf, diagHalfNE, diagHalfNW, diagHalfSE, diagHalfSW);
-        float3 minDesired = Functions::min(leftHalf, bottomHalf, diag1, diag2, topHalf, rightHalf, diagHalfNE, diagHalfNW, diagHalfSE, diagHalfSW);
-
-        float3 maxLine = Functions::max(horz, vert, maxDesired);
-        float3 minLine = Functions::min(horz, vert, minDesired);
-
-        // Weakened
-        float3 surround = (W + N + E + S + C) / 5f;
-        float3 diagSurround = (NW + NE + SW + SE + C) / 5f;
-
-        float3 maxUndesired = max(surround, diagSurround);
-        float3 minUndesired = min(surround, diagSurround);
-
-        // Constants for local average calculation
-        static const float DesiredPatternsWeight = 2f;
-        static const float LineWeight = 1.3f;
-        static const float LOCAL_AVG_DENOMINATOR = mad(DesiredPatternsWeight + LineWeight, 2f, -2f - PSMAA_PRE_PROCESSING_EXTRA_PIXEL_SOFTENING);
-
-        float3 undesiredSum = -maxUndesired - minUndesired;
-        float3 lineSum = maxLine + minLine;
-        float3 desiredSum = maxDesired + minDesired;
-
-        // Calculate local average using MAD operations
-        undesiredSum -= C * PSMAA_PRE_PROCESSING_EXTRA_PIXEL_SOFTENING;
-        lineSum = mad(lineSum, LineWeight, undesiredSum);
-        desiredSum = mad(desiredSum, DesiredPatternsWeight, lineSum);
-        float3 localavg = desiredSum / LOCAL_AVG_DENOMINATOR;
-
-        // If the new target pixel value is less bright than the max desired shape, boost it's value accordingly
-        float maxLuma = Color::luma(maxLine);
-        float minLuma = Color::luma(minLine);
-        float localLuma = Color::luma(localavg);
-        // TODO: try using delta between origLuma and localLuma to determine strength and direction of the boost/weakening
-        // if new value is brighter than max desired shape, boost strength is 0f and localavg should be multiplied by 1f. Else, boost it.
-        float boost = saturate(maxLuma - localLuma);
-        float weaken = minLuma - localLuma;
-        float origLuma = Color::luma(C);
-        float direction = PSMAA_PRE_PROCESSING_LUMA_PRESERVATION_BIAS + origLuma - localLuma;
-        direction = saturate(mad(direction, PSMAA_PRE_PROCESSING_LUMA_PRESERVATION_STRENGTH, .5));
-        float mod = lerp(weaken, boost, direction);
-        localavg *= 1f + mod;
-
-        // Determine blending strength based on the number of edges detected
-        float strength = max(cornerNumber, .6) / 4f; // TODO: fix magic numbers, especially the .6, which is the strength for lines.
-        strength *= PSMAA_PRE_PROCESSING_STRENGTH;
-
-        // put into filtered copy tex
-        filteredCopy = lerp(C, localavg, strength);
-
-        float3 finalMaxLocalColor = max(maxNeighbourColor, filteredCopy); 
-        maxLocalLuma = Functions::max(finalMaxLocalColor * LumaCorrection); // final luma output
-      }
-      else
-      {
-        // Set the filtered copy as the current texel color
-        filteredCopy = C;
-      }
+      filteredCopy = float4(localAvg, 0f);
     }
 
     void PreProcessingOutputPS(
