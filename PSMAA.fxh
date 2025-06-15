@@ -409,9 +409,10 @@ namespace PSMAA
     /**
      * Calculate the top and left deltas for the current pixel.
      */
-    void DeltaCalculationPS(float2 texcoord, float4 offset[1], PSMAATexture2D(colorGammaTex), out float2 deltas)
+    void DeltaCalculationPS(float2 texcoord, float4 offset[1], PSMAATexture2D(colorGammaTex), out float2 deltas, out float4 colorLinear)
     {
-      float3 current = PSMAASamplePoint(colorGammaTex, texcoord).rgb;
+      float4 allCurrent = PSMAASamplePoint(colorGammaTex, texcoord);
+      float3 current = allCurrent.rgb;
       float3 left = PSMAASamplePoint(colorGammaTex, offset[0].xy).rgb;
       float3 top = PSMAASamplePoint(colorGammaTex, offset[0].zw).rgb;
 
@@ -420,6 +421,18 @@ namespace PSMAA
       float rangeTop = Functions::max(top) - Functions::min(top);
 
       deltas = GetDeltas(left, top, current, rangeLeft, rangeTop, rangeCurrent);
+
+      // Convert to linear color space (standard sRGB conversion)
+      float4 linearColor;
+      float3 sRGB = current.rgb;
+      float3 isDark = sRGB <= 0.04045; // Handle dark values differently
+      float3 linearDark = sRGB / 12.92;
+      float3 linearBright = pow((sRGB + 0.055) / 1.055, 2.4);
+      linearColor.rgb = lerp(linearBright, linearDark, isDark);
+      linearColor.a = allCurrent.a;
+      
+      colorLinear = linearColor;
+      // colorLinear = allCurrent; // Use the original color for now, as the linear conversion is not needed for PSMAA edge detection.
     }
 
     void EdgeDetectionVS(float2 texcoord, out float4 offset[2])

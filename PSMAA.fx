@@ -185,11 +185,12 @@ texture filteredCopyTex < pooled = true; >
 {
 	Width = BUFFER_WIDTH;
 	Height = BUFFER_HEIGHT;
-	Format = RGB10A2;
+	Format = RGBA8;
 };
 sampler filteredCopySampler
 {
 	Texture = filteredCopyTex;
+	MipFilter = Point;
 };
 
 texture lumaTex < pooled = true; >
@@ -212,6 +213,19 @@ texture deltaTex < pooled = true; >
 sampler deltaSampler
 {
   Texture = deltaTex;
+};
+
+texture filteredCopyLinearTex < pooled = true; >
+{
+	Width = BUFFER_WIDTH;
+	Height = BUFFER_HEIGHT;
+	Format = RGBA8;
+};
+sampler filteredCopyLinearSampler
+{
+	Texture = filteredCopyLinearTex;
+	MipFilter = Point;
+	SRGBTexture = true;
 };
 
 texture edgesTex < pooled = true; >
@@ -259,6 +273,32 @@ sampler searchSampler
 	MipFilter = Point; MinFilter = Point; MagFilter = Point;
 };
 
+texture smaaOutputTex < pooled = true; >
+{
+	Width = BUFFER_WIDTH;
+	Height = BUFFER_HEIGHT;
+	Format = RGBA8;
+};
+sampler smaaOutputSampler
+{
+	Texture = smaaOutputTex;
+	MipFilter = Point;
+	SRGBTexture = true;
+};
+
+texture outputTex < pooled = true; >
+{
+	Width = BUFFER_WIDTH;
+	Height = BUFFER_HEIGHT;
+	Format = RGBA8;
+};
+sampler outputSampler
+{
+	Texture = outputTex;
+	MipFilter = Point;
+	SRGBTexture = true;
+};
+
 void PSMAAPreProcessingPSWrapper(
 	float4 position : SV_POSITION,
 	float2 texcoord : TEXCOORD0,
@@ -298,10 +338,11 @@ void PSMAADeltaCalulationPSWrapper(
   float4 position : SV_Position,
   float2 texcoord : TEXCOORD0, 
   float4 offset[1] : TEXCOORD1, 
-  out float2 deltas : SV_Target0
+  out float2 deltas : SV_Target0,
+  out float4 filteredCopyLinear : SV_Target1
 )
 {
-  PSMAA::Pass::DeltaCalculationPS(texcoord, offset, filteredCopySampler, deltas);
+  PSMAA::Pass::DeltaCalculationPS(texcoord, offset, filteredCopySampler, deltas, filteredCopyLinear);
 }
 
 void PSMAAEdgeDetectionVSWrapper(
@@ -366,7 +407,7 @@ void PSMAABlendingPSWrapper(
   // if(_Debug == 0) discard;
 
 	if(_Debug == 0){
-		color = SMAANeighborhoodBlendingPS(texcoord, offset, colorLinearSampler, weightSampler).rgba;
+		color = SMAANeighborhoodBlendingPS(texcoord, offset, filteredCopyLinearSampler, weightSampler).rgba;
 	} else if(_Debug == 1) {
 		color = tex2D(lumaSampler, texcoord).rrrr;
 	} else if(_Debug == 2) {
@@ -389,6 +430,22 @@ void PSMAABlendingPSWrapper(
 	}
 }
 
+void PSMAAPostProcessPS(
+	float4 position : SV_Position,
+  float2 texcoord : TEXCOORD0, 
+  out float4 color : SV_Target
+){
+	color = tex2D(smaaOutputSampler, texcoord);
+}
+
+void PSMAAOutPS(
+	float4 position : SV_Position,
+  float2 texcoord : TEXCOORD0, 
+  out float4 color : SV_Target
+){
+	color = tex2D(outputSampler, texcoord);
+}
+
 technique PSMAA
 {
 	pass PreProcessing
@@ -399,17 +456,18 @@ technique PSMAA
     RenderTarget1 = filteredCopyTex;
 		// ClearRenderTargets = true;
   }
-  pass OutputProcess
-  {
-    VertexShader = PostProcessVS;
-    PixelShader = PSMAAPreProcessingOutputPSWrapper;
-    // SRGBWriteEnable = true;
-  }
+  // pass OutputProcess
+  // {
+  //   VertexShader = PostProcessVS;
+  //   PixelShader = PSMAAPreProcessingOutputPSWrapper;
+  //   // SRGBWriteEnable = true;
+  // }
   pass DeltaCalculation
   {
     VertexShader = PSMAADeltaCalulationVSWrapper;
     PixelShader = PSMAADeltaCalulationPSWrapper;
-    RenderTarget = deltaTex;
+    RenderTarget0 = deltaTex;
+		RenderTarget1 = filteredCopyLinearTex;
     // TODO: test if these are necessary!
     // Especially the stencil stuff
     // https://github.com/crosire/reshade-shaders/blob/slim/REFERENCE.md#techniques
@@ -445,6 +503,30 @@ technique PSMAA
     // alternatively, Consider giving this pass it's own VS
     VertexShader = SMAANeighborhoodBlendingVSWrapper;
     PixelShader = PSMAABlendingPSWrapper;
+		RenderTarget = smaaOutputTex;
 		SRGBWriteEnable = true;
   }
+	pass PostProcess
+	{
+		VertexShader = PostProcessVS;
+		PixelShader = PSMAAPostProcessPS;
+		RenderTarget = outputTex;
+		SRGBWriteEnable = true;
+		// ClearRenderTargets = true;
+		// StencilEnable = true;
+		// StencilPass = KEEP;
+		// StencilFunc = EQUAL;
+		// StencilRef = 1;
+	}
+	pass Out
+	{
+		VertexShader = PostProcessVS;
+		PixelShader = PSMAAOutPS;
+		SRGBWriteEnable = true;
+		// ClearRenderTargets = true;
+		// StencilEnable = true;
+		// StencilPass = KEEP;
+		// StencilFunc = EQUAL;
+		// StencilRef = 1;
+	}
 }
