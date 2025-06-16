@@ -61,8 +61,9 @@ uniform float _PreProcessingCmaaLCAMultiplier <
 	ui_category = "Pre-Processing";
 	ui_label = "CmaaLCAMultiplier";
 	ui_type = "slider";
-	ui_min = 0f; ui_max = 1f; ui_step = .05;
-> = .75;
+	ui_min = .5; ui_max = 1f; ui_step = .01;
+	ui_tooltip = "Recommended values [0.75..1]";
+> = .85;
 
 uniform float _PreProcessingStrength <
 	ui_category = "Pre-Processing";

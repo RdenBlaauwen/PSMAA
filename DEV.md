@@ -1,15 +1,22 @@
 # TODO
 
-- Build solution for calculating luminosity from color, and weighting components for luma
-- Try having the blending pass sample from the filteredCopy buffer instead of the backbuffer (god i hope this works)
+- Build solution for calculating luminosity from color, and weighting components for luma in shared library.
+- Split pre-processing pass into separate "edge detection" and softening passes, and perform the latter in linear space. 
+  - This should prevent the resulting localavg from being too dark, without needing band-aid solutions to improve luminosity.
+  - The existing output pass can be used as the smoothing pass.
+- Implement new contrast adaptation system which arranges local deltas into "shapes" just like in "Bean softening".
+  - needs more than jsut the basic 4 circumferential deltas to work.
+  - if good shapes "win": number will be > 0.
+  - if bad shapes "win": number will be < 0.
+  - Can be used for both pre-processing's edge detection and the normal one, though both will need differetn shapes, and different of the result.
 - Replace maxLocalLuma by avgLocalLuma and test the difference.
-- Have the blending pass sample the filteredcopy instead of the backbuffer. This way you can delete the extra output pass after the precprocessing pass and you may turn the blending pass into a computeshader too.
 - Test performance difference between edge detection (with CMAA2's local contrast adaptation) when delta pass is used vs when it is calculated directly.
 - Consider adding modifier to delta deetction which boosts luma weights, just like in Marty's SMAA:
   - `dot(abs(A - B), float3(0.229, 0.587, 0.114) * 1.33);`
 - Test difference between `SMAASampleLevelZeroOffset` and `SMAASampleOffset`
 - Test perf difference between using Offset sample methods (LordBean) vs using pre-calculated offsets calculated in a VS (native SMAA)
-- Optimise delta calculation's colorfulness min and max calculation to use 3 float2 calcs instead of 4 float calcs
+- Try to optimise delta calculation's colorfulness min and max calculation to use 3 float2 calcs instead of 4 float calcs.
+  - every float2 contains a component from both colors, instead of processing separately.
 
 # Testing
 
@@ -40,3 +47,8 @@ Tried seeing how many detlas would go above a value of 1/2 using a quickly built
 ### Just use RG8
 
 Fortunately, it wasn't necessary. Testing showed that just using an RG8 buffer, without any hoops and special cramming methods, produced a virtually indistinguishable result from using RG16f. So I'm just using RG8 from now on.
+
+### Have the blending pass sample the filteredcopy instead of the backbuffer.
+ This way you can delete the extra output pass after the precprocessing pass and you may turn the blending pass into a computeshader too.
+
+This doesn't work. filteredcopy is in gamma space and needs to stay that way for edge detection to work. the blending pass is in linear space and has to stay that way for the blending to work. No solution to this.

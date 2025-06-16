@@ -98,18 +98,8 @@ namespace PSMAA
       float3 NW, float3 N, float3 NE,
       float3 W, float3 C, float3 E,
       float3 SW, float3 S, float3 SE,
-      float4 edges)
+      float4 strength)
   {
-    // skip check for corners (to prevent interference with AA) and single lines (to prevent blur)
-    float cornerNumber = (edges.r + edges.b) * (edges.g + edges.a);
-    float edgeNumber = Functions::sum(edges);
-    bool skipProcessing = (edgeNumber < 2f) || (cornerNumber == 1f);
-
-    if (skipProcessing)
-    {
-      return C; // If there are not enough edges, return the current pixel color
-    }
-
     // pattern:
     //  e f g
     //  h a b
@@ -174,10 +164,6 @@ namespace PSMAA
     direction = saturate(mad(direction, PSMAA_PRE_PROCESSING_LUMA_PRESERVATION_STRENGTH, .5));
     float mod = lerp(weaken, boost, direction);
     localavg *= 1f + mod; // add to 1, because the operation must increase the local avg, not take fraction of it
-
-    // Determine blending strength based on the number of edges detected
-    float strength = max(cornerNumber / 4f, PSMAA_PRE_PROCESSING_MIN_STRENGTH);
-    strength *= PSMAA_PRE_PROCESSING_STRENGTH;
 
     return lerp(C, localavg, strength);
   }
@@ -296,10 +282,25 @@ namespace PSMAA
       deltas -= maxLocalDeltas * cmaaLCAFactor;
 
       float4 edges = step(threshold, deltas);
+      // skip check for corners (to prevent interference with AA) and single lines (to prevent blur)
+      float cornerNumber = (edges.r + edges.b) * (edges.g + edges.a);
+      float edgeNumber = Functions::sum(edges);
+      bool skipProcessing = (edgeNumber < 2f) || (cornerNumber == 1f);
+
+      if (skipProcessing)
+      {
+        maxLocalLuma = prelimMaxLocalLuma;
+        filteredCopy = float4(C, 0f); // no change, so set change to 0f
+        return;
+      }
+
+      // Determine blending strength based on the number of edges detected
+      float strength = max(cornerNumber / 4f, PSMAA_PRE_PROCESSING_MIN_STRENGTH);
+      strength *= PSMAA_PRE_PROCESSING_STRENGTH;
 
       float3 localAvg = CalcLocalAvg(
           NW, N, NE, W, C, E, SW, S, SE,
-          edges);
+          strength);
 
       // use result for local luma instead of the original color for more accurate results
       float3 finalMaxLocalColor = max(maxNeighbourColor, localAvg);
