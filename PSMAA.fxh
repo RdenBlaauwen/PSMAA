@@ -225,7 +225,7 @@ namespace PSMAA
     float finalDelta = max(maxDeltas.r, maxDeltas.g);
 
     float2 currDeltas = mad(cmaaLocalContrast, LCAFactors.y, float2(verticalDeltas.y, horizontalDeltas.y));
-    edges.rg *= step(finalDelta, LCAFactors.x * currDeltas.rg); // TODO: try removing the .rg's
+    edges.rg *= step(finalDelta, LCAFactors.x * currDeltas);
 
     return edges;
   }
@@ -304,7 +304,7 @@ namespace PSMAA
 
       // use result for local luma instead of the original color for more accurate results
       float3 finalMaxLocalColor = max(maxNeighbourColor, localAvg);
-      maxLocalLuma = Functions::max(finalMaxLocalColor * LumaCorrection); //TODO: try using luma instead of max comp
+      maxLocalLuma = Functions::max(finalMaxLocalColor * LumaCorrection);
 
       static const float minChange = (1f/6f); // TODO: add comprehensive way of dealing with min texture channel values
       // multiplying and then saturating prevents high values from being treated too strongly
@@ -374,7 +374,7 @@ namespace PSMAA
 
       // use result for local luma instead of the original color for more accurate results
       float3 finalMaxLocalColor = max(maxNeighbourColor, localAvg);
-      maxLocalLuma = Functions::max(finalMaxLocalColor * LumaCorrection); //TODO: try using luma instead of max comp
+      maxLocalLuma = Functions::max(finalMaxLocalColor * LumaCorrection);
 
       filteredCopy = float4(localAvg, 0f);
     }
@@ -493,7 +493,7 @@ namespace PSMAA
       float rangeLeft = Functions::max(Cleft) - Functions::min(Cleft);
       float colorfulness = max(midRange, rangeLeft);
       float3 t = abs(C - Cleft);
-      delta.x = (colorfulness * Functions::max(t)) + ((1.0 - colorfulness) * Color::luma(t)); // TODO: refactor to use luma function instead
+      delta.x = (colorfulness * Functions::max(t)) + ((1.0 - colorfulness) * Color::luma(t));
 
       float3 Ctop = PSMAASamplePoint(colorTex, offset[0].zw).rgb;
       float rangeTop = Functions::max(Ctop) - Functions::min(Ctop);
