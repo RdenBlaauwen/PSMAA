@@ -9,6 +9,7 @@
   - if good shapes "win": number will be > 0.
   - if bad shapes "win": number will be < 0.
   - Can be used for both pre-processing's edge detection and the normal one, though both will need differetn shapes, and different of the result.
+- Turn alpha passthrough on by default, or come up with better solution.
 - Replace maxLocalLuma by avgLocalLuma and test the difference.
 - Test performance difference between edge detection (with CMAA2's local contrast adaptation) when delta pass is used vs when it is calculated directly.
 - Consider adding modifier to delta deetction which boosts luma weights, just like in Marty's SMAA:

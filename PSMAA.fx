@@ -1,3 +1,5 @@
+#include ".\reshade-shared\macros.fxh"
+
 #define SMAA_PRESET_CUSTOM
 #define SMAA_CUSTOM_SL 1
 
@@ -102,6 +104,14 @@ uniform bool _ShowOldPreProcessing <
 	ui_tooltip = "Use the old pre-processing method.";
 > = false;
 
+#ifndef SHOW_DEBUG
+	#define SHOW_DEBUG 0
+#endif
+// preprocessor variable dedicated to debug library, turns it on or off
+#define SHARED_DEBUG__ACTIVE_ SHOW_DEBUG
+
+#if SHOW_DEBUG
+
 uniform int _Debug < 
 	ui_category = "Debug";
 	ui_type = "combo";
@@ -109,17 +119,18 @@ uniform int _Debug <
   ui_items = "None\0Local Luma\0Filtered Copy\0Deltas\0Edges\0";
 > = 0;
 
+#endif 
+
+// Libraries
+#include ".\reshade-shared\functions.fxh"
+#include ".\reshade-shared\color.fxh"
+#include ".\reshade-shared\debug.fxh"
 
 #ifndef PSMAA_USE_SIMPLIFIED_DELTA_CALCULATION
 	#define PSMAA_USE_SIMPLIFIED_DELTA_CALCULATION 0 
 #endif
 
 #include "ReShade.fxh"
-
-// Libraries
-#include ".\reshade-shared\macros.fxh"
-#include ".\reshade-shared\functions.fxh"
-#include ".\reshade-shared\color.fxh"
 
 // PSMAA preprocessor variables
 #define PSMAA_BUFFER_METRICS float4(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT, BUFFER_WIDTH, BUFFER_HEIGHT)
@@ -143,6 +154,8 @@ uniform int _Debug <
 #endif
 #define PSMAA_EDGE_DETECTION_FACTORS_HIGH_LUMA float4(_EdgeDetectionThreshold.y, _CMAALCAFactor.y, _SMAALCAFactor.y, _CMAALCAforSMAALCAFactor.y)
 #define PSMAA_EDGE_DETECTION_FACTORS_LOW_LUMA float4(_EdgeDetectionThreshold.x, _CMAALCAFactor.x, _SMAALCAFactor.x, _CMAALCAforSMAALCAFactor.x)
+
+
 
 // Sources files
 #include ".\PSMAA.fxh"
@@ -364,7 +377,8 @@ void PSMAABlendingPSWrapper(
   out float4 color : SV_Target
 )
 {
-  // if(_Debug == 0) discard;
+
+	#if SHOW_DEBUG
 
 	if(_Debug == 0){
 		color = SMAANeighborhoodBlendingPS(texcoord, offset, colorLinearSampler, weightSampler).rgba;
@@ -388,6 +402,14 @@ void PSMAABlendingPSWrapper(
   } else {
     color = tex2D(edgesSampler, texcoord).rgba;
 	}
+
+	color = Debug::applyDebugOptions(color);
+
+	#else
+
+	color = SMAANeighborhoodBlendingPS(texcoord, offset, colorLinearSampler, weightSampler).rgba;
+
+	#endif
 }
 
 technique PSMAA
