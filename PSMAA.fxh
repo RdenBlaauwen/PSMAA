@@ -544,7 +544,8 @@ namespace PSMAA
       // max discouraging shape: b = left, a = top
       // Get maximum encouraging shapes to check if deltas fit pattern consistent with an edge being there
       // Get maximum discouraging shapes to check if deltas fit pattern inconsistent with an edge being there
-      float4 maxShapes = Functions::max(diagonals.argb, diagonals.rgba, lines.rgab);
+      float4 maxShapes = Functions::max(diagonals.argb, diagonals.rgba, lines.rgab, protrusions.grgr);
+      // float4 maxShapes = Functions::max(diagonals.argb, diagonals.rgba, lines.rgab);
       float maxLocalDelta = Functions::max(Functions::max(circumDeltas), Functions::max(horzDeltas), Functions::max(vertDeltas));
       maxLocalDelta = max(maxLocalDelta, 0.1); // prevent ridiculous increase in very low contrast areas
 
