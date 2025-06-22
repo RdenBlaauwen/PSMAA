@@ -130,6 +130,11 @@ ui_label = "Show Old Pre-Processing";
 ui_tooltip = "Use the old pre-processing method.";
 > = false;
 
+uniform bool _ShowOldEdgeDetection <
+ui_label = "Show Old EdgeDetection";
+ui_tooltip = "Use the old EdgeDetection method.";
+> = false;
+
 #ifndef SHOW_DEBUG
 #define SHOW_DEBUG 0
 #endif
@@ -164,6 +169,7 @@ ui_items = "None\0Local Luma\0Filtered Copy\0Deltas\0Edges\0";
 #define PSMAA_PIXEL_SIZE BUFFER_PIXEL_SIZE
 #define PSMAATexture2D(tex) sampler tex
 #define PSMAASamplePoint(tex, coord) tex2D(tex, coord)
+#define PSMAASamplePointOffset(tex, coord, offset) tex2Doffset(tex, coord, offset)
 #define PSMAASampleLevelZero(tex, coord) tex2Dlod(tex, float4(coord, 0.0, 0.0))
 #define PSMAASampleLevelZeroOffset(tex, coord, offset) tex2Dlodoffset(tex, float4(coord, coord), offset)
 #define PSMAAGatherLeftEdges(tex, coord) tex2Dgather(tex, coord, 0);
@@ -366,7 +372,11 @@ void PSMAAEdgeDetectionPSWrapper(
 		float4 offset[2] : TEXCOORD1,
 		out float2 edges : SV_Target)
 {
-	PSMAA::Pass::EdgeDetectionPS(texcoord, offset, deltaSampler, lumaSampler, edges);
+	if(_ShowOldEdgeDetection){
+		PSMAA::Pass::EdgeDetectionPS(texcoord, offset, deltaSampler, lumaSampler, edges);
+	} else {
+		PSMAA::Pass::ShapeEdgeDetectionPS(texcoord, offset, filteredCopySampler, edges);
+	}
 	// PSMAA::Pass::HybridDetection(texcoord, offset, colorGammaSampler, _EdgeDetectionThreshold, _SMAALCAFactor, edges);
 }
 
