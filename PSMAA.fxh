@@ -519,11 +519,7 @@ namespace PSMAA
       //    W | C | E
       // a ---+---+---
       //   SW | S | SE
-      float4 lines = circumDeltas.rgba + float4(maxCornerDeltas.rr, horzDeltas.g, vertDeltas.r) + float4(maxCornerDeltas.bg, horzDeltas.a, vertDeltas.b);
-      // lines.r = circumDeltas.r + maxCornerDeltas.r + maxCornerDeltas.b;
-      // lines.g = circumDeltas.g + maxCornerDeltas.r + maxCornerDeltas.g;
-      // lines.b = circumDeltas.b + horzDeltas.g + horzDeltas.a;
-      // lines.a = circumDeltas.a + vertDeltas.r + vertDeltas.b;
+      float4 lines = circumDeltas.rgba + maxCornerDeltas.rrga + maxCornerDeltas.bgab;
       lines /= 3f;
 
       float2 diagCorners = maxCornerDeltas.rg + maxCornerDeltas.ab;
