@@ -534,7 +534,7 @@ namespace PSMAA
       // r: facing top-left, g: facing top-right, b: facing bottom-right, a: facing bottom-left
       float4 diagonals = min(circumDeltas.rgba, circumDeltas.gbar, maxCornerDeltas.brbr, maxCornerDeltas.gaga);
       // float4 diagonals = min(circumDeltas.rgba, circumDeltas.gbar * horzDeltas.grba * vertDeltas.rbag, 1f/4f); // TODO: try expanding into all options
-      float4 diagBalance = diagonals.rgba - max(diagonals.argb, diagonals.gbar) * discourageStrength;
+      float4 diagBalance = diagonals.rgba - max(diagonals.argb, diagonals.gbar) * discourageStrength * .8;
       // diagBalance /= 4f;
 
       // r: protruding from right side to left delta
@@ -551,7 +551,7 @@ namespace PSMAA
       float2 maxEncouraging = Functions::max(lineBalance, diagBalance.ar, diagBalance.rg, protrusionBalance, repairBalance.rg, repairBalance.ba);
       // float2 maxDiscouraging = Functions::min(lines.gr, lines.ab, protrusions.ar, protrusions.gb);
       float maxLocalDelta = Functions::max(Functions::max(circumDeltas), Functions::max(horzDeltas), Functions::max(vertDeltas));
-      maxLocalDelta = max(saturate(maxLocalDelta * 3f), 0.15); // prevent ridiculous increase in very low contrast areas
+      maxLocalDelta = max(saturate(maxLocalDelta * 3f), 0.10); // prevent ridiculous increase in very low contrast areas
 
       // Subtract discouraging shapes from encouraging shapes to get the "winner"
       // Then divide by maxLocalDelta to compensate for local contrast differences
@@ -646,7 +646,7 @@ namespace PSMAA
       // r: facing top-left, g: facing top-right, b: facing bottom-right, a: facing bottom-left
       float4 diagonals = min(circumDeltas.rgba, circumDeltas.gbar, maxCornerDeltas.brbr, maxCornerDeltas.gaga);
       // float4 diagonals = min(circumDeltas.rgba, circumDeltas.gbar * horzDeltas.grba * vertDeltas.rbag, 1f/4f); // TODO: try expanding into all options
-      float4 diagBalance = diagonals.rgba - max(diagonals.argb, diagonals.gbar) * discourageStrength;
+      float4 diagBalance = diagonals.rgba - max(diagonals.argb, diagonals.gbar) * discourageStrength * .8;
       // diagBalance /= 4f;
 
       // r: protruding from right side to left delta
@@ -663,7 +663,7 @@ namespace PSMAA
       float2 maxEncouraging = Functions::max(lineBalance, diagBalance.ar, diagBalance.rg, protrusionBalance, repairBalance.rg, repairBalance.ba);
       // float2 maxDiscouraging = Functions::min(lines.gr, lines.ab, protrusions.ar, protrusions.gb);
       float maxLocalDelta = Functions::max(Functions::max(circumDeltas), Functions::max(horzDeltas), Functions::max(vertDeltas));
-      maxLocalDelta = max(saturate(maxLocalDelta * 3f), 0.15); // prevent ridiculous increase in very low contrast areas
+      maxLocalDelta = max(saturate(maxLocalDelta * 3f), 0.10); // prevent ridiculous increase in very low contrast areas
 
       // Subtract discouraging shapes from encouraging shapes to get the "winner"
       // Then divide by maxLocalDelta to compensate for local contrast differences
