@@ -511,7 +511,9 @@ namespace PSMAA
       // r NW - NE g
       //   -  -  -
       // b SW - SE a
-      float4 maxCornerDeltas = max(horzDeltas.rgba, vertDeltas.garb);
+      float4 maxCornerDeltas = max(horzDeltas.rgba, vertDeltas.garb) / 2f;
+
+      float discourageStrength = 0.8f;
 
       //      r   b
       //   NW | N | NE
@@ -519,42 +521,145 @@ namespace PSMAA
       //    W | C | E
       // a ---+---+---
       //   SW | S | SE
-      float4 lines = circumDeltas.rgba + maxCornerDeltas.rrga + maxCornerDeltas.bgab;
-      lines /= 3f;
+      float4 lines = pow(circumDeltas.rgba * maxCornerDeltas.rrga * maxCornerDeltas.bgab, 1f/3f);
+      float2 lineBalance = lines.rg - max(lines.gr, lines.ab) * discourageStrength;
+      // lineBalance /= 3f;
 
-      float2 diagCorners = maxCornerDeltas.rg + maxCornerDeltas.ab;
-      float4 corners = circumDeltas.rgba + circumDeltas.gbar;
       // r: facing top-left, g: facing top-right, b: facing bottom-right, a: facing bottom-left
-      float4 diagonals = corners.rgba + diagCorners.grgr;
-      diagonals /= 4f;
+      float4 diagonals = pow(circumDeltas.rgba * circumDeltas.gbar * maxCornerDeltas.brbr * maxCornerDeltas.gaga, 1f/4f);
+      // float4 diagonals = pow(circumDeltas.rgba * circumDeltas.gbar * horzDeltas.grba * vertDeltas.rbag, 1f/4f); // TODO: try expanding into all options
+      float4 diagBalance = diagonals.rgba - max(diagonals.argb, diagonals.gbar) * discourageStrength;
+      // diagBalance /= 4f;
 
       // r: protruding from right side to left delta
       // g: protruding from bottom side to top delta
       // b: protruding from left side to right delta
       // a: protruding from top side to bottom delta
-      float4 protrusions = circumDeltas.rgba + circumDeltas.gbar + maxCornerDeltas.gabr + circumDeltas.argb + maxCornerDeltas.abrg;
-      protrusions /= 5f;
+      float4 protrusions = pow(circumDeltas.rgba * circumDeltas.gbar * maxCornerDeltas.gabr * circumDeltas.argb * maxCornerDeltas.abrg, 1f/5f);
+      float2 protrusionBalance = protrusions.rg - max(protrusions.ar, protrusions.gb) * discourageStrength;
+      // protrusionBalance /= 5f;
 
-      // TODO: try WITHOUT protrusions
       // max encouraging shapes: r = left, g = top
       // max discouraging shape: b = left, a = top
       // Get maximum encouraging shapes to check if deltas fit pattern consistent with an edge being there
-      // Get maximum discouraging shapes to check if deltas fit pattern inconsistent with an edge being there
-      float4 maxShapes = Functions::max(diagonals.argb, diagonals.rgba, lines.rgab, protrusions.grgr);
-      // float4 maxShapes = Functions::max(diagonals.argb, diagonals.rgba, lines.rgab);
+      float2 maxEncouraging = Functions::max(lineBalance, diagBalance.ar, diagBalance.rg, protrusionBalance);
+      // float2 maxDiscouraging = Functions::min(lines.gr, lines.ab, protrusions.ar, protrusions.gb);
       float maxLocalDelta = Functions::max(Functions::max(circumDeltas), Functions::max(horzDeltas), Functions::max(vertDeltas));
-      maxLocalDelta = max(maxLocalDelta, 0.1); // prevent ridiculous increase in very low contrast areas
+      maxLocalDelta = max(saturate(maxLocalDelta * 3f), 0.15); // prevent ridiculous increase in very low contrast areas
 
       // Subtract discouraging shapes from encouraging shapes to get the "winner"
       // Then divide by maxLocalDelta to compensate for local contrast differences
-      float2 balance = saturate(maxShapes.rg - maxShapes.ba / 1f); // TODO: remove division by 1f, testing only
-      // float2 balance = maxShapes.rg;
-      // edgesOutput = step(PSMAA_EDGE_DETECTION_SHAPE_BASED_FACTORS.xx, balance); // Temporarily return only the remaining shape deltas, for testing purposes
+      float2 balance = saturate(maxEncouraging) / maxLocalDelta;
+      float2 edges = step(PSMAA_EDGE_DETECTION_SHAPE_BASED_FACTORS.xx / discourageStrength, balance); // Temporarily return only the remaining shape deltas, for testing purposes
+      // edgesOutput = edges;
 
-      float2 edges = step(PSMAA_EDGE_DETECTION_SHAPE_BASED_FACTORS.xx/5f, balance); // TODO: remove division by 5f, testing only
+      if (edges.r == -edges.g)
+        discard;
 
-      // if (edges.r == -edges.g)
-      //   discard;
+      // Get extremes for SMAA LCA
+      float3 WW = PSMAASamplePoint(colorGammaTex, offset[1].xy).rgb;
+      float3 NN = PSMAASamplePoint(colorGammaTex, offset[1].zw).rgb;
+      float2 extremesDeltas = float2(
+          GetDelta(WW, W), // leftLeftDelta
+          GetDelta(NN, N)  // topTopDelta
+      ); 
+
+      // [   ] [    ] [    ]
+      // [e.x] [cd.r] [cd.b]
+      // [   ] [    ] [    ]
+      float3 vertDeltas2 = float3(circumDeltas.b, circumDeltas.r, extremesDeltas.x);
+      // [  ] [e.y ] [  ]
+      // [  ] [cd.g] [  ]
+      // [  ] [cd.a] [  ]
+      float3 horzDeltas2 = float3(circumDeltas.a, circumDeltas.g, extremesDeltas.y);
+
+      edgesOutput = ApplySMAALCA(edges, horzDeltas2, vertDeltas2, float2(PSMAA_EDGE_DETECTION_SHAPE_BASED_FACTORS.y, 0f), 0f);
+    }
+
+    void ShapeEdgeDetectionPSOld(
+        float2 texcoord,
+        float4 offset[2],
+        PSMAATexture2D(colorGammaTex),
+        out float2 edgesOutput)
+    {
+      // NW N NE
+      // W  C  E
+      // SW S SE
+      float3 NW = PSMAASamplePointOffset(colorGammaTex, texcoord, float2(-1, -1)).rgb;
+      float3 W = PSMAASamplePointOffset(colorGammaTex, texcoord, float2(-1, 0)).rgb;
+      float3 SW = PSMAASamplePointOffset(colorGammaTex, texcoord, float2(-1, 1)).rgb;
+      float3 N = PSMAASamplePointOffset(colorGammaTex, texcoord, float2(0, -1)).rgb;
+      float3 C = PSMAASamplePoint(colorGammaTex, texcoord).rgb;
+      float3 S = PSMAASamplePointOffset(colorGammaTex, texcoord, float2(0, 1)).rgb;
+      float3 NE = PSMAASamplePointOffset(colorGammaTex, texcoord, float2(1, -1)).rgb;
+      float3 E = PSMAASamplePointOffset(colorGammaTex, texcoord, float2(1, 0)).rgb;
+      float3 SE = PSMAASamplePointOffset(colorGammaTex, texcoord, float2(1, 1)).rgb;
+
+      // TODO: optimize by calculating all ranges once and passing them to GetDelta
+      float4 circumDeltas;
+      circumDeltas.r = GetDelta(W, C);
+      circumDeltas.g = GetDelta(N, C);
+      circumDeltas.b = GetDelta(E, C);
+      circumDeltas.a = GetDelta(S, C);
+
+      float4 horzDeltas;
+      horzDeltas.r = GetDelta(NW, N);
+      horzDeltas.g = GetDelta(NE, N);
+      horzDeltas.b = GetDelta(SW, S);
+      horzDeltas.a = GetDelta(SE, S);
+
+      float4 vertDeltas;
+      vertDeltas.r = GetDelta(SW, W);
+      vertDeltas.g = GetDelta(NW, W);
+      vertDeltas.b = GetDelta(SE, E);
+      vertDeltas.a = GetDelta(NE, E);
+
+      // r NW - NE g
+      //   -  -  -
+      // b SW - SE a
+      float4 maxCornerDeltas = max(horzDeltas.rgba, vertDeltas.garb) / 2f;
+
+      float discourageStrength = 0.8f;
+
+      //      r   b
+      //   NW | N | NE
+      // g ---+---+---
+      //    W | C | E
+      // a ---+---+---
+      //   SW | S | SE
+      float4 lines = pow(circumDeltas.rgba * maxCornerDeltas.rrga * maxCornerDeltas.bgab, 1f/3f);
+      float2 lineBalance = lines.rg - max(lines.gr, lines.ab) * discourageStrength;
+      // lineBalance /= 3f;
+
+      // r: facing top-left, g: facing top-right, b: facing bottom-right, a: facing bottom-left
+      float4 diagonals = pow(circumDeltas.rgba * circumDeltas.gbar * maxCornerDeltas.brbr * maxCornerDeltas.gaga, 1f/4f);
+      float4 diagBalance = diagonals.rgba - max(diagonals.argb, diagonals.gbar) * discourageStrength;
+      // diagBalance /= 4f;
+
+      // r: protruding from right side to left delta
+      // g: protruding from bottom side to top delta
+      // b: protruding from left side to right delta
+      // a: protruding from top side to bottom delta
+      float4 protrusions = pow(circumDeltas.rgba * circumDeltas.gbar * maxCornerDeltas.gabr * circumDeltas.argb * maxCornerDeltas.abrg, 1f/5f);
+      float2 protrusionBalance = protrusions.rg - max(protrusions.ar, protrusions.gb) * discourageStrength;
+      // protrusionBalance /= 5f;
+
+      // max encouraging shapes: r = left, g = top
+      // max discouraging shape: b = left, a = top
+      // Get maximum encouraging shapes to check if deltas fit pattern consistent with an edge being there
+      float2 maxEncouraging = Functions::max(lineBalance, diagBalance.ar, diagBalance.rg, protrusionBalance);
+      // float2 maxDiscouraging = Functions::min(lines.gr, lines.ab, protrusions.ar, protrusions.gb);
+      float maxLocalDelta = Functions::max(Functions::max(circumDeltas), Functions::max(horzDeltas), Functions::max(vertDeltas));
+      maxLocalDelta = max(saturate(maxLocalDelta * 3f), 0.15); // prevent ridiculous increase in very low contrast areas
+
+      // Subtract discouraging shapes from encouraging shapes to get the "winner"
+      // Then divide by maxLocalDelta to compensate for local contrast differences
+      float2 balance = saturate(maxEncouraging) / maxLocalDelta;
+      float2 edges = step(PSMAA_EDGE_DETECTION_SHAPE_BASED_FACTORS.xx / discourageStrength, balance); // Temporarily return only the remaining shape deltas, for testing purposes
+      // edgesOutput = edges;
+
+      if (edges.r == -edges.g)
+        discard;
 
       // Get extremes for SMAA LCA
       float3 WW = PSMAASamplePoint(colorGammaTex, offset[1].xy).rgb;

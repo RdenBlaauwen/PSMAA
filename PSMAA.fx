@@ -135,6 +135,10 @@ ui_label = "Show Old EdgeDetection";
 ui_tooltip = "Use the old EdgeDetection method.";
 > = false;
 
+uniform bool _UseChangeControl <
+ui_label = "_UseChangeControl";
+> = false;
+
 #ifndef SHOW_DEBUG
 #define SHOW_DEBUG 0
 #endif
@@ -374,7 +378,9 @@ void PSMAAEdgeDetectionPSWrapper(
 {
 	if(_ShowOldEdgeDetection){
 		PSMAA::Pass::EdgeDetectionPS(texcoord, offset, deltaSampler, lumaSampler, edges);
-	} else {
+	} else if(_UseChangeControl){
+		PSMAA::Pass::ShapeEdgeDetectionPSOld(texcoord, offset, filteredCopySampler, edges);
+	}else {
 		PSMAA::Pass::ShapeEdgeDetectionPS(texcoord, offset, filteredCopySampler, edges);
 	}
 	// PSMAA::Pass::HybridDetection(texcoord, offset, colorGammaSampler, _EdgeDetectionThreshold, _SMAALCAFactor, edges);
