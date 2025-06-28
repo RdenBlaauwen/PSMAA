@@ -521,19 +521,19 @@ namespace PSMAA
       //    W | C | E
       // a ---+---+---
       //   SW | S | SE
-      float4 lines = min(circumDeltas.rgba, maxCornerDeltas.rrga, maxCornerDeltas.bgab);
+      float4 lines = Functions::min(circumDeltas.rgba, maxCornerDeltas.rrga, maxCornerDeltas.bgab);
       float2 lineBalance = lines.rg - max(lines.gr, lines.ab) * discourageStrength;
       // lineBalance /= 3f;
-      // float4 straightLines = min(circumDeltas.rgba, float4(horzDeltas.r, vertDeltas.g, horzDeltas.g, vertDeltas.b), float4(horzDeltas.b, vertDeltas.a, horzDeltas.a, vertDeltas.r));
+      // float4 straightLines = Functions::min(circumDeltas.rgba, float4(horzDeltas.r, vertDeltas.g, horzDeltas.g, vertDeltas.b), float4(horzDeltas.b, vertDeltas.a, horzDeltas.a, vertDeltas.r));
 
       //   _         _|       _    |_ 
       // r: |_ , g: |  , b: _| , a:  |
-      float4 repairs = min(float4(vertDeltas.g, horzDeltas.g, vertDeltas.r, horzDeltas.r), circumDeltas.argb, circumDeltas.rgrg);
+      float4 repairs = Functions::min(float4(vertDeltas.g, horzDeltas.g, vertDeltas.r, horzDeltas.r), circumDeltas.argb, circumDeltas.rgrg);
       float4 repairBalance = repairs.rgba - repairs.barg * discourageStrength * 2f;
 
       // r: facing top-left, g: facing top-right, b: facing bottom-right, a: facing bottom-left
-      float4 diagonals = min(circumDeltas.rgba, circumDeltas.gbar, maxCornerDeltas.brbr, maxCornerDeltas.gaga);
-      // float4 diagonals = min(circumDeltas.rgba, circumDeltas.gbar * horzDeltas.grba * vertDeltas.rbag, 1f/4f); // TODO: try expanding into all options
+      float4 diagonals = Functions::min(circumDeltas.rgba, circumDeltas.gbar, maxCornerDeltas.brbr, maxCornerDeltas.gaga);
+      // float4 diagonals = Functions::min(circumDeltas.rgba, circumDeltas.gbar * horzDeltas.grba * vertDeltas.rbag, 1f/4f); // TODO: try expanding into all options
       float4 diagBalance = diagonals.rgba - max(diagonals.argb, diagonals.gbar) * discourageStrength * .8;
       // diagBalance /= 4f;
 
@@ -541,7 +541,7 @@ namespace PSMAA
       // g: protruding from bottom side to top delta
       // b: protruding from left side to right delta
       // a: protruding from top side to bottom delta
-      float4 protrusions = min(circumDeltas.argb, circumDeltas.rgba, circumDeltas.gbar, maxCornerDeltas.gabr, maxCornerDeltas.abrg);
+      float4 protrusions = Functions::min(circumDeltas.argb, circumDeltas.rgba, circumDeltas.gbar, maxCornerDeltas.gabr, maxCornerDeltas.abrg);
       float2 protrusionBalance = protrusions.rg - max(protrusions.ar, protrusions.gb) * discourageStrength;
       // protrusionBalance /= 5f;
 
