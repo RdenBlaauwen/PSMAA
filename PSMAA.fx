@@ -104,6 +104,11 @@ uniform bool _ShowOldPreProcessing <
 	ui_tooltip = "Use the old pre-processing method.";
 > = false;
 
+uniform bool _SmoothingEnabled <
+	ui_category = "Bean Smoothing";
+	ui_label = "Enable Bean Smoothing";
+> = true;
+
 #ifndef SHOW_DEBUG
 	#define SHOW_DEBUG 0
 #endif
@@ -155,9 +160,6 @@ uniform int _Debug <
 #define PSMAA_EDGE_DETECTION_FACTORS_HIGH_LUMA float4(_EdgeDetectionThreshold.y, _CMAALCAFactor.y, _SMAALCAFactor.y, _CMAALCAforSMAALCAFactor.y)
 #define PSMAA_EDGE_DETECTION_FACTORS_LOW_LUMA float4(_EdgeDetectionThreshold.x, _CMAALCAFactor.x, _SMAALCAFactor.x, _CMAALCAforSMAALCAFactor.x)
 
-
-
-// Sources files
 #include ".\PSMAA.fxh"
 
 #ifdef SMAA_PRESET_CUSTOM
@@ -180,6 +182,19 @@ uniform int _Debug <
 #define SMAA_BRANCH [branch]
 
 #include ".\SMAA.fxh"
+
+#define SMOOTHING_STRENGTH_MOD 1f
+#define EDGE_THRESHOLD_MOD 0.35
+#define THRESHOLD 0.05
+#define SMOOTHING_MAX_ITERATIONS 15
+#define SMOOTHING_LUMA_WEIGHTS float3(0.299, 0.587, 0.114)
+#define SMOOTHING_BUFFER_RCP_HEIGHT BUFFER_RCP_HEIGHT
+#define SMOOTHING_BUFFER_RCP_WIDTH BUFFER_RCP_WIDTH
+#define SMOOTHING_DEBUG false
+#define SMOOTHING_ENABLED true
+#define SmoothingTexture2D(tex) PSMAATexture2D(tex)
+
+#include ".\BeanSmoothing.fxh"
 
 
 texture colorInputTex : COLOR;
@@ -412,6 +427,19 @@ void PSMAABlendingPSWrapper(
 	#endif
 }
 
+void SmoothingPSWrapper(
+	float4 position : SV_Position,
+	float2 texcoord : TEXCOORD0,
+	float4 offset : TEXCOORD1,
+	out float3 color : SV_Target
+)
+{
+	if (!_SmoothingEnabled)
+    discard;
+
+	BeanSmoothing::SmoothingPS(texcoord, offset, edgesSampler, weightSampler, colorGammaSampler, color);
+}
+
 technique PSMAA
 {
 	pass PreProcessing
@@ -470,4 +498,9 @@ technique PSMAA
     PixelShader = PSMAABlendingPSWrapper;
 		SRGBWriteEnable = true;
   }
+	pass Smoothing
+	{
+		VertexShader = SMAANeighborhoodBlendingVSWrapper;
+		PixelShader = SmoothingPSWrapper;
+	}
 }

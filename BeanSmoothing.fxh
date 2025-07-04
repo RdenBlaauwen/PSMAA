@@ -38,7 +38,6 @@
 // #define SMOOTHING_BUFFER_RCP_HEIGHT
 // #define SMOOTHING_BUFFER_RCP_WIDTH
 // #define SMOOTHING_DEBUG
-// #define SMOOTHING_ENABLED
 
 // #define SmoothingTexture2D(tex)
 
@@ -51,7 +50,6 @@
 // #define SMOOTHING_BUFFER_RCP_HEIGHT BUFFER_RCP_HEIGHT
 // #define SMOOTHING_BUFFER_RCP_WIDTH BUFFER_RCP_WIDTH
 // #define SMOOTHING_DEBUG false
-// #define SMOOTHING_ENABLED true
 
 // #define SmoothingTexture2D(tex) sampler tex
 
@@ -62,18 +60,18 @@ namespace BeanSmoothing
     if (useluma)
       return dot(neighbor, weights);
     else
-      return dot(abs(middle - neighbor), LUMA_WEIGHTS);
+      return dot(abs(middle - neighbor), SMOOTHING_LUMA_WEIGHTS);
   }
 
   float dotsat(float3 rgb, float L)
   {
-    return ((max(rgb) - min(rgb)) / (1.0 - (2.0 * L - 1.0) + trunc(L)));
+    return ((Functions::max(rgb) - Functions::min(rgb)) / (1.0 - (2.0 * L - 1.0) + trunc(L)));
   }
 
   float dotsat(float3 rgb)
   {
-    float xl = dot(rgb, LUMA_WEIGHTS);
-    return ((max(rgb) - min(rgb)) / (1.0 - (2.0 * xl - 1.0) + trunc(xl)));
+    float xl = dot(rgb, SMOOTHING_LUMA_WEIGHTS);
+    return ((Functions::max(rgb) - Functions::min(rgb)) / (1.0 - (2.0 * xl - 1.0) + trunc(xl)));
   }
 
   /**
@@ -86,7 +84,7 @@ namespace BeanSmoothing
    * SmoothingTexture2D(colorTex): A texture2D sampler that contains the color data to be smoothed.
    *                               Must be a gamma sampler, as this shader works only in gamma space.
    */
-  float3 smooth(float4 vpos, float2 texcoord, float4 offset, SmoothingTexture2D(colorTex), float threshold) : SV_Target
+  float3 smooth(float2 texcoord, float4 offset, SmoothingTexture2D(colorTex), SmoothingTexture2D(blendSampler), float threshold) : SV_Target
   {
     const float3 debugColorNoHits = float3(0.0, 0.0, 0.0);
     const float3 debugColorSmallHit = float3(0.0, 0.0, 1.0);
@@ -96,18 +94,18 @@ namespace BeanSmoothing
     float3 original = mid;
 
     float lumaM = dot(mid, SMOOTHING_LUMA_WEIGHTS);
-    float chromaM = Lib::dotsat(mid, lumaM);
+    float chromaM = dotsat(mid, lumaM);
     bool useluma = lumaM > chromaM;
     if (!useluma)
       lumaM = 0.0;
 
-    float lumaS = Lib::dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(0, 1)).rgb, useluma, SMOOTHING_LUMA_WEIGHTS);
-    float lumaE = Lib::dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(1, 0)).rgb, useluma, SMOOTHING_LUMA_WEIGHTS);
-    float lumaN = Lib::dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(0, -1)).rgb, useluma, SMOOTHING_LUMA_WEIGHTS);
-    float lumaW = Lib::dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(-1, 0)).rgb, useluma, SMOOTHING_LUMA_WEIGHTS);
+    float lumaS = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(0, 1)).rgb, useluma, SMOOTHING_LUMA_WEIGHTS);
+    float lumaE = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(1, 0)).rgb, useluma, SMOOTHING_LUMA_WEIGHTS);
+    float lumaN = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(0, -1)).rgb, useluma, SMOOTHING_LUMA_WEIGHTS);
+    float lumaW = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(-1, 0)).rgb, useluma, SMOOTHING_LUMA_WEIGHTS);
 
-    float rangeMax = Lib::max(lumaS, lumaE, lumaN, lumaW, lumaM);
-    float rangeMin = Lib::min(lumaS, lumaE, lumaN, lumaW, lumaM);
+    float rangeMax = Functions::max(lumaS, lumaE, lumaN, lumaW, lumaM);
+    float rangeMin = Functions::min(lumaS, lumaE, lumaN, lumaW, lumaM);
 
     float range = rangeMax - rangeMin;
 
@@ -131,10 +129,10 @@ namespace BeanSmoothing
       return lerp(debugColorSmallHit, debugColorBigHit, strength);
     }
 
-    float lumaNW = Lib::dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(-1, -1)).rgb, useluma, SMOOTHING_LUMA_WEIGHTS);
-    float lumaSE = Lib::dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(1, 1)).rgb, useluma, SMOOTHING_LUMA_WEIGHTS);
-    float lumaNE = Lib::dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(1, -1)).rgb, useluma, SMOOTHING_LUMA_WEIGHTS);
-    float lumaSW = Lib::dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(-1, 1)).rgb, useluma, SMOOTHING_LUMA_WEIGHTS);
+    float lumaNW = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(-1, -1)).rgb, useluma, SMOOTHING_LUMA_WEIGHTS);
+    float lumaSE = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(1, 1)).rgb, useluma, SMOOTHING_LUMA_WEIGHTS);
+    float lumaNE = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(1, -1)).rgb, useluma, SMOOTHING_LUMA_WEIGHTS);
+    float lumaSW = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(-1, 1)).rgb, useluma, SMOOTHING_LUMA_WEIGHTS);
 
     // These vals serve as caches, so they can be used later without having to redo them
     // It's just an optimisation thing, though the difference it makes is so small it could just be statistical noise.
@@ -154,8 +152,8 @@ namespace BeanSmoothing
         SMAASampleLevelZero(blendSampler, texcoord).zx);
 
     bool smaahoriz = max(midWeights.x, midWeights.z) > max(midWeights.y, midWeights.w);
-    bool smaadata = Lib::any(midWeights);
-    float maxWeight = Lib::max(midWeights.r, midWeights.g, midWeights.b, midWeights.a);
+    bool smaadata = any(midWeights);
+    float maxWeight = Functions::max(midWeights.r, midWeights.g, midWeights.b, midWeights.a);
     float maxblending = 0.5 + (0.5 * maxWeight);
 
     if ((horzSpan && smaahoriz && smaadata) || (!horzSpan && !smaahoriz && smaadata))
@@ -190,8 +188,8 @@ namespace BeanSmoothing
     float2 posN = posB - offNP;
     float2 posP = posB + offNP;
 
-    float lumaEndN = Lib::dotweight(mid, SMAASampleLevelZero(colorTex, posN).rgb, useluma, SMOOTHING_LUMA_WEIGHTS);
-    float lumaEndP = Lib::dotweight(mid, SMAASampleLevelZero(colorTex, posP).rgb, useluma, SMOOTHING_LUMA_WEIGHTS);
+    float lumaEndN = dotweight(mid, SMAASampleLevelZero(colorTex, posN).rgb, useluma, SMOOTHING_LUMA_WEIGHTS);
+    float lumaEndP = dotweight(mid, SMAASampleLevelZero(colorTex, posP).rgb, useluma, SMOOTHING_LUMA_WEIGHTS);
 
     float gradientScaled = max(abs(gradientN), abs(gradientS)) * 0.25;
     bool lumaMLTZero = mad(0.5, -lumaNN, lumaM) < 0.0;
@@ -219,14 +217,14 @@ namespace BeanSmoothing
         if (!doneN)
         {
           posN -= offNP;
-          lumaEndN = Lib::dotweight(mid, SMAASampleLevelZero(colorTex, posN).rgb, useluma, SMOOTHING_LUMA_WEIGHTS);
+          lumaEndN = dotweight(mid, SMAASampleLevelZero(colorTex, posN).rgb, useluma, SMOOTHING_LUMA_WEIGHTS);
           lumaEndN -= lumaNN;
           doneN = abs(lumaEndN) >= gradientScaled;
         }
         if (!doneP)
         {
           posP += offNP;
-          lumaEndP = Lib::dotweight(mid, SMAASampleLevelZero(colorTex, posP).rgb, useluma, SMOOTHING_LUMA_WEIGHTS);
+          lumaEndP = dotweight(mid, SMAASampleLevelZero(colorTex, posP).rgb, useluma, SMOOTHING_LUMA_WEIGHTS);
           lumaEndP -= lumaNN;
           doneP = abs(lumaEndP) >= gradientScaled;
         }
@@ -259,11 +257,15 @@ namespace BeanSmoothing
   /**
    * Wrapper around BeanSmoothing
    */
-  float3 SmoothingPS(float4 vpos : SV_Position, float2 texcoord : TEXCOORD0, float4 offset : TEXCOORD1, SmoothingTexture2D(edgesTex), SmoothingTexture2D(colorTex)) : SV_Target
+  void SmoothingPS(
+    float2 texcoord,
+    float4 offset,
+    SmoothingTexture2D(edgesTex),
+    SmoothingTexture2D(blendSampler),
+    SmoothingTexture2D(colorTex),
+    out float3 color
+  )
   {
-    if (!SMOOTHING_ENABLED)
-      discard;
-
     float threshold = THRESHOLD;
 
     // Predicate threshold based on edge data. AKA If an edge is present, lower the threshold.
@@ -290,6 +292,6 @@ namespace BeanSmoothing
     bool edgePresent = any(edgeData); // TODO: check if 'any' works as expected
     threshold *= edgePresent ? EDGE_THRESHOLD_MOD : 1.0;
 
-    return smooth(vpos, texcoord, offset, colorTex, threshold);
+    color = smooth(texcoord, offset, colorTex, blendSampler, threshold);
   }
 }
