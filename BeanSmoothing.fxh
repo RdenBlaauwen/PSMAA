@@ -88,7 +88,6 @@ namespace BeanSmoothing
     const float3 debugColorBigHit = float3(1.0, 0.0, 0.0);
 
     float3 mid = SMAASampleLevelZero(colorTex, texcoord).rgb;
-    float3 original = mid;
 
     float lumaM = Color::luma(mid);
     float chromaM = saturation(mid);
@@ -116,7 +115,7 @@ namespace BeanSmoothing
       {
         return debugColorNoHits;
       }
-      return original;
+      return mid;
     }
     // If debug, early return. Return hit colors to signify that smoothing takes place here
     if (SMOOTHING_DEBUG)
@@ -170,22 +169,22 @@ namespace BeanSmoothing
     float2 lumaNP = lumas.ga;
     SMAAMovc(bool(!horzSpan).xx, lumaNP, lumas.rb);
 
-    float gradientN = lumaNP.x - lumaM;
-    float gradientS = lumaNP.y - lumaM;
-    float lumaNN = lumaNP.x + lumaM;
-
-    if (abs(gradientN) >= abs(gradientS))
+    // x = north, y = south
+    float2 gradients = abs(lumaNP - lumaM);
+    float lumaNN;
+    if (gradients.x >= gradients.y) {
       lengthSign = -lengthSign;
-    else
+      lumaNN = lumaNP.x + lumaM;
+    } else
       lumaNN = lumaNP.y + lumaM;
 
     float2 posB = texcoord;
 
-    float texelsize = 0.5;
+    static const float texelsize = .5; // TODO: constant?
 
     float2 offNP = float2(0.0, SMOOTHING_BUFFER_RCP_HEIGHT * texelsize);
     SMAAMovc(bool(horzSpan).xx, offNP, float2(SMOOTHING_BUFFER_RCP_WIDTH * texelsize, 0.0));
-    SMAAMovc(bool2(!horzSpan, horzSpan), posB, float2(posB.x + lengthSign / 2.0, posB.y + lengthSign / 2.0));
+    SMAAMovc(bool2(!horzSpan, horzSpan), posB, mad(.5, lengthSign, posB));
 
     float2 posN = posB - offNP;
     float2 posP = posB + offNP;
@@ -193,7 +192,7 @@ namespace BeanSmoothing
     float lumaEndN = dotweight(mid, SMAASampleLevelZero(colorTex, posN).rgb, useluma);
     float lumaEndP = dotweight(mid, SMAASampleLevelZero(colorTex, posP).rgb, useluma);
 
-    float gradientScaled = max(abs(gradientN), abs(gradientS)) * 0.25;
+    float gradientScaled = max(gradients.x, gradients.y) * 0.25;
     bool lumaMLTZero = mad(0.5, -lumaNN, lumaM) < 0.0;
 
     lumaNN *= 0.5;
@@ -237,17 +236,16 @@ namespace BeanSmoothing
     float2 dstNP = float2(texcoord.y - posN.y, posP.y - texcoord.y);
     SMAAMovc(bool(horzSpan).xx, dstNP, float2(texcoord.x - posN.x, posP.x - texcoord.x));
 
-    // TODO: consider turning this into a preprocessor value
-    maxblending = maxblending * SMOOTHING_STRENGTH_MOD;
-
     bool goodSpan = (dstNP.x < dstNP.y) ? ((lumaEndN < 0.0) != lumaMLTZero) : ((lumaEndP < 0.0) != lumaMLTZero);
-    float pixelOffset = mad(-rcp(dstNP.y + dstNP.x), min(dstNP.x, dstNP.y), 0.5);
-    float subpixOut = pixelOffset * maxblending;
+    float pixelOffset = mad(-rcp(dstNP.y + dstNP.x), min(dstNP.x, dstNP.y), 0.5) * maxblending;
 
+    float subpixOut;
     [branch] if (!goodSpan)
     {
-      subpixOut = mad(mad(2.0, vertLumas.y + horzLumas.y, vertLumas.x + vertLumas.z), 0.083333, -lumaM) * rcp(range);                  // ABC
-      subpixOut = pow(saturate(mad(-2.0, subpixOut, 3.0) * (subpixOut * subpixOut)), 2.0) * maxblending * pixelOffset; // DEFGH
+      subpixOut = mad(mad(2.0, vertLumas.y + horzLumas.y, vertLumas.x + vertLumas.z), 0.083333, -lumaM) / range;  // ABC
+      subpixOut = pow(saturate(mad(-2.0, subpixOut, 3.0) * (subpixOut * subpixOut)), 2.0) * pixelOffset; // DEFGH
+    } else {
+      subpixOut = pixelOffset;
     }
 
     float2 posM = texcoord;
@@ -331,7 +329,6 @@ namespace BeanSmoothingOld
     const float3 debugColorBigHit = float3(1.0, 0.0, 0.0);
 
     float3 mid = SMAASampleLevelZero(colorTex, texcoord).rgb;
-    float3 original = mid;
 
     float lumaM = Color::luma(mid);
     float chromaM = saturation(mid);
@@ -359,7 +356,7 @@ namespace BeanSmoothingOld
       {
         return debugColorNoHits;
       }
-      return original;
+      return mid;
     }
     // If debug, early return. Return hit colors to signify that smoothing takes place here
     if (SMOOTHING_DEBUG)
@@ -413,22 +410,22 @@ namespace BeanSmoothingOld
     float2 lumaNP = lumas.ga;
     SMAAMovc(bool(!horzSpan).xx, lumaNP, lumas.rb);
 
-    float gradientN = lumaNP.x - lumaM;
-    float gradientS = lumaNP.y - lumaM;
-    float lumaNN = lumaNP.x + lumaM;
-
-    if (abs(gradientN) >= abs(gradientS))
+    // x = north, y = south
+    float2 gradients = abs(lumaNP - lumaM);
+    float lumaNN;
+    if (gradients.x >= gradients.y) {
       lengthSign = -lengthSign;
-    else
+      lumaNN = lumaNP.x + lumaM;
+    } else
       lumaNN = lumaNP.y + lumaM;
 
     float2 posB = texcoord;
 
-    float texelsize = 0.5;
+    static const float texelsize = .5; // TODO: constant?
 
     float2 offNP = float2(0.0, SMOOTHING_BUFFER_RCP_HEIGHT * texelsize);
     SMAAMovc(bool(horzSpan).xx, offNP, float2(SMOOTHING_BUFFER_RCP_WIDTH * texelsize, 0.0));
-    SMAAMovc(bool2(!horzSpan, horzSpan), posB, float2(posB.x + lengthSign / 2.0, posB.y + lengthSign / 2.0));
+    SMAAMovc(bool2(!horzSpan, horzSpan), posB, mad(.5, lengthSign, posB));
 
     float2 posN = posB - offNP;
     float2 posP = posB + offNP;
@@ -436,7 +433,7 @@ namespace BeanSmoothingOld
     float lumaEndN = dotweight(mid, SMAASampleLevelZero(colorTex, posN).rgb, useluma);
     float lumaEndP = dotweight(mid, SMAASampleLevelZero(colorTex, posP).rgb, useluma);
 
-    float gradientScaled = max(abs(gradientN), abs(gradientS)) * 0.25;
+    float gradientScaled = max(gradients.x, gradients.y) * 0.25;
     bool lumaMLTZero = mad(0.5, -lumaNN, lumaM) < 0.0;
 
     lumaNN *= 0.5;
@@ -480,17 +477,16 @@ namespace BeanSmoothingOld
     float2 dstNP = float2(texcoord.y - posN.y, posP.y - texcoord.y);
     SMAAMovc(bool(horzSpan).xx, dstNP, float2(texcoord.x - posN.x, posP.x - texcoord.x));
 
-    // TODO: consider turning this into a preprocessor value
-    maxblending = maxblending * SMOOTHING_STRENGTH_MOD;
-
     bool goodSpan = (dstNP.x < dstNP.y) ? ((lumaEndN < 0.0) != lumaMLTZero) : ((lumaEndP < 0.0) != lumaMLTZero);
-    float pixelOffset = mad(-rcp(dstNP.y + dstNP.x), min(dstNP.x, dstNP.y), 0.5);
-    float subpixOut = pixelOffset * maxblending;
+    float pixelOffset = mad(-rcp(dstNP.y + dstNP.x), min(dstNP.x, dstNP.y), 0.5) * maxblending;
 
+    float subpixOut;
     [branch] if (!goodSpan)
     {
-      subpixOut = mad(mad(2.0, vertLumas.y + horzLumas.y, vertLumas.x + vertLumas.z), 0.083333, -lumaM) * rcp(range);                  // ABC
-      subpixOut = pow(saturate(mad(-2.0, subpixOut, 3.0) * (subpixOut * subpixOut)), 2.0) * maxblending * pixelOffset; // DEFGH
+      subpixOut = mad(mad(2.0, vertLumas.y + horzLumas.y, vertLumas.x + vertLumas.z), 0.083333, -lumaM) / range;  // ABC
+      subpixOut = pow(saturate(mad(-2.0, subpixOut, 3.0) * (subpixOut * subpixOut)), 2.0) * pixelOffset; // DEFGH
+    } else {
+      subpixOut = pixelOffset;
     }
 
     float2 posM = texcoord;
