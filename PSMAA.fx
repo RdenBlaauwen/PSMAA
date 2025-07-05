@@ -195,7 +195,7 @@ sampler colorLinearSampler
 	SRGBTexture = true;
 };
 
-texture filteredCopyTex < pooled = true; >
+texture filteredCopyTex
 {
 	Width = BUFFER_WIDTH;
 	Height = BUFFER_HEIGHT;
@@ -206,7 +206,7 @@ sampler filteredCopySampler
 	Texture = filteredCopyTex;
 };
 
-texture lumaTex < pooled = true; >
+texture lumaTex
 {
 	Width = BUFFER_WIDTH;
 	Height = BUFFER_HEIGHT;
@@ -217,7 +217,7 @@ sampler lumaSampler
 	Texture = lumaTex;
 };
 
-texture deltaTex < pooled = true; >
+texture deltaTex
 {
   Width = BUFFER_WIDTH;
   Height = BUFFER_HEIGHT;
@@ -228,7 +228,7 @@ sampler deltaSampler
   Texture = deltaTex;
 };
 
-texture edgesTex < pooled = true; >
+texture edgesTex
 {
 	Width = BUFFER_WIDTH;
 	Height = BUFFER_HEIGHT;
@@ -239,7 +239,7 @@ sampler edgesSampler
 	Texture = edgesTex;
 };
 
-texture weightTex < pooled = true; >
+texture weightTex
 {
 	Width = BUFFER_WIDTH;
 	Height = BUFFER_HEIGHT;
@@ -437,9 +437,9 @@ technique PSMAA
     // Especially the stencil stuff
     // https://github.com/crosire/reshade-shaders/blob/slim/REFERENCE.md#techniques
     ClearRenderTargets = true;
-		StencilEnable = true;
-		StencilPass = REPLACE;
-		StencilRef = 1;
+		// StencilEnable = true;
+		// StencilPass = REPLACE;
+		// StencilRef = 1;
   }
   pass EdgeDetection
   {
