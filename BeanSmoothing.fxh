@@ -96,13 +96,14 @@ namespace BeanSmoothing
     if (!useluma)
       lumaM = 0.0;
 
-    float lumaS = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(0, 1)).rgb, useluma);
-    float lumaE = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(1, 0)).rgb, useluma);
-    float lumaN = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(0, -1)).rgb, useluma);
-    float lumaW = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(-1, 0)).rgb, useluma);
+    float4 lumas; // r = west, g = north, b = east, a = south
+    lumas.r = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(-1, 0)).rgb, useluma);
+    lumas.g = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(0, -1)).rgb, useluma);
+    lumas.b = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(1, 0)).rgb, useluma);
+    lumas.a = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(0, 1)).rgb, useluma);
 
-    float rangeMax = Functions::max(lumaS, lumaE, lumaN, lumaW, lumaM);
-    float rangeMin = Functions::min(lumaS, lumaE, lumaN, lumaW, lumaM);
+    float rangeMax = Functions::max(lumas.a, lumas.b, lumas.g, lumas.r, lumaM);
+    float rangeMin = Functions::min(lumas.a, lumas.b, lumas.g, lumas.r, lumaM);
 
     float range = rangeMax - rangeMin;
 
@@ -110,7 +111,6 @@ namespace BeanSmoothing
     bool earlyExit = (range < threshold);
     if (earlyExit)
     {
-
       // If debug, return no hits color to signify no smoothing took place.
       if (SMOOTHING_DEBUG)
       {
@@ -126,21 +126,26 @@ namespace BeanSmoothing
       return lerp(debugColorSmallHit, debugColorBigHit, strength);
     }
 
-    float lumaNW = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(-1, -1)).rgb, useluma);
-    float lumaSE = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(1, 1)).rgb, useluma);
-    float lumaNE = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(1, -1)).rgb, useluma);
-    float lumaSW = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(-1, 1)).rgb, useluma);
+    float4 diagLumas; // r = northwest, g = northeast, b = southeast, a = southwest
+    diagLumas.r = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(-1, -1)).rgb, useluma);
+    diagLumas.g = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(1, -1)).rgb, useluma);
+    diagLumas.b = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(1, 1)).rgb, useluma);
+    diagLumas.a = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(-1, 1)).rgb, useluma);
 
     // These vals serve as caches, so they can be used later without having to redo them
     // It's just an optimisation thing, though the difference it makes is so small it could just be statistical noise.
-    float lumaNWSW = lumaNW + lumaSW;
-    float lumaNS = lumaN + lumaS;
-    float lumaNESE = lumaNE + lumaSE;
-    float lumaSWSE = lumaSW + lumaSE;
-    float lumaWE = lumaW + lumaE;
-    float lumaNWNE = lumaNW + lumaNE;
+    float3 vertLumas; // x = NWSW, y = NS, z = NESE
+    vertLumas.xz = diagLumas.rg + diagLumas.ab;
+    vertLumas.y = lumas.g + lumas.a;
 
-    bool horzSpan = (abs(mad(-2.0, lumaW, lumaNWSW)) + mad(2.0, abs(mad(-2.0, lumaM, lumaNS)), abs(mad(-2.0, lumaE, lumaNESE)))) >= (abs(mad(-2.0, lumaS, lumaSWSE)) + mad(2.0, abs(mad(-2.0, lumaM, lumaWE)), abs(mad(-2.0, lumaN, lumaNWNE))));
+    float3 horzLumas; // x = NWNE, y = WE, z = SWSE
+    horzLumas.xz = diagLumas.ra + diagLumas.gb;
+    horzLumas.y = lumas.r + lumas.b;
+
+    float3 vertWeights = abs(mad(-2f, float3(lumas.r, lumaM, lumas.b), vertLumas.xyz));
+    float3 horzWeights = abs(mad(-2f, float3(lumas.a, lumaM, lumas.g), horzLumas.zyx));
+
+    bool horzSpan = (vertWeights.x + mad(2.0, vertWeights.y, vertWeights.z)) >= (horzWeights.x + mad(2.0, horzWeights.y, horzWeights.z));
     float lengthSign = horzSpan ? SMOOTHING_BUFFER_RCP_HEIGHT : SMOOTHING_BUFFER_RCP_WIDTH;
 
     float4 midWeights = float4(
@@ -162,8 +167,8 @@ namespace BeanSmoothing
       maxblending = min(maxblending * 1.5, 1.0);
     };
 
-    float2 lumaNP = float2(lumaN, lumaS);
-    SMAAMovc(bool(!horzSpan).xx, lumaNP, float2(lumaW, lumaE));
+    float2 lumaNP = lumas.ga;
+    SMAAMovc(bool(!horzSpan).xx, lumaNP, lumas.rb);
 
     float gradientN = lumaNP.x - lumaM;
     float gradientS = lumaNP.y - lumaM;
@@ -241,7 +246,7 @@ namespace BeanSmoothing
 
     [branch] if (!goodSpan)
     {
-      subpixOut = mad(mad(2.0, lumaNS + lumaWE, lumaNWSW + lumaNESE), 0.083333, -lumaM) * rcp(range);                  // ABC
+      subpixOut = mad(mad(2.0, vertLumas.y + horzLumas.y, vertLumas.x + vertLumas.z), 0.083333, -lumaM) * rcp(range);                  // ABC
       subpixOut = pow(saturate(mad(-2.0, subpixOut, 3.0) * (subpixOut * subpixOut)), 2.0) * maxblending * pixelOffset; // DEFGH
     }
 
@@ -293,7 +298,7 @@ namespace BeanSmoothing
   }
 }
 
-namespace BeanSmoothing
+namespace BeanSmoothingOld
 {
   float dotweight(float3 middle, float3 neighbor, bool useluma)
   {
@@ -334,13 +339,14 @@ namespace BeanSmoothing
     if (!useluma)
       lumaM = 0.0;
 
-    float lumaS = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(0, 1)).rgb, useluma);
-    float lumaE = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(1, 0)).rgb, useluma);
-    float lumaN = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(0, -1)).rgb, useluma);
-    float lumaW = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(-1, 0)).rgb, useluma);
+    float4 lumas; // r = west, g = north, b = east, a = south
+    lumas.r = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(-1, 0)).rgb, useluma);
+    lumas.g = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(0, -1)).rgb, useluma);
+    lumas.b = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(1, 0)).rgb, useluma);
+    lumas.a = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(0, 1)).rgb, useluma);
 
-    float rangeMax = Functions::max(lumaS, lumaE, lumaN, lumaW, lumaM);
-    float rangeMin = Functions::min(lumaS, lumaE, lumaN, lumaW, lumaM);
+    float rangeMax = Functions::max(lumas.a, lumas.b, lumas.g, lumas.r, lumaM);
+    float rangeMin = Functions::min(lumas.a, lumas.b, lumas.g, lumas.r, lumaM);
 
     float range = rangeMax - rangeMin;
 
@@ -348,7 +354,6 @@ namespace BeanSmoothing
     bool earlyExit = (range < threshold);
     if (earlyExit)
     {
-
       // If debug, return no hits color to signify no smoothing took place.
       if (SMOOTHING_DEBUG)
       {
@@ -364,21 +369,26 @@ namespace BeanSmoothing
       return lerp(debugColorSmallHit, debugColorBigHit, strength);
     }
 
-    float lumaNW = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(-1, -1)).rgb, useluma);
-    float lumaSE = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(1, 1)).rgb, useluma);
-    float lumaNE = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(1, -1)).rgb, useluma);
-    float lumaSW = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(-1, 1)).rgb, useluma);
+    float4 diagLumas; // r = northwest, g = northeast, b = southeast, a = southwest
+    diagLumas.r = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(-1, -1)).rgb, useluma);
+    diagLumas.g = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(1, -1)).rgb, useluma);
+    diagLumas.b = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(1, 1)).rgb, useluma);
+    diagLumas.a = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(-1, 1)).rgb, useluma);
 
     // These vals serve as caches, so they can be used later without having to redo them
     // It's just an optimisation thing, though the difference it makes is so small it could just be statistical noise.
-    float lumaNWSW = lumaNW + lumaSW;
-    float lumaNS = lumaN + lumaS;
-    float lumaNESE = lumaNE + lumaSE;
-    float lumaSWSE = lumaSW + lumaSE;
-    float lumaWE = lumaW + lumaE;
-    float lumaNWNE = lumaNW + lumaNE;
+    float3 vertLumas; // x = NWSW, y = NS, z = NESE
+    vertLumas.xz = diagLumas.rg + diagLumas.ab;
+    vertLumas.y = lumas.g + lumas.a;
 
-    bool horzSpan = (abs(mad(-2.0, lumaW, lumaNWSW)) + mad(2.0, abs(mad(-2.0, lumaM, lumaNS)), abs(mad(-2.0, lumaE, lumaNESE)))) >= (abs(mad(-2.0, lumaS, lumaSWSE)) + mad(2.0, abs(mad(-2.0, lumaM, lumaWE)), abs(mad(-2.0, lumaN, lumaNWNE))));
+    float3 horzLumas; // x = NWNE, y = WE, z = SWSE
+    horzLumas.xz = diagLumas.ra + diagLumas.gb;
+    horzLumas.y = lumas.r + lumas.b;
+
+    float3 vertWeights = abs(mad(-2f, float3(lumas.r, lumaM, lumas.b), vertLumas.xyz));
+    float3 horzWeights = abs(mad(-2f, float3(lumas.a, lumaM, lumas.g), horzLumas.zyx));
+
+    bool horzSpan = (vertWeights.x + mad(2.0, vertWeights.y, vertWeights.z)) >= (horzWeights.x + mad(2.0, horzWeights.y, horzWeights.z));
     float lengthSign = horzSpan ? SMOOTHING_BUFFER_RCP_HEIGHT : SMOOTHING_BUFFER_RCP_WIDTH;
 
     float4 midWeights = float4(
@@ -400,8 +410,8 @@ namespace BeanSmoothing
       maxblending = min(maxblending * 1.5, 1.0);
     };
 
-    float2 lumaNP = float2(lumaN, lumaS);
-    SMAAMovc(bool(!horzSpan).xx, lumaNP, float2(lumaW, lumaE));
+    float2 lumaNP = lumas.ga;
+    SMAAMovc(bool(!horzSpan).xx, lumaNP, lumas.rb);
 
     float gradientN = lumaNP.x - lumaM;
     float gradientS = lumaNP.y - lumaM;
@@ -479,7 +489,7 @@ namespace BeanSmoothing
 
     [branch] if (!goodSpan)
     {
-      subpixOut = mad(mad(2.0, lumaNS + lumaWE, lumaNWSW + lumaNESE), 0.083333, -lumaM) * rcp(range);                  // ABC
+      subpixOut = mad(mad(2.0, vertLumas.y + horzLumas.y, vertLumas.x + vertLumas.z), 0.083333, -lumaM) * rcp(range);                  // ABC
       subpixOut = pow(saturate(mad(-2.0, subpixOut, 3.0) * (subpixOut * subpixOut)), 2.0) * maxblending * pixelOffset; // DEFGH
     }
 
