@@ -109,6 +109,11 @@ uniform bool _SmoothingEnabled <
 	ui_label = "Enable Bean Smoothing";
 > = true;
 
+uniform bool _OldSmoothingEnabled <
+	ui_category = "Bean Smoothing";
+	ui_label = "use old Smoothing";
+> = false;
+
 #ifndef SHOW_DEBUG
 	#define SHOW_DEBUG 0
 #endif
@@ -186,7 +191,7 @@ uniform int _Debug <
 #define SMOOTHING_STRENGTH_MOD 1f
 #define EDGE_THRESHOLD_MOD 0.35
 #define THRESHOLD 0.05
-#define SMOOTHING_MAX_ITERATIONS 15
+#define SMOOTHING_MAX_ITERATIONS 20
 #define SMOOTHING_LUMA_WEIGHTS float3(0.299, 0.587, 0.114)
 #define SMOOTHING_BUFFER_RCP_HEIGHT BUFFER_RCP_HEIGHT
 #define SMOOTHING_BUFFER_RCP_WIDTH BUFFER_RCP_WIDTH
@@ -436,7 +441,10 @@ void SmoothingPSWrapper(
 {
 	if (!_SmoothingEnabled)
     discard;
-
+	if (_OldSmoothingEnabled){
+		BeanSmoothingOld::SmoothingPS(texcoord, offset, edgesSampler, weightSampler, colorGammaSampler, color);
+		return;	
+	}
 	BeanSmoothing::SmoothingPS(texcoord, offset, edgesSampler, weightSampler, colorGammaSampler, color);
 }
 
