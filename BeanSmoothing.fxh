@@ -39,6 +39,7 @@
 // #define SMOOTHING_BUFFER_RCP_HEIGHT
 // #define SMOOTHING_BUFFER_RCP_WIDTH
 // #define SMOOTHING_DEBUG
+// #define SMOOTHING_DELTA_WEIGHT_DEBUG
 
 // #define SmoothingTexture2D(tex)
 
@@ -52,6 +53,7 @@
 // #define SMOOTHING_BUFFER_RCP_HEIGHT BUFFER_RCP_HEIGHT
 // #define SMOOTHING_BUFFER_RCP_WIDTH BUFFER_RCP_WIDTH
 // #define SMOOTHING_DEBUG false
+// #define SMOOTHING_DELTA_WEIGHT_DEBUG false
 
 // #define SmoothingTexture2D(tex) sampler tex
 
@@ -81,7 +83,7 @@ namespace BeanSmoothing
    * SmoothingTexture2D(colorTex): A texture2D sampler that contains the color data to be smoothed.
    *                               Must be a gamma sampler, as this shader works only in gamma space.
    */
-  float3 smooth(float2 texcoord, float4 offset, SmoothingTexture2D(colorTex), SmoothingTexture2D(blendSampler), float threshold) : SV_Target
+  float3 smooth(float2 texcoord, float4 offset, SmoothingTexture2D(colorTex), SmoothingTexture2D(blendSampler), float threshold, uint maxIterations) : SV_Target
   {
     const float3 debugColorNoHits = float3(0.0, 0.0, 0.0);
     const float3 debugColorSmallHit = float3(0.0, 0.0, 1.0);
@@ -207,10 +209,7 @@ namespace BeanSmoothing
     if (!doneNP)
     {
       uint iterations = 0;
-      // scan distance
-      uint maxiterations = SMOOTHING_MAX_ITERATIONS;
-
-      [loop] while (iterations < maxiterations)
+      [loop] while (iterations < maxIterations)
       {
         doneNP = doneN && doneP;
         if (doneNP)
@@ -253,14 +252,13 @@ namespace BeanSmoothing
 
     return SMAASampleLevelZero(colorTex, posM).rgb;
   }
-
   /**
    * Wrapper around BeanSmoothing
    */
   void SmoothingPS(
     float2 texcoord,
     float4 offset,
-    SmoothingTexture2D(edgesTex),
+    SmoothingTexture2D(deltaTex),
     SmoothingTexture2D(blendSampler),
     SmoothingTexture2D(colorTex),
     out float3 color
@@ -268,31 +266,39 @@ namespace BeanSmoothing
   {
     float threshold = THRESHOLD;
 
-    // Predicate threshold based on edge data. AKA If an edge is present, lower the threshold.
-    float4 edgeData;
+    float4 deltas;
 #if __RENDERER__ >= 0xa000 // if DX10 or above
     // get edge data from the bottom (x), bottom-right (y), right (z),
     // and current pixels (w), in that order.
-    float4 leftEdges = tex2Dgather(edgesTex, texcoord, 0); // TODO: make macros
-    float4 topEdges = tex2Dgather(edgesTex, texcoord, 1);
-    edgeData = float4(
-        leftEdges.w,
-        topEdges.w,
-        leftEdges.z,
-        topEdges.x);
+    float4 leftDeltas = tex2Dgather(deltaTex, texcoord, 0); // TODO: make macros
+    float4 topDeltas = tex2Dgather(deltaTex, texcoord, 1);
+    deltas = float4(
+        leftDeltas.w,
+        topDeltas.w,
+        leftDeltas.z,
+        topDeltas.x);
 #else // if DX9
-    edgeData = float4(
-        SMAASampleLevelZero(edgesTex, texcoord).rg,
-        SMAASampleLevelZero(edgesTex, offset.xy).r,
-        SMAASampleLevelZero(edgesTex, offset.zw).g);
+    deltas = float4(
+        SMAASampleLevelZero(deltaTex, texcoord).rg,
+        SMAASampleLevelZero(deltaTex, offset.xy).r,
+        SMAASampleLevelZero(deltaTex, offset.zw).g);
 #endif
 
-    // If there is an edge, lower threshold by multiplying with EdgeThresholdModifier
-    // Else leave uchanged by multiplying by 1.0
-    bool edgePresent = any(edgeData); // TODO: check if 'any' works as expected
-    threshold *= edgePresent ? EDGE_THRESHOLD_MOD : 1.0;
+    float2 maxDeltaCorner = Functions::max(deltas.rb, deltas.ga);
+    // Use pythagorean theorem to calculate the "weight" of the contrast of the biggest corner
+    float deltaWeight = sqrt(Functions::sum(maxDeltaCorner * maxDeltaCorner));
+    float mod = smoothstep(.02, .25, deltaWeight);
 
-    color = smooth(texcoord, offset, colorTex, blendSampler, threshold);
+    if(mod == 0f) discard; // TODO: try `mod < 1e-5f` if this doesn't work as expected
+
+    if(SMOOTHING_DELTA_WEIGHT_DEBUG){
+      color = float(mod).xxx;
+      return;
+    }
+
+    uint maxIterations = (uint)(lerp(5f, 20f, mod) + .5);
+
+    color = smooth(texcoord, offset, colorTex, blendSampler, threshold, maxIterations);
   }
 }
 
@@ -495,7 +501,7 @@ namespace BeanSmoothingOld
     return SMAASampleLevelZero(colorTex, posM).rgb;
   }
 
-  /**
+    /**
    * Wrapper around BeanSmoothing
    */
   void SmoothingPS(

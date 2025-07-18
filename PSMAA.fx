@@ -114,6 +114,11 @@ uniform bool _OldSmoothingEnabled <
 	ui_label = "use old Smoothing";
 > = false;
 
+uniform bool _SmoothingDeltaWeightDebug <
+	ui_category = "Bean Smoothing";
+	ui_label = "_SmoothingDeltaWeightDebug";
+> = false;
+
 #ifndef SHOW_DEBUG
 	#define SHOW_DEBUG 0
 #endif
@@ -197,6 +202,7 @@ uniform int _Debug <
 #define SMOOTHING_BUFFER_RCP_HEIGHT BUFFER_RCP_HEIGHT
 #define SMOOTHING_BUFFER_RCP_WIDTH BUFFER_RCP_WIDTH
 #define SMOOTHING_DEBUG false
+#define SMOOTHING_DELTA_WEIGHT_DEBUG _SmoothingDeltaWeightDebug
 #define SMOOTHING_ENABLED true
 #define SmoothingTexture2D(tex) PSMAATexture2D(tex)
 
