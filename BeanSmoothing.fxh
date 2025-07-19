@@ -292,6 +292,7 @@ namespace BeanSmoothing
         SMAASampleLevelZero(deltaTex, offset.zw).g);
 #endif
 
+    // TODO: consider using max delta and max local luma to lower threshold
     float2 maxDeltaCorner = max(deltas.rb, deltas.ga);
     // Use pythagorean theorem to calculate the "weight" of the contrast of the biggest corner
     float deltaWeight = sqrt(Functions::sum(maxDeltaCorner * maxDeltaCorner));
