@@ -34,12 +34,16 @@
 // #define EDGE_THRESHOLD_MOD
 // #define THRESHOLD
 // #define SMOOTHING_SATURATION_DIVISOR_FLOOR // This is used to prevent division by zero in the saturation function
+// #define SMOOTHING_MIN_ITERATIONS
 // #define SMOOTHING_MAX_ITERATIONS
 // #define SMOOTHING_LUMA_WEIGHTS
 // #define SMOOTHING_BUFFER_RCP_HEIGHT
 // #define SMOOTHING_BUFFER_RCP_WIDTH
 // #define SMOOTHING_DEBUG
 // #define SMOOTHING_DELTA_WEIGHT_DEBUG
+// #define SMOOTHING_USE_CORNER_WEIGHT
+// #define SMOOTHING_DELTA_WEIGHT_FLOOR
+// #define SMOOTHING_DELTA_WEIGHT_CEIL
 
 // #define SmoothingTexture2D(tex)
 
@@ -48,12 +52,16 @@
 // #define EDGE_THRESHOLD_MOD 0.35
 // #define THRESHOLD 0.05
 // #define SMOOTHING_SATURATION_DIVISOR_FLOOR 0.01
-// #define SMOOTHING_MAX_ITERATIONS 15
+// #define SMOOTHING_MIN_ITERATIONS 3f
+// #define SMOOTHING_MAX_ITERATIONS 15f
 // #define SMOOTHING_LUMA_WEIGHTS float3(0.299, 0.587, 0.114)
 // #define SMOOTHING_BUFFER_RCP_HEIGHT BUFFER_RCP_HEIGHT
 // #define SMOOTHING_BUFFER_RCP_WIDTH BUFFER_RCP_WIDTH
 // #define SMOOTHING_DEBUG false
 // #define SMOOTHING_DELTA_WEIGHT_DEBUG false
+// #define SMOOTHING_USE_CORNER_WEIGHT 0f
+// #define SMOOTHING_DELTA_WEIGHT_FLOOR .02
+// #define SMOOTHING_DELTA_WEIGHT_CEIL .25
 
 // #define SmoothingTexture2D(tex) sampler tex
 
@@ -284,19 +292,22 @@ namespace BeanSmoothing
         SMAASampleLevelZero(deltaTex, offset.zw).g);
 #endif
 
-    float2 maxDeltaCorner = Functions::max(deltas.rb, deltas.ga);
+    float2 maxDeltaCorner = max(deltas.rb, deltas.ga);
     // Use pythagorean theorem to calculate the "weight" of the contrast of the biggest corner
     float deltaWeight = sqrt(Functions::sum(maxDeltaCorner * maxDeltaCorner));
-    float mod = smoothstep(.02, .25, deltaWeight);
+    float mod = smoothstep(SMOOTHING_DELTA_WEIGHT_FLOOR, SMOOTHING_DELTA_WEIGHT_CEIL, deltaWeight);
 
-    if(mod == 0f) discard; // TODO: try `mod < 1e-5f` if this doesn't work as expected
-
+    // TODO: consier turning into prepreocssor check for performance. 
+    // Consider turning into func that can detect early returns too by checking delta between new and old color
     if(SMOOTHING_DELTA_WEIGHT_DEBUG){
       color = float(mod).xxx;
       return;
     }
 
-    uint maxIterations = (uint)(lerp(5f, 20f, mod) + .5);
+    // if close to 0f, discard. 
+    if(mod < 1e-5f) discard; // TODO: make standard 'nullish' function check.
+
+    uint maxIterations = (uint)(lerp(SMOOTHING_MIN_ITERATIONS, SMOOTHING_MAX_ITERATIONS, mod) + .5);
 
     color = smooth(texcoord, offset, colorTex, blendSampler, threshold, maxIterations);
   }

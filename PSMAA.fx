@@ -119,6 +119,20 @@ uniform bool _SmoothingDeltaWeightDebug <
 	ui_label = "_SmoothingDeltaWeightDebug";
 > = false;
 
+uniform float _SmoothingDeltaWeightFloor <
+	ui_category = "Bean Smoothing";
+	ui_label = "_SmoothingDeltaWeightFloor";
+	ui_type = "slider";
+	ui_min = 0f; ui_max = .1; ui_step = 0.01f;
+> = .07;
+
+uniform float _SmoothingDeltaWeightCeil <
+	ui_category = "Bean Smoothing";
+	ui_label = "_SmoothingDeltaWeightCeil";
+	ui_type = "slider";
+	ui_min = .15; ui_max = .5; ui_step = 0.01f;
+> = 0.35f;
+
 #ifndef SHOW_DEBUG
 	#define SHOW_DEBUG 0
 #endif
@@ -197,12 +211,16 @@ uniform int _Debug <
 #define EDGE_THRESHOLD_MOD 0.35
 #define THRESHOLD 0.025
 #define SMOOTHING_SATURATION_DIVISOR_FLOOR 0.01
-#define SMOOTHING_MAX_ITERATIONS 20
+#define SMOOTHING_MIN_ITERATIONS 3f
+#define SMOOTHING_MAX_ITERATIONS 20f
 #define SMOOTHING_LUMA_WEIGHTS float3(0.2126, 0.7152, 0.0722)
 #define SMOOTHING_BUFFER_RCP_HEIGHT BUFFER_RCP_HEIGHT
 #define SMOOTHING_BUFFER_RCP_WIDTH BUFFER_RCP_WIDTH
 #define SMOOTHING_DEBUG false
 #define SMOOTHING_DELTA_WEIGHT_DEBUG _SmoothingDeltaWeightDebug
+#define SMOOTHING_USE_CORNER_WEIGHT _SmoothingCornerWeightMix
+#define SMOOTHING_DELTA_WEIGHT_FLOOR _SmoothingDeltaWeightFloor
+#define SMOOTHING_DELTA_WEIGHT_CEIL _SmoothingDeltaWeightCeil
 #define SMOOTHING_ENABLED true
 #define SmoothingTexture2D(tex) PSMAATexture2D(tex)
 
@@ -452,7 +470,7 @@ void SmoothingPSWrapper(
 		BeanSmoothingOld::SmoothingPS(texcoord, offset, edgesSampler, weightSampler, colorGammaSampler, color);
 		return;	
 	}
-	BeanSmoothing::SmoothingPS(texcoord, offset, edgesSampler, weightSampler, colorGammaSampler, color);
+	BeanSmoothing::SmoothingPS(texcoord, offset, deltaSampler, weightSampler, colorGammaSampler, color);
 }
 
 technique PSMAA
