@@ -32,7 +32,7 @@
 
 // #define SMOOTHING_STRENGTH_MOD
 // #define EDGE_THRESHOLD_MOD
-// #define THRESHOLD
+// #define SMOOTHING_THRESHOLD
 // #define SMOOTHING_SATURATION_DIVISOR_FLOOR // This is used to prevent division by zero in the saturation function
 // #define SMOOTHING_MIN_ITERATIONS
 // #define SMOOTHING_MAX_ITERATIONS
@@ -46,11 +46,13 @@
 // #define SMOOTHING_DELTA_WEIGHT_CEIL
 
 // #define SmoothingTexture2D(tex)
+// #define SmoothingSamplePoint(tex, coord)
+// #define SmoothingSampleLevelZero(tex, coord)
 
 // examples
 // #define SMOOTHING_STRENGTH_MOD 1f
 // #define EDGE_THRESHOLD_MOD 0.35
-// #define THRESHOLD 0.05
+// #define SMOOTHING_THRESHOLD 0.05
 // #define SMOOTHING_SATURATION_DIVISOR_FLOOR 0.01
 // #define SMOOTHING_MIN_ITERATIONS 3f
 // #define SMOOTHING_MAX_ITERATIONS 15f
@@ -64,9 +66,24 @@
 // #define SMOOTHING_DELTA_WEIGHT_CEIL .25
 
 // #define SmoothingTexture2D(tex) sampler tex
+// #define SmoothingSamplePoint(tex, coord) tex2D(tex, coord)
+// #define SmoothingSampleLevelZero(tex, coord) tex2Dlod(tex, float4(coord, 0.0, 0.0))
+// #define SmoothingGatherLeftDeltas(tex, coord) tex2Dgather(tex, texcoord, 0);
+// #define SmoothingGatherTopDeltas(tex, coord) tex2Dgather(tex, texcoord, 1);
 
 namespace BeanSmoothing
 {
+  float GetDelta(float3 colA, float3 colB){
+    float3 delta = abs(colA - colB);
+    return Color::luma(delta);
+  }
+
+  // Calculate the maximum number of iterations based on the mod value
+  uint calculateMaxIterations(float mod)
+  {
+    return (uint)(lerp(SMOOTHING_MIN_ITERATIONS, SMOOTHING_MAX_ITERATIONS, mod) + .5);
+  }
+
   float dotweight(float3 middle, float3 neighbor, bool useluma)
   {
     if (useluma)
@@ -272,14 +289,12 @@ namespace BeanSmoothing
     out float3 color
   )
   {
-    float threshold = THRESHOLD;
-
     float4 deltas;
 #if __RENDERER__ >= 0xa000 // if DX10 or above
     // get edge data from the bottom (x), bottom-right (y), right (z),
     // and current pixels (w), in that order.
-    float4 leftDeltas = tex2Dgather(deltaTex, texcoord, 0); // TODO: make macros
-    float4 topDeltas = tex2Dgather(deltaTex, texcoord, 1);
+    float4 leftDeltas = SmoothingGatherLeftDeltas(deltaTex, texcoord);
+    float4 topDeltas = SmoothingGatherTopDeltas(deltaTex, texcoord);
     deltas = float4(
         leftDeltas.w,
         topDeltas.w,
@@ -287,9 +302,9 @@ namespace BeanSmoothing
         topDeltas.x);
 #else // if DX9
     deltas = float4(
-        SMAASampleLevelZero(deltaTex, texcoord).rg,
-        SMAASampleLevelZero(deltaTex, offset.xy).r,
-        SMAASampleLevelZero(deltaTex, offset.zw).g);
+        SmoothingSampleLevelZero(deltaTex, texcoord).rg,
+        SmoothingSampleLevelZero(deltaTex, offset.xy).r,
+        SmoothingSampleLevelZero(deltaTex, offset.zw).g);
 #endif
 
     // TODO: consider using max delta and max local luma to lower threshold
@@ -301,16 +316,24 @@ namespace BeanSmoothing
     // TODO: consier turning into prepreocssor check for performance. 
     // Consider turning into func that can detect early returns too by checking delta between new and old color
     if(SMOOTHING_DELTA_WEIGHT_DEBUG){
-      color = float(mod).xxx;
+      int maxIterations = calculateMaxIterations(mod);
+      float3 result = smooth(texcoord, offset, colorTex, blendSampler, SMOOTHING_THRESHOLD, maxIterations);
+
+      // Check if there's a diff between original and result
+      // Helps to detect cases where smooth() did an early return and changed nothing
+      float3 original = SmoothingSamplePoint(colorTex, texcoord).rgb;
+      // increase the change to make it more visible, especially for small changes
+      float change = saturate(sqrt(GetDelta(original, result) * 9f));
+      color = float3(0f, change, mod);
       return;
     }
 
     // if close to 0f, discard. 
     if(mod < 1e-5f) discard; // TODO: make standard 'nullish' function check.
 
-    uint maxIterations = (uint)(lerp(SMOOTHING_MIN_ITERATIONS, SMOOTHING_MAX_ITERATIONS, mod) + .5);
+    uint maxIterations = calculateMaxIterations(mod);
 
-    color = smooth(texcoord, offset, colorTex, blendSampler, threshold, maxIterations);
+    color = smooth(texcoord, offset, colorTex, blendSampler, SMOOTHING_THRESHOLD, maxIterations);
   }
 }
 
@@ -525,7 +548,7 @@ namespace BeanSmoothingOld
     out float3 color
   )
   {
-    float threshold = THRESHOLD;
+    float threshold = SMOOTHING_THRESHOLD;
 
     // Predicate threshold based on edge data. AKA If an edge is present, lower the threshold.
     float4 edgeData;

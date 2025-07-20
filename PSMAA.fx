@@ -209,7 +209,7 @@ uniform int _Debug <
 
 #define SMOOTHING_STRENGTH_MOD 1f
 #define EDGE_THRESHOLD_MOD 0.35
-#define THRESHOLD 0.05
+#define SMOOTHING_THRESHOLD 0.05
 #define SMOOTHING_SATURATION_DIVISOR_FLOOR 0.01
 #define SMOOTHING_MIN_ITERATIONS 3f
 #define SMOOTHING_MAX_ITERATIONS 20f
@@ -223,6 +223,10 @@ uniform int _Debug <
 #define SMOOTHING_DELTA_WEIGHT_CEIL _SmoothingDeltaWeightCeil
 #define SMOOTHING_ENABLED true
 #define SmoothingTexture2D(tex) PSMAATexture2D(tex)
+#define SmoothingSamplePoint(tex, coord) PSMAASamplePoint(tex, coord)
+#define SmoothingSampleLevelZero(tex, coord) PSMAASampleLevelZero(tex, coord)
+#define SmoothingGatherLeftDeltas(tex, coord) PSMAAGatherLeftEdges(tex, texcoord);
+#define SmoothingGatherTopDeltas(tex, coord) PSMAAGatherTopEdges(tex, texcoord);
 
 #include ".\BeanSmoothing.fxh"
 
