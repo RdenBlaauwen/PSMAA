@@ -133,6 +133,13 @@ uniform float _SmoothingMaxDeltaWeight <
 	ui_min = .15; ui_max = .75; ui_step = 0.01f;
 > = .5;
 
+uniform float _SmoothingDeltaWeightDynamicThreshold <
+	ui_category = "Bean Smoothing";
+	ui_label = "Dynamic threshold";
+	ui_type = "slider";
+	ui_min = 0f; ui_max = 1f; ui_step = 0.01f;
+> = .8;
+
 #ifndef SHOW_DEBUG
 	#define SHOW_DEBUG 0
 #endif
@@ -222,7 +229,7 @@ uniform int _Debug <
 #define SMOOTHING_DELTA_WEIGHT_FLOOR .06
 #define SMOOTHING_MIN_DELTA_WEIGHT _SmoothingMinDeltaWeight
 #define SMOOTHING_MAX_DELTA_WEIGHT _SmoothingMaxDeltaWeight
-#define SMOOTHING_DELTA_WEIGHT_PREDICATION_FACTOR .8
+#define SMOOTHING_DELTA_WEIGHT_PREDICATION_FACTOR _SmoothingDeltaWeightDynamicThreshold
 #define SMOOTHING_ENABLED true
 #define SmoothingTexture2D(tex) PSMAATexture2D(tex)
 #define SmoothingSamplePoint(tex, coord) PSMAASamplePoint(tex, coord)

@@ -293,6 +293,7 @@ namespace BeanSmoothing
 
     return SMAASampleLevelZero(colorTex, posM).rgb;
   }
+  
   /**
    * Wrapper around BeanSmoothing
    */
