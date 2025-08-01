@@ -109,29 +109,29 @@ uniform bool _SmoothingEnabled <
 	ui_label = "Enable Bean Smoothing";
 > = true;
 
-uniform bool _OldSmoothingEnabled <
-	ui_category = "Bean Smoothing";
-	ui_label = "use old Smoothing";
-> = false;
+// uniform bool _OldSmoothingEnabled <
+// 	ui_category = "Bean Smoothing";
+// 	ui_label = "use old Smoothing";
+// > = false;
 
 uniform bool _SmoothingDeltaWeightDebug <
 	ui_category = "Bean Smoothing";
 	ui_label = "_SmoothingDeltaWeightDebug";
 > = false;
 
-uniform float _SmoothingDeltaWeightFloor <
+uniform float _SmoothingMinDeltaWeight <
 	ui_category = "Bean Smoothing";
-	ui_label = "_SmoothingDeltaWeightFloor";
+	ui_label = "_SmoothingMinDeltaWeight";
 	ui_type = "slider";
-	ui_min = 0f; ui_max = .1; ui_step = 0.01f;
-> = .07;
+	ui_min = 0f; ui_max = .2; ui_step = 0.01f;
+> = .1;
 
-uniform float _SmoothingDeltaWeightCeil <
+uniform float _SmoothingMaxDeltaWeight <
 	ui_category = "Bean Smoothing";
-	ui_label = "_SmoothingDeltaWeightCeil";
+	ui_label = "_SmoothingMaxDeltaWeight";
 	ui_type = "slider";
-	ui_min = .15; ui_max = .5; ui_step = 0.01f;
-> = 0.35f;
+	ui_min = .15; ui_max = .75; ui_step = 0.01f;
+> = .5;
 
 #ifndef SHOW_DEBUG
 	#define SHOW_DEBUG 0
@@ -211,7 +211,7 @@ uniform int _Debug <
 #define EDGE_THRESHOLD_MOD 0.35
 #define SMOOTHING_THRESHOLD 0.05
 #define SMOOTHING_SATURATION_DIVISOR_FLOOR 0.01
-#define SMOOTHING_MIN_ITERATIONS 3f
+#define SMOOTHING_MIN_ITERATIONS 5f
 #define SMOOTHING_MAX_ITERATIONS 20f
 #define SMOOTHING_LUMA_WEIGHTS float3(0.2126, 0.7152, 0.0722)
 #define SMOOTHING_BUFFER_RCP_HEIGHT BUFFER_RCP_HEIGHT
@@ -219,8 +219,10 @@ uniform int _Debug <
 #define SMOOTHING_DEBUG false
 #define SMOOTHING_DELTA_WEIGHT_DEBUG _SmoothingDeltaWeightDebug
 #define SMOOTHING_USE_CORNER_WEIGHT _SmoothingCornerWeightMix
-#define SMOOTHING_DELTA_WEIGHT_FLOOR _SmoothingDeltaWeightFloor
-#define SMOOTHING_DELTA_WEIGHT_CEIL _SmoothingDeltaWeightCeil
+#define SMOOTHING_DELTA_WEIGHT_FLOOR .06
+#define SMOOTHING_MIN_DELTA_WEIGHT _SmoothingMinDeltaWeight
+#define SMOOTHING_MAX_DELTA_WEIGHT _SmoothingMaxDeltaWeight
+#define SMOOTHING_DELTA_WEIGHT_PREDICATION_FACTOR .8
 #define SMOOTHING_ENABLED true
 #define SmoothingTexture2D(tex) PSMAATexture2D(tex)
 #define SmoothingSamplePoint(tex, coord) PSMAASamplePoint(tex, coord)
@@ -470,11 +472,11 @@ void SmoothingPSWrapper(
 {
 	if (!_SmoothingEnabled)
     discard;
-	if (_OldSmoothingEnabled){
-		BeanSmoothingOld::SmoothingPS(texcoord, offset, edgesSampler, weightSampler, colorGammaSampler, color);
-		return;	
-	}
-	BeanSmoothing::SmoothingPS(texcoord, offset, deltaSampler, weightSampler, colorGammaSampler, color);
+	// if (_OldSmoothingEnabled){
+	// 	BeanSmoothingOld::SmoothingPS(texcoord, offset, deltaSampler, weightSampler, colorGammaSampler, color);
+	// 	return;	
+	// }
+	BeanSmoothing::SmoothingPS(texcoord, offset, deltaSampler, weightSampler, colorGammaSampler, lumaSampler, color);
 }
 
 technique PSMAA

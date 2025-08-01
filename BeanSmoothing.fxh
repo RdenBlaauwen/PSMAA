@@ -43,7 +43,9 @@
 // #define SMOOTHING_DELTA_WEIGHT_DEBUG
 // #define SMOOTHING_USE_CORNER_WEIGHT
 // #define SMOOTHING_DELTA_WEIGHT_FLOOR
-// #define SMOOTHING_DELTA_WEIGHT_CEIL
+// #define SMOOTHING_MIN_DELTA_WEIGHT
+// #define SMOOTHING_MAX_DELTA_WEIGHT
+// #define SMOOTHING_DELTA_WEIGHT_PREDICATION_FACTOR
 
 // #define SmoothingTexture2D(tex)
 // #define SmoothingSamplePoint(tex, coord)
@@ -62,8 +64,10 @@
 // #define SMOOTHING_DEBUG false
 // #define SMOOTHING_DELTA_WEIGHT_DEBUG false
 // #define SMOOTHING_USE_CORNER_WEIGHT 0f
-// #define SMOOTHING_DELTA_WEIGHT_FLOOR .02
-// #define SMOOTHING_DELTA_WEIGHT_CEIL .25
+// #define SMOOTHING_DELTA_WEIGHT_FLOOR .06
+// #define SMOOTHING_MIN_DELTA_WEIGHT .02
+// #define SMOOTHING_MAX_DELTA_WEIGHT .25
+// #define SMOOTHING_DELTA_WEIGHT_PREDICATION_FACTOR .8
 
 // #define SmoothingTexture2D(tex) sampler tex
 // #define SmoothingSamplePoint(tex, coord) tex2D(tex, coord)
@@ -96,6 +100,18 @@ namespace BeanSmoothing
   {
     float maxComp = max(Functions::max(rgb), SMOOTHING_SATURATION_DIVISOR_FLOOR);
     return Functions::min(rgb) / maxComp;
+  }
+
+  float GetIterationsMod(float4 deltas, float maxLocalLuma)
+  {
+    float2 maxDeltaCorner = max(deltas.rb, deltas.ga);
+    // Use pythagorean theorem to calculate the "weight" of the contrast of the biggest corner
+    float deltaWeight = sqrt(Functions::sum(maxDeltaCorner * maxDeltaCorner));
+
+    float2 thresholds = float2(SMOOTHING_MIN_DELTA_WEIGHT, SMOOTHING_MAX_DELTA_WEIGHT);
+    thresholds *= mad(1f - maxLocalLuma, -SMOOTHING_DELTA_WEIGHT_PREDICATION_FACTOR, 1f);
+    thresholds = max(thresholds, SMOOTHING_DELTA_WEIGHT_FLOOR);
+    return smoothstep(thresholds.x, thresholds.y, deltaWeight);
   }
 
   /**
@@ -286,6 +302,7 @@ namespace BeanSmoothing
     SmoothingTexture2D(deltaTex),
     SmoothingTexture2D(blendSampler),
     SmoothingTexture2D(colorTex),
+    SmoothingTexture2D(lumaTex),
     out float3 color
   )
   {
@@ -302,18 +319,16 @@ namespace BeanSmoothing
         topDeltas.x);
 #else // if DX9
     deltas = float4(
-        SmoothingSampleLevelZero(deltaTex, texcoord).rg,
-        SmoothingSampleLevelZero(deltaTex, offset.xy).r,
-        SmoothingSampleLevelZero(deltaTex, offset.zw).g);
+      SmoothingSampleLevelZero(deltaTex, texcoord).rg,
+      SmoothingSampleLevelZero(deltaTex, offset.xy).r,
+      SmoothingSampleLevelZero(deltaTex, offset.zw).g
+    );
 #endif
 
-    // TODO: consider using max delta and max local luma to lower threshold
-    float2 maxDeltaCorner = max(deltas.rb, deltas.ga);
-    // Use pythagorean theorem to calculate the "weight" of the contrast of the biggest corner
-    float deltaWeight = sqrt(Functions::sum(maxDeltaCorner * maxDeltaCorner));
-    float mod = smoothstep(SMOOTHING_DELTA_WEIGHT_FLOOR, SMOOTHING_DELTA_WEIGHT_CEIL, deltaWeight);
+    float maxLocalLuma = SmoothingSamplePoint(lumaTex, texcoord).r;
+    float mod = GetIterationsMod(deltas, maxLocalLuma);
 
-    // TODO: consier turning into prepreocssor check for performance. 
+    // TODO: consider turning into prepreocssor check for performance. 
     // Consider turning into func that can detect early returns too by checking delta between new and old color
     if(SMOOTHING_DELTA_WEIGHT_DEBUG){
       int maxIterations = calculateMaxIterations(mod);
@@ -334,246 +349,5 @@ namespace BeanSmoothing
     uint maxIterations = calculateMaxIterations(mod);
 
     color = smooth(texcoord, offset, colorTex, blendSampler, SMOOTHING_THRESHOLD, maxIterations);
-  }
-}
-
-namespace BeanSmoothingOld
-{
-  float dotweight(float3 middle, float3 neighbor, bool useluma)
-  {
-    if (useluma)
-      return Color::luma(neighbor);
-    else
-      return Color::luma(abs(middle - neighbor));
-  }
-
-  float saturation(float3 rgb)
-  {
-    float maxComp = max(Functions::max(rgb), SMOOTHING_SATURATION_DIVISOR_FLOOR);
-    return Functions::min(rgb) / maxComp;
-  }
-
-  /**
-   * Algorithm called 'smoothing', found in Lordbean's TSMAA.
-   * Appears to fix inconsistencies at edges by nudging pixel values towards values of nearby pixels.
-   * A little gem that combines well with SMAA, but causes a significant performance hit.
-   *
-   * Adapted from Lordbean's TSMAA shader.
-   *
-   * SmoothingTexture2D(colorTex): A texture2D sampler that contains the color data to be smoothed.
-   *                               Must be a gamma sampler, as this shader works only in gamma space.
-   */
-  float3 smooth(float2 texcoord, float4 offset, SmoothingTexture2D(colorTex), SmoothingTexture2D(blendSampler), float threshold) : SV_Target
-  {
-    const float3 debugColorNoHits = float3(0.0, 0.0, 0.0);
-    const float3 debugColorSmallHit = float3(0.0, 0.0, 1.0);
-    const float3 debugColorBigHit = float3(1.0, 0.0, 0.0);
-
-    float3 mid = SMAASampleLevelZero(colorTex, texcoord).rgb;
-
-    float lumaM = Color::luma(mid);
-    float chromaM = saturation(mid);
-    bool useluma = lumaM > chromaM;
-    if (!useluma)
-      lumaM = 0.0;
-
-    float4 lumas; // r = west, g = north, b = east, a = south
-    lumas.r = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(-1, 0)).rgb, useluma);
-    lumas.g = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(0, -1)).rgb, useluma);
-    lumas.b = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(1, 0)).rgb, useluma);
-    lumas.a = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(0, 1)).rgb, useluma);
-
-    float rangeMax = Functions::max(lumas.a, lumas.b, lumas.g, lumas.r, lumaM);
-    float rangeMin = Functions::min(lumas.a, lumas.b, lumas.g, lumas.r, lumaM);
-
-    float range = rangeMax - rangeMin;
-
-    // early exit check
-    bool earlyExit = (range < threshold);
-    if (earlyExit)
-    {
-      // If debug, return no hits color to signify no smoothing took place.
-      if (SMOOTHING_DEBUG)
-      {
-        return debugColorNoHits;
-      }
-      return mid;
-    }
-    // If debug, early return. Return hit colors to signify that smoothing takes place here
-    if (SMOOTHING_DEBUG)
-    {
-      // The further the range is above the threshold, the bigger the "hit"
-      float strength = smoothstep(threshold, 1.0, range);
-      return lerp(debugColorSmallHit, debugColorBigHit, strength);
-    }
-
-    float4 diagLumas; // r = northwest, g = northeast, b = southeast, a = southwest
-    diagLumas.r = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(-1, -1)).rgb, useluma);
-    diagLumas.g = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(1, -1)).rgb, useluma);
-    diagLumas.b = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(1, 1)).rgb, useluma);
-    diagLumas.a = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(-1, 1)).rgb, useluma);
-
-    // These vals serve as caches, so they can be used later without having to redo them
-    // It's just an optimisation thing, though the difference it makes is so small it could just be statistical noise.
-    float3 vertLumas; // x = NWSW, y = NS, z = NESE
-    vertLumas.xz = diagLumas.rg + diagLumas.ab;
-    vertLumas.y = lumas.g + lumas.a;
-
-    float3 horzLumas; // x = NWNE, y = WE, z = SWSE
-    horzLumas.xz = diagLumas.ra + diagLumas.gb;
-    horzLumas.y = lumas.r + lumas.b;
-
-    float3 vertWeights = abs(mad(-2f, float3(lumas.r, lumaM, lumas.b), vertLumas.xyz));
-    float3 horzWeights = abs(mad(-2f, float3(lumas.a, lumaM, lumas.g), horzLumas.zyx));
-
-    bool horzSpan = (vertWeights.x + mad(2.0, vertWeights.y, vertWeights.z)) >= (horzWeights.x + mad(2.0, horzWeights.y, horzWeights.z));
-    float lengthSign = horzSpan ? SMOOTHING_BUFFER_RCP_HEIGHT : SMOOTHING_BUFFER_RCP_WIDTH;
-
-    float4 midWeights = float4(
-        SMAASampleLevelZero(blendSampler, offset.xy).a,
-        SMAASampleLevelZero(blendSampler, offset.zw).g,
-        SMAASampleLevelZero(blendSampler, texcoord).zx);
-
-    bool smaahoriz = max(midWeights.x, midWeights.z) > max(midWeights.y, midWeights.w);
-    bool smaadata = any(midWeights);
-    float maxWeight = Functions::max(midWeights.r, midWeights.g, midWeights.b, midWeights.a);
-    float maxblending = 0.5 + (0.5 * maxWeight);
-
-    if ((horzSpan && smaahoriz && smaadata) || (!horzSpan && !smaahoriz && smaadata))
-    {
-      maxblending *= 1.0 - maxWeight / 2.0;
-    }
-    else
-    {
-      maxblending = min(maxblending * 1.5, 1.0);
-    };
-
-    float2 lumaNP = lumas.ga;
-    SMAAMovc(bool(!horzSpan).xx, lumaNP, lumas.rb);
-
-    // x = north, y = south
-    float2 gradients = abs(lumaNP - lumaM);
-    float lumaNN;
-    if (gradients.x >= gradients.y) {
-      lengthSign = -lengthSign;
-      lumaNN = lumaNP.x + lumaM;
-    } else
-      lumaNN = lumaNP.y + lumaM;
-
-    float2 posB = texcoord;
-
-    static const float texelsize = .5; // TODO: constant?
-
-    float2 offNP = float2(0.0, SMOOTHING_BUFFER_RCP_HEIGHT * texelsize);
-    SMAAMovc(bool(horzSpan).xx, offNP, float2(SMOOTHING_BUFFER_RCP_WIDTH * texelsize, 0.0));
-    SMAAMovc(bool2(!horzSpan, horzSpan), posB, mad(.5, lengthSign, posB));
-
-    float2 posN = posB - offNP;
-    float2 posP = posB + offNP;
-
-    float lumaEndN = dotweight(mid, SMAASampleLevelZero(colorTex, posN).rgb, useluma);
-    float lumaEndP = dotweight(mid, SMAASampleLevelZero(colorTex, posP).rgb, useluma);
-
-    float gradientScaled = max(gradients.x, gradients.y) * 0.25;
-    bool lumaMLTZero = mad(0.5, -lumaNN, lumaM) < 0.0;
-
-    lumaNN *= 0.5;
-
-    lumaEndN -= lumaNN;
-    lumaEndP -= lumaNN;
-
-    bool doneN = abs(lumaEndN) >= gradientScaled;
-    bool doneP = abs(lumaEndP) >= gradientScaled;
-    bool doneNP = doneN && doneP;
-
-    if (!doneNP)
-    {
-      uint iterations = 0;
-      // scan distance
-      uint maxiterations = SMOOTHING_MAX_ITERATIONS;
-
-      [loop] while (iterations < maxiterations)
-      {
-        doneNP = doneN && doneP;
-        if (doneNP)
-          break;
-        if (!doneN)
-        {
-          posN -= offNP;
-          lumaEndN = dotweight(mid, SMAASampleLevelZero(colorTex, posN).rgb, useluma);
-          lumaEndN -= lumaNN;
-          doneN = abs(lumaEndN) >= gradientScaled;
-        }
-        if (!doneP)
-        {
-          posP += offNP;
-          lumaEndP = dotweight(mid, SMAASampleLevelZero(colorTex, posP).rgb, useluma);
-          lumaEndP -= lumaNN;
-          doneP = abs(lumaEndP) >= gradientScaled;
-        }
-        iterations++;
-      }
-    }
-
-    float2 dstNP = float2(texcoord.y - posN.y, posP.y - texcoord.y);
-    SMAAMovc(bool(horzSpan).xx, dstNP, float2(texcoord.x - posN.x, posP.x - texcoord.x));
-
-    bool goodSpan = (dstNP.x < dstNP.y) ? ((lumaEndN < 0.0) != lumaMLTZero) : ((lumaEndP < 0.0) != lumaMLTZero);
-    float pixelOffset = mad(-rcp(dstNP.y + dstNP.x), min(dstNP.x, dstNP.y), 0.5) * maxblending;
-
-    float subpixOut;
-    [branch] if (!goodSpan)
-    {
-      subpixOut = mad(mad(2.0, vertLumas.y + horzLumas.y, vertLumas.x + vertLumas.z), 0.083333, -lumaM) / range;  // ABC
-      subpixOut = pow(saturate(mad(-2.0, subpixOut, 3.0) * (subpixOut * subpixOut)), 2.0) * pixelOffset; // DEFGH
-    } else {
-      subpixOut = pixelOffset;
-    }
-
-    float2 posM = texcoord;
-    SMAAMovc(bool2(!horzSpan, horzSpan), posM, mad(lengthSign, subpixOut, posM));
-
-    return SMAASampleLevelZero(colorTex, posM).rgb;
-  }
-
-    /**
-   * Wrapper around BeanSmoothing
-   */
-  void SmoothingPS(
-    float2 texcoord,
-    float4 offset,
-    SmoothingTexture2D(edgesTex),
-    SmoothingTexture2D(blendSampler),
-    SmoothingTexture2D(colorTex),
-    out float3 color
-  )
-  {
-    float threshold = SMOOTHING_THRESHOLD;
-
-    // Predicate threshold based on edge data. AKA If an edge is present, lower the threshold.
-    float4 edgeData;
-#if __RENDERER__ >= 0xa000 // if DX10 or above
-    // get edge data from the bottom (x), bottom-right (y), right (z),
-    // and current pixels (w), in that order.
-    float4 leftEdges = tex2Dgather(edgesTex, texcoord, 0); // TODO: make macros
-    float4 topEdges = tex2Dgather(edgesTex, texcoord, 1);
-    edgeData = float4(
-        leftEdges.w,
-        topEdges.w,
-        leftEdges.z,
-        topEdges.x);
-#else // if DX9
-    edgeData = float4(
-        SMAASampleLevelZero(edgesTex, texcoord).rg,
-        SMAASampleLevelZero(edgesTex, offset.xy).r,
-        SMAASampleLevelZero(edgesTex, offset.zw).g);
-#endif
-
-    // If there is an edge, lower threshold by multiplying with EdgeThresholdModifier
-    // Else leave uchanged by multiplying by 1.0
-    bool edgePresent = any(edgeData); // TODO: check if 'any' works as expected
-    threshold *= edgePresent ? EDGE_THRESHOLD_MOD : 1.0;
-
-    color = smooth(texcoord, offset, colorTex, blendSampler, threshold);
   }
 }
