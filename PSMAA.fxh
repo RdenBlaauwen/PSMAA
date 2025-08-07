@@ -281,6 +281,14 @@ namespace PSMAA
 
       deltas -= maxLocalDeltas * cmaaLCAFactor;
 
+      // TODO: consider doing this separately for deltas being used for corner counting
+      // to prevent isolated pixels from being treated too lightly
+      float2 greatestCornerDeltas = max(deltas.rg, deltas.ba);
+      float avgGreatestCornerDelta = (greatestCornerDeltas.x + greatestCornerDeltas.y) / 2f;
+      // taking the square, then dividing by the average greatest corner delta diminishes smaller deltas
+      // and preserves the deltas of the largest corner
+      deltas = (deltas * deltas) / avgGreatestCornerDelta;
+
       float4 edges = step(threshold, deltas);
       // skip check for corners (to prevent interference with AA) and single lines (to prevent blur)
       float cornerNumber = (edges.r + edges.b) * (edges.g + edges.a);
