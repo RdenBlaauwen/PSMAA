@@ -20,6 +20,7 @@
 // #define PSMAA_THRESHOLD_FLOOR
 // #define PSMAA_EDGE_DETECTION_FACTORS_HIGH_LUMA
 // #define PSMAA_EDGE_DETECTION_FACTORS_LOW_LUM
+// #define PSMAA_PRE_PROCESSING_GREATEST_CORNER_CORRECTION_STRENGTH TODO: remove after testing
 // These are float4's with the following values:
 // x: threshold
 // y: CMAA LCA factor
@@ -287,7 +288,9 @@ namespace PSMAA
       float avgGreatestCornerDelta = (greatestCornerDeltas.x + greatestCornerDeltas.y) / 2f;
       // taking the square, then dividing by the average greatest corner delta diminishes smaller deltas
       // and preserves the deltas of the largest corner
-      deltas = (deltas * deltas) / avgGreatestCornerDelta;
+      float4 correctedDeltas = (deltas * deltas) / avgGreatestCornerDelta;
+
+      deltas = lerp(deltas, correctedDeltas, PSMAA_PRE_PROCESSING_GREATEST_CORNER_CORRECTION_STRENGTH);
 
       float4 edges = step(threshold, deltas);
       // skip check for corners (to prevent interference with AA) and single lines (to prevent blur)

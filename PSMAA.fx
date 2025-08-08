@@ -117,6 +117,15 @@ ui_step = .05;
 ui_tooltip = "1 = normal strength, 5 = max";
 > = 1.5f;
 
+uniform float _PreProcessingGreatestCornerCorrectionStrength <
+		ui_category = "Pre-Processing";
+ui_label = "Greatest Corner Correction Strength";
+ui_type = "slider";
+ui_min = 0f;
+ui_max = 1f;
+ui_step = .01;
+> = 0f;
+
 // uniform float _RangeCramTarget <
 // 	ui_category = "Pre-Processing";
 // 	ui_label = "_RangeCramTarget";
@@ -217,6 +226,7 @@ ui_items = "None\0Local Luma\0Filtered Copy\0Deltas\0Edges\0";
 #define PSMAA_PRE_PROCESSING_LUMA_PRESERVATION_STRENGTH _PreProcessingLumaPreservationStrength
 #define PSMAA_PRE_PROCESSING_STRENGTH _PreProcessingStrength
 #define PSMAA_PRE_PROCESSING_MIN_STRENGTH .15
+#define PSMAA_PRE_PROCESSING_GREATEST_CORNER_CORRECTION_STRENGTH _PreProcessingGreatestCornerCorrectionStrength
 #ifndef PSMAA_ALPHA_PASSTHROUGH
 #define PSMAA_ALPHA_PASSTHROUGH 0
 #endif
