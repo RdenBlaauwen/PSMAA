@@ -282,29 +282,30 @@ namespace PSMAA
 
       deltas -= maxLocalDeltas * cmaaLCAFactor;
 
-      // TODO: consider doing this separately for deltas being used for corner counting
-      // to prevent isolated pixels from being treated too lightly
       float2 greatestCornerDeltas = max(deltas.rg, deltas.ba);
       float avgGreatestCornerDelta = (greatestCornerDeltas.x + greatestCornerDeltas.y) / 2f;
       // taking the square, then dividing by the average greatest corner delta diminishes smaller deltas
       // and preserves the deltas of the largest corner
       float4 correctedDeltas = (deltas * deltas) / avgGreatestCornerDelta;
 
-      deltas = lerp(deltas, correctedDeltas, PSMAA_PRE_PROCESSING_GREATEST_CORNER_CORRECTION_STRENGTH);
+      correctedDeltas = lerp(deltas, correctedDeltas, PSMAA_PRE_PROCESSING_GREATEST_CORNER_CORRECTION_STRENGTH);
 
-      float4 edges = step(threshold, deltas);
+      float4 correctedEdges = step(threshold, correctedDeltas);
       // skip check for corners (to prevent interference with AA) and single lines (to prevent blur)
-      float cornerNumber = (edges.r + edges.b) * (edges.g + edges.a);
+      float cornerNumber = (correctedEdges.r + correctedEdges.b) * (correctedEdges.g + correctedEdges.a);
+      float4 edges = step(threshold, deltas);
       float edgeNumber = Functions::sum(edges);
-      bool skipProcessing = (edgeNumber < 2f) || (cornerNumber == 1f);
+      bool earlyReturn = (edgeNumber < 2f) || (cornerNumber == 1f);
 
-      if (skipProcessing)
+      if (earlyReturn)
       {
         maxLocalLuma = prelimMaxLocalLuma;
         filteredCopy = float4(C, 0f); // no change, so set change to 0f
         return;
       }
 
+      // redo for normal edges
+      cornerNumber = (edges.r + edges.b) * (edges.g + edges.a);
       // Determine blending strength based on the number of edges detected
       float strength = max(cornerNumber / 4f, PSMAA_PRE_PROCESSING_MIN_STRENGTH);
       strength *= PSMAA_PRE_PROCESSING_STRENGTH;
