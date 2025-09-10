@@ -84,8 +84,8 @@ ui_type = "slider";
 ui_min = .1;
 ui_max = 1f;
 ui_step = .01;
-ui_tooltip = "Recommended values [0.3..0.7]";
-> = .3;
+ui_tooltip = "Recommended values [0.25..0.75]";
+> = .65;
 
 uniform float _PreProcessingStrength <
 		ui_category = "Pre-Processing";
