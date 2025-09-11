@@ -272,16 +272,8 @@ namespace PSMAAOld
       detectionFactors *= float2(PSMAA_PRE_PROCESSING_THRESHOLD_MULTIPLIER, PSMAA_PRE_PROCESSING_CMAA_LCA_FACTOR_MULTIPLIER);
       // Minimum threshold to prevent blending in very dark areas
       float threshold = max(detectionFactors.x, PSMAA_THRESHOLD_FLOOR);
-      float cmaaLCAFactor = detectionFactors.y;
 
-      float4 maxLocalDeltas;
-      maxLocalDeltas.r = Functions::max(deltas.gba);
-      maxLocalDeltas.g = Functions::max(deltas.bar);
-      maxLocalDeltas.b = Functions::max(deltas.arg);
-      maxLocalDeltas.a = Functions::max(deltas.rgb);
-
-      deltas -= maxLocalDeltas * cmaaLCAFactor;
-
+      // GREATEST CORNER DELTA CORRECTION START
       float2 greatestCornerDeltas = max(deltas.rg, deltas.ba);
       float avgGreatestCornerDelta = (greatestCornerDeltas.x + greatestCornerDeltas.y) / 2f;
       // taking the square, then dividing by the average greatest corner delta diminishes smaller deltas
@@ -293,6 +285,18 @@ namespace PSMAAOld
       float4 correctedEdges = step(threshold, correctedDeltas);
       // skip check for corners (to prevent interference with AA) and single lines (to prevent blur)
       float cornerNumber = (correctedEdges.r + correctedEdges.b) * (correctedEdges.g + correctedEdges.a);
+      // GREATEST CORNER DELTA CORRECTION END
+
+      // CMAA LCA START
+      float4 maxLocalDeltas;
+      maxLocalDeltas.r = Functions::max(deltas.gba);
+      maxLocalDeltas.g = Functions::max(deltas.bar);
+      maxLocalDeltas.b = Functions::max(deltas.arg);
+      maxLocalDeltas.a = Functions::max(deltas.rgb);
+
+      deltas -= maxLocalDeltas * detectionFactors.y;
+      // CMAA LCA END
+
       float4 edges = step(threshold, deltas);
       float edgeNumber = Functions::sum(edges);
       bool earlyReturn = (edgeNumber < 2f) || (cornerNumber == 1f);

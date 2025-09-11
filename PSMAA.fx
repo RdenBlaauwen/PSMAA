@@ -219,6 +219,8 @@ ui_items = "None\0Local Luma\0Filtered Copy\0Deltas\0Edges\0";
 #define PSMAASampleLevelZeroOffset(tex, coord, offset) tex2Dlodoffset(tex, float4(coord, coord), offset)
 #define PSMAAGatherLeftEdges(tex, coord) tex2Dgather(tex, coord, 0);
 #define PSMAAGatherTopEdges(tex, coord) tex2Dgather(tex, coord, 1);
+
+#define USE_OLD_PREPROCESSING 1
 #define PSMAA_PRE_PROCESSING_THRESHOLD_MULTIPLIER _PreProcessingThresholdMultiplier
 #define PSMAA_PRE_PROCESSING_CMAA_LCA_FACTOR_MULTIPLIER _PreProcessingCmaaLCAMultiplier
 #define PSMAA_PRE_PROCESSING_EXTRA_PIXEL_SOFTENING .15
@@ -306,16 +308,38 @@ sampler filteredCopySampler
 	Texture = filteredCopyTex;
 };
 
-texture lumaTex
+texture maxLocalLumaTex
 {
 	Width = BUFFER_WIDTH;
 	Height = BUFFER_HEIGHT;
 	Format = R8;
 };
-sampler lumaSampler
+sampler maxLocalLumaSampler
 {
-	Texture = lumaTex;
+	Texture = maxLocalLumaTex;
 };
+
+texture originalLumaTex
+{
+	Width = BUFFER_WIDTH;
+	Height = BUFFER_HEIGHT;
+	Format = R8;
+};
+sampler originalLumaSampler
+{
+	Texture = originalLumaTex;
+};
+
+texture filterStrengthTex
+{
+	Width = BUFFER_WIDTH;
+	Height = BUFFER_HEIGHT;
+	Format = R8;
+};
+sampler filterStrengthSampler
+{
+	Texture = filterStrengthTex;
+}
 
 texture deltaTex
 {
@@ -377,20 +401,35 @@ sampler searchSampler
 	MagFilter = Point;
 };
 
+#if USE_OLD_PREPROCESSING
 void PSMAAPreProcessingPSWrapper(
-		float4 position : SV_POSITION,
-		float2 texcoord : TEXCOORD0,
-		out float luma : SV_TARGET0,
-		out float4 filteredCopy : SV_TARGET1)
+	float4 position : SV_POSITION,
+	float2 texcoord : TEXCOORD0,
+	out float maxLocalLuma : SV_TARGET0,
+	out float4 filteredCopy : SV_TARGET1
+)
 {
-	if (_ShowOldPreProcessing)
-	{
-		PSMAAOld::Pass::PreProcessingPS(texcoord, colorGammaSampler, filteredCopy, luma);
-	}
-	else
-	{
-		PSMAA::Pass::PreProcessingPS(texcoord, colorGammaSampler, filteredCopy, luma);
-	}
+	PSMAAOld::Pass::PreProcessingPS(texcoord, colorGammaSampler, filteredCopy, maxLocalLuma);
+}
+#else
+void PSMAAPreProcessingPSWrapper(
+	float4 position : SV_POSITION,
+	float2 texcoord : TEXCOORD0,
+	out float maxLocalLuma : SV_TARGET0,
+	out float originalLuma : SV_TARGET1,
+	out float filteringStrength : SV_TARGET2
+)
+{
+	PSMAA::Pass::PreProcessingPS(texcoord, colorGammaSampler, maxLocalLuma, originalLuma, filteringStrength);
+}
+#endif
+
+void PSMAAFilteringPSWrapper(
+		float4 position : SV_Position,
+		float2 texcoord : TEXCOORD0,
+		out float4 color : SV_Target)
+{
+	PSMAA::Pass::FilteringPS(texcoord, colorLinearSampler, filterStrengthSampler, color);
 }
 
 void PSMAAPreProcessingOutputPSWrapper(
@@ -437,7 +476,7 @@ void PSMAAEdgeDetectionPSWrapper(
 		float4 offset[2] : TEXCOORD1,
 		out float2 edges : SV_Target)
 {
-	PSMAA::Pass::EdgeDetectionPS(texcoord, offset, deltaSampler, lumaSampler, edges);
+	PSMAA::Pass::EdgeDetectionPS(texcoord, offset, deltaSampler, maxLocalLumaSampler, edges);
 	// PSMAA::Pass::HybridDetection(texcoord, offset, colorGammaSampler, _EdgeDetectionThreshold, _SMAALCAFactor, edges);
 }
 
@@ -486,7 +525,7 @@ void PSMAABlendingPSWrapper(
 	}
 	else if (_Debug == 1)
 	{
-		color = tex2D(lumaSampler, texcoord).rrrr;
+		color = tex2D(maxLocalLumaSampler, texcoord).rrrr;
 	}
 	else if (_Debug == 2)
 	{
@@ -533,16 +572,33 @@ void SmoothingPSWrapper(
 	// 	BeanSmoothingOld::SmoothingPS(texcoord, offset, deltaSampler, weightSampler, colorGammaSampler, color);
 	// 	return;
 	// }
-	BeanSmoothing::SmoothingPS(texcoord, offset, deltaSampler, weightSampler, colorGammaSampler, lumaSampler, color);
+	BeanSmoothing::SmoothingPS(texcoord, offset, deltaSampler, weightSampler, colorGammaSampler, maxLocalLumaSampler, color);
 }
 
 technique PSMAA
 {
+#if USE_OLD_PREPROCESSING
 	pass PreProcessing
 	{
 		VertexShader = PostProcessVS;
 		PixelShader = PSMAAPreProcessingPSWrapper;
-		RenderTarget0 = lumaTex;
+		RenderTarget0 = maxLocalLumaTex;
+		RenderTarget1 = originalLumaTex;
+		RenderTarget2 = filterStrengthTex;
+		// ClearRenderTargets = true;
+	}
+	pass Filtering
+	{
+		VertexShader = PostProcessVS;
+		PixelShader = PSMAAFilteringPSWrapper;
+		SRGBWriteEnable = true;
+	}
+#else
+	pass PreProcessing
+	{
+		VertexShader = PostProcessVS;
+		PixelShader = PSMAAPreProcessingPSWrapper;
+		RenderTarget0 = maxLocalLumaTex;
 		RenderTarget1 = filteredCopyTex;
 		// ClearRenderTargets = true;
 	}
@@ -550,8 +606,8 @@ technique PSMAA
 	{
 		VertexShader = PostProcessVS;
 		PixelShader = PSMAAPreProcessingOutputPSWrapper;
-		// SRGBWriteEnable = true;
 	}
+#endif
 	pass DeltaCalculation
 	{
 		VertexShader = PSMAADeltaCalulationVSWrapper;

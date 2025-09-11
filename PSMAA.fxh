@@ -91,6 +91,18 @@ namespace PSMAA
     return deltas;
   }
 
+  float2 UnpackFilterStrength(float rawStrength)
+  {
+    float2 strengthAndIsCorner = float2(0f, 0f);
+    if (rawStrength > .5) {
+      rawStrength -= .5;
+      strengthAndIsCorner.y = 1f;
+    }
+    strengthAndIsCorner.x = saturate(rawStrength * 2f);
+
+    return strengthAndIsCorner;
+  }
+
   /**
    * Calculates a weighted average of a 9 tap pattern of pixels.
    * returns float3 localavg
@@ -236,10 +248,12 @@ namespace PSMAA
     void PreProcessingPS(
         float2 texcoord,
         PSMAATexture2D(colorGammaTex), // input color texture (C)
-        out float4 filteredCopy,       // output current color (C)
-        out float maxLocalLuma         // output maximum luma from all nine samples
+        out float maxLocalLuma,        // output maximum luma from all nine samples
+        out float originalLuma,        // luma of the original color, for change detection
+        out float filteringStrength    // strength at which FilteringPS is determned to run on this pixel
     )
     {
+      // TODO: optimise using gathers
       // NW N NE
       // W  C  E
       // SW S SE
@@ -253,12 +267,15 @@ namespace PSMAA
       float3 E = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(1, 0)).rgb;
       float3 SE = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(1, 1)).rgb;
 
-      float3 maxNeighbourColor = Functions::max(NW, W, SW, N, S, NE, E, SE);
-      float3 maxLocalColor = max(maxNeighbourColor, C);
+      float3 maxLocalColor = Functions::max(NW, W, SW, N, S, NE, E, SE, C);
       // These make sure that Red and Blue don't count as much as Green,
       // without making all results darker when taking the greatest component
       static const float3 LumaCorrection = float3(.297, 1f, .101);
-      float prelimMaxLocalLuma = Functions::max(maxLocalColor * LumaCorrection);
+
+      // OUTPUT
+      maxLocalLuma = Functions::max(maxLocalColor * LumaCorrection); // TODO; replace with proper luma function
+      // OUTPUT
+      originalLuma = Color::luma(C);
 
       float4 deltas;
       deltas.r = GetDelta(W, C);
@@ -267,11 +284,30 @@ namespace PSMAA
       deltas.a = GetDelta(S, C);
 
       // Use detection factors for edge detection here too, so that the results of this pass scale proportionally to the needs of edge detection.
-      float2 detectionFactors = lerp(PSMAA_EDGE_DETECTION_FACTORS_LOW_LUMA.xy, PSMAA_EDGE_DETECTION_FACTORS_HIGH_LUMA.xy, prelimMaxLocalLuma);
+      float2 detectionFactors = lerp(PSMAA_EDGE_DETECTION_FACTORS_LOW_LUMA.xy, PSMAA_EDGE_DETECTION_FACTORS_HIGH_LUMA.xy, maxLocalLuma);
       // scale with multipliers specific to this pass
       detectionFactors *= float2(PSMAA_PRE_PROCESSING_THRESHOLD_MULTIPLIER, PSMAA_PRE_PROCESSING_CMAA_LCA_FACTOR_MULTIPLIER);
       // Minimum threshold to prevent blending in very dark areas
       float threshold = max(detectionFactors.x, PSMAA_THRESHOLD_FLOOR);
+
+      // CMAA LCA START
+      float4 maxLocalDeltas;
+      maxLocalDeltas.r = Functions::max(deltas.gba);
+      maxLocalDeltas.g = Functions::max(deltas.bar);
+      maxLocalDeltas.b = Functions::max(deltas.arg);
+      maxLocalDeltas.a = Functions::max(deltas.rgb);
+
+      // TODO: try this method instead
+      // float4 maxLocalDeltas = Functions::max(deltas.gbar, deltas.barg, deltas.argb);
+
+      deltas -= maxLocalDeltas * detectionFactors.y;
+      // CMAA LCA END
+
+      float4 edges = step(threshold, deltas);
+      if (Functions::sum(edges) < 2f) // Leave filter strength as 0f for straight lines, to prevent blur
+      { 
+        return;
+      }
 
       // GREATEST CORNER DELTA CORRECTION START
       float2 greatestCornerDeltas = max(deltas.rg, deltas.ba);
@@ -283,54 +319,50 @@ namespace PSMAA
       correctedDeltas = lerp(deltas, correctedDeltas, PSMAA_PRE_PROCESSING_GREATEST_CORNER_CORRECTION_STRENGTH);
 
       float4 correctedEdges = step(threshold, correctedDeltas);
-      // skip check for corners (to prevent interference with AA) and single lines (to prevent blur)
       float cornerNumber = (correctedEdges.r + correctedEdges.b) * (correctedEdges.g + correctedEdges.a);
+      bool isCorner = cornerNumber == 1f;
       // GREATEST CORNER DELTA CORRECTION END
 
-      // CMAA LCA START
-      float4 maxLocalDeltas;
-      maxLocalDeltas.r = Functions::max(deltas.gba);
-      maxLocalDeltas.g = Functions::max(deltas.bar);
-      maxLocalDeltas.b = Functions::max(deltas.arg);
-      maxLocalDeltas.a = Functions::max(deltas.rgb);
-
-      deltas -= maxLocalDeltas * detectionFactors.y;
-      // CMAA LCA END
-
-      float4 edges = step(threshold, deltas);
-      float edgeNumber = Functions::sum(edges);
-      bool earlyReturn = (edgeNumber < 2f) || (cornerNumber == 1f);
-
-      if (earlyReturn)
-      {
-        maxLocalLuma = prelimMaxLocalLuma;
-        filteredCopy = float4(C, 0f); // no change, so set change to 0f
-        return;
-      }
-
-      // redo for normal edges
+      // redo to get normal edges, use that to calc filter strength
       cornerNumber = (edges.r + edges.b) * (edges.g + edges.a);
-      // Determine blending strength based on the number of edges detected
+      // Determine fitler strength based on the number of corners detected
       float strength = max(cornerNumber / 4f, PSMAA_PRE_PROCESSING_MIN_STRENGTH);
       strength *= PSMAA_PRE_PROCESSING_STRENGTH;
 
-      float3 localAvg = CalcLocalAvg(
-          NW, N, NE, W, C, E, SW, S, SE,
-          strength);
+      // OUTPUT
+      // cram marker for cornerdetection and the strength into one float
+      filteringStrength = saturate((strength + (float)isCorner) / 2f); // TODO: check if this conversion actually works!
+    }
 
-      // use result for local luma instead of the original color for more accurate results
-      float3 finalMaxLocalColor = max(maxNeighbourColor, localAvg);
-      maxLocalLuma = Functions::max(finalMaxLocalColor * LumaCorrection);
+    void FilteringPS(
+      float2 texcoord,
+      PSMAATexture2D(colorLinearTex),
+      PSMAATexture2D(filterStrengthTex),
+      out float4 filteredColor
+    )
+    {
+      float rawStrength = PSMAASamplePoint(filterStrengthTex, texcoord).r;
+      float2 strengthAndIsCorner = UnpackFilterStrength(rawStrength);
 
-      static const float minChange = (1f / 6f); // TODO: add comprehensive way of dealing with min texture channel values
-      // multiplying and then saturating prevents high values from being treated too strongly
-      // and makes sure lower values can be presented more precisely in the limited range of values of a 2bit channel
-      float change = GetDelta(C, localAvg) * 1.5f;
-      // minChange makes sure that any change is treated as more than 0f
-      change = change > 0f ? minChange + change : 0f; // TODO: turn this into format function for library
-      change = saturate(change);
+      if(strengthAndIsCorner.y == 1f || strengthAndIsCorner.x == 0f) discard; // skip if corner or no filtering needed
 
-      filteredCopy = float4(localAvg, change);
+      // TODO: optimise using gathers
+      // NW N NE
+      // W  C  E
+      // SW S SE
+      float3 NW = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(-1, -1)).rgb;
+      float3 W = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(-1, 0)).rgb;
+      float3 SW = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(-1, 1)).rgb;
+      float3 N = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(0, -1)).rgb;
+      float3 C = PSMAASampleLevelZero(colorGammaTex, texcoord).rgb;
+      float3 S = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(0, 1)).rgb;
+      float3 NE = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(1, -1)).rgb;
+      float3 E = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(1, 0)).rgb;
+      float3 SE = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(1, 1)).rgb;
+
+      filteredColor = CalcLocalAvg(
+        NW, N, NE, W, C, E, SW, S, SE,
+        strength);
     }
 
     void PreProcessingOutputPS(
