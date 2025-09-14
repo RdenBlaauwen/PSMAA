@@ -98,6 +98,16 @@ ui_tooltip = "Strength of the pre-processing step.\n"
 						 "Recommended values [0.5..0.85]";
 > = .65;
 
+uniform float _PreProcessingStrengthThresh <
+		ui_category = "Pre-Processing";
+ui_label = "Strength thresh";
+ui_type = "slider";
+ui_min = 0f;
+ui_max = .15f;
+ui_step = .001;
+ui_tooltip = "Strengths below this val are skipped";
+> = .15;
+
 uniform float _PreProcessingLumaPreservationBias <
 		ui_category = "Pre-Processing";
 ui_label = "LumaPreservationBias";
@@ -230,6 +240,7 @@ ui_items = "None\0Local Luma\0Filtered Copy\0Deltas\0Edges\0";
 #define PSMAA_PRE_PROCESSING_LUMA_PRESERVATION_STRENGTH _PreProcessingLumaPreservationStrength
 #define PSMAA_PRE_PROCESSING_STRENGTH _PreProcessingStrength
 #define PSMAA_PRE_PROCESSING_MIN_STRENGTH .15
+#define PSMAA_PRE_PROCESSING_STRENGTH_THRESH _PreProcessingStrengthThresh
 #define PSMAA_PRE_PROCESSING_GREATEST_CORNER_CORRECTION_STRENGTH _PreProcessingGreatestCornerCorrectionStrength
 #ifndef PSMAA_ALPHA_PASSTHROUGH
 #define PSMAA_ALPHA_PASSTHROUGH 0
