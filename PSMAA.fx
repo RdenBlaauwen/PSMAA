@@ -339,7 +339,7 @@ texture filterStrengthTex
 sampler filterStrengthSampler
 {
 	Texture = filterStrengthTex;
-}
+};
 
 texture deltaTex
 {

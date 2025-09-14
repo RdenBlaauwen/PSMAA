@@ -99,7 +99,7 @@ namespace PSMAAOld
       float3 NW, float3 N, float3 NE,
       float3 W, float3 C, float3 E,
       float3 SW, float3 S, float3 SE,
-      float4 strength)
+      float strength)
   {
     // pattern:
     //  e f g
