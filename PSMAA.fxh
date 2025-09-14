@@ -250,7 +250,7 @@ namespace PSMAA
         PSMAATexture2D(colorGammaTex), // input color texture (C)
         out float maxLocalLuma,        // output maximum luma from all nine samples
         out float originalLuma,        // luma of the original color, for change detection
-        out float filteringStrength    // strength at which FilteringPS is determned to run on this pixel
+        out float2 filteringStrength    // strength at which FilteringPS is determned to run on this pixel
     )
     {
       // TODO: optimise using gathers
@@ -320,7 +320,8 @@ namespace PSMAA
 
       float4 correctedEdges = step(threshold, correctedDeltas);
       float cornerNumber = (correctedEdges.r + correctedEdges.b) * (correctedEdges.g + correctedEdges.a);
-      bool isCorner = cornerNumber == 1f;
+      // bool isCorner = cornerNumber == 1f;
+      float isCorner = cornerNumber == 1f ? 1f : 0f;
       // GREATEST CORNER DELTA CORRECTION END
 
       // redo to get normal edges, use that to calc filter strength
@@ -331,7 +332,8 @@ namespace PSMAA
 
       // OUTPUT
       // cram marker for cornerdetection and the strength into one float
-      filteringStrength = saturate((strength + (float)isCorner) / 2f); // TODO: check if this conversion actually works!
+      // filteringStrength = saturate((strength + (float)isCorner) / 2f); // TODO: check if this conversion actually works!
+      filteringStrength = float2(strength, isCorner);
     }
 
     void FilteringPS(
@@ -341,8 +343,10 @@ namespace PSMAA
       out float4 filteredColor
     )
     {
-      float rawStrength = PSMAASamplePoint(filterStrengthTex, texcoord).r;
-      float2 strengthAndIsCorner = UnpackFilterStrength(rawStrength);
+      // float rawStrength = PSMAASamplePoint(filterStrengthTex, texcoord).r;
+      // float2 strengthAndIsCorner = UnpackFilterStrength(rawStrength);
+
+      float2 strengthAndIsCorner = PSMAASamplePoint(filterStrengthTex, texcoord).rg;
 
       if(strengthAndIsCorner.y == 1f || strengthAndIsCorner.x == 0f) discard; // skip if corner or no filtering needed
 

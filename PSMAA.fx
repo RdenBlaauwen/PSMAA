@@ -336,7 +336,7 @@ texture filterStrengthTex
 {
 	Width = BUFFER_WIDTH;
 	Height = BUFFER_HEIGHT;
-	Format = R8;
+	Format = RG8;
 };
 sampler filterStrengthSampler
 {
@@ -419,7 +419,7 @@ void PSMAAPreProcessingPSWrapper(
 	float2 texcoord : TEXCOORD0,
 	out float maxLocalLuma : SV_TARGET0,
 	out float originalLuma : SV_TARGET1,
-	out float filteringStrength : SV_TARGET2
+	out float2 filteringStrength : SV_TARGET2
 )
 {
 	PSMAA::Pass::PreProcessingPS(texcoord, colorGammaSampler, maxLocalLuma, originalLuma, filteringStrength);
