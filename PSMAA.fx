@@ -220,7 +220,9 @@ ui_items = "None\0Local Luma\0Filtered Copy\0Deltas\0Edges\0";
 #define PSMAAGatherLeftEdges(tex, coord) tex2Dgather(tex, coord, 0);
 #define PSMAAGatherTopEdges(tex, coord) tex2Dgather(tex, coord, 1);
 
-#define USE_OLD_PREPROCESSING 1
+#ifndef USE_OLD_PREPROCESSING
+	#define USE_OLD_PREPROCESSING 1
+#endif
 #define PSMAA_PRE_PROCESSING_THRESHOLD_MULTIPLIER _PreProcessingThresholdMultiplier
 #define PSMAA_PRE_PROCESSING_CMAA_LCA_FACTOR_MULTIPLIER _PreProcessingCmaaLCAMultiplier
 #define PSMAA_PRE_PROCESSING_EXTRA_PIXEL_SOFTENING .15
@@ -457,7 +459,11 @@ void PSMAADeltaCalulationPSWrapper(
 		float4 offset[1] : TEXCOORD1,
 		out float2 deltas : SV_Target0)
 {
+#if USE_OLD_PREPROCESSING
 	PSMAA::Pass::DeltaCalculationPS(texcoord, offset, filteredCopySampler, deltas);
+#else
+	PSMAA::Pass::DeltaCalculationPS(texcoord, offset, colorGammaSampler, deltas);
+#endif
 }
 
 void PSMAAEdgeDetectionVSWrapper(
@@ -583,6 +589,20 @@ technique PSMAA
 		VertexShader = PostProcessVS;
 		PixelShader = PSMAAPreProcessingPSWrapper;
 		RenderTarget0 = maxLocalLumaTex;
+		RenderTarget1 = filteredCopyTex;
+		// ClearRenderTargets = true;
+	}
+	pass OutputProcess
+	{
+		VertexShader = PostProcessVS;
+		PixelShader = PSMAAPreProcessingOutputPSWrapper;
+	}
+#else
+	pass PreProcessing
+	{
+		VertexShader = PostProcessVS;
+		PixelShader = PSMAAPreProcessingPSWrapper;
+		RenderTarget0 = maxLocalLumaTex;
 		RenderTarget1 = originalLumaTex;
 		RenderTarget2 = filterStrengthTex;
 		// ClearRenderTargets = true;
@@ -592,20 +612,6 @@ technique PSMAA
 		VertexShader = PostProcessVS;
 		PixelShader = PSMAAFilteringPSWrapper;
 		SRGBWriteEnable = true;
-	}
-#else
-	pass PreProcessing
-	{
-		VertexShader = PostProcessVS;
-		PixelShader = PSMAAPreProcessingPSWrapper;
-		RenderTarget0 = maxLocalLumaTex;
-		RenderTarget1 = filteredCopyTex;
-		// ClearRenderTargets = true;
-	}
-	pass OutputProcess
-	{
-		VertexShader = PostProcessVS;
-		PixelShader = PSMAAPreProcessingOutputPSWrapper;
 	}
 #endif
 	pass DeltaCalculation

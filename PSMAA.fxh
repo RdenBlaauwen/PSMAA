@@ -327,7 +327,7 @@ namespace PSMAA
       cornerNumber = (edges.r + edges.b) * (edges.g + edges.a);
       // Determine fitler strength based on the number of corners detected
       float strength = max(cornerNumber / 4f, PSMAA_PRE_PROCESSING_MIN_STRENGTH);
-      strength *= PSMAA_PRE_PROCESSING_STRENGTH;
+      strength = saturate(strength * PSMAA_PRE_PROCESSING_STRENGTH);
 
       // OUTPUT
       // cram marker for cornerdetection and the strength into one float
