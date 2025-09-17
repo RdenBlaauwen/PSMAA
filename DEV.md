@@ -4,6 +4,8 @@
 - Split pre-processing pass into separate "edge detection" and softening passes, and perform the latter in linear space. 
   - This should prevent the resulting localavg from being too dark, without needing band-aid solutions to improve luminosity.
   - The existing output pass can be used as the smoothing pass.
+- Consider adding a luminosity preservation technique to the smoothing pass, which preserves small changes disproporionately more than large changes (to prevent smoothing of anomalous pixels being undone)
+- Find a way to prevent smoothing on texels with low-ish deltas but high-ish neighbouring deltas to prevent blur en performance overhead.
 - Implement new contrast adaptation system which arranges local deltas into "shapes" just like in "Bean softening".
   - needs more than jsut the basic 4 circumferential deltas to work.
   - if good shapes "win": number will be > 0.

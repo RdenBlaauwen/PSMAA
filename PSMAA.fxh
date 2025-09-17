@@ -17,6 +17,7 @@
 // #define PSMAA_PRE_PROCESSING_STRENGTH
 // #define PSMAA_PRE_PROCESSING_MIN_STRENGTH
 // #define PSMAA_PRE_PROCESSING_STRENGTH_THRESH
+// #define PSMAA_PRE_PROCESSING_EXPLICIT_ZERO
 // #define PSMAA_ALPHA_PASSTHROUGH
 // #define PSMAA_THRESHOLD_FLOOR
 // #define PSMAA_EDGE_DETECTION_FACTORS_HIGH_LUMA
@@ -46,6 +47,7 @@
 // #define PSMAA_PRE_PROCESSING_STRENGTH 1f
 // #define PSMAA_PRE_PROCESSING_MIN_STRENGTH .15
 // #define PSMAA_PRE_PROCESSING_STRENGTH_THRESH .15
+// #define PSMAA_PRE_PROCESSING_EXPLICIT_ZERO true
 // #define PSMAA_ALPHA_PASSTHROUGH 0
 // #define PSMAA_THRESHOLD_FLOOR 0.018
 // #define PSMAA_EDGE_DETECTION_FACTORS_HIGH_LUMA float4(threshold, CMAALCAFactor, SMAALCAFactor, SMAALCAAdjustmentBiasByCMAALocalContrast)
@@ -91,18 +93,6 @@ namespace PSMAA
     deltas.y = GetDelta(cTop, cCurrent, rangeTop, rangeCurrent);
 
     return deltas;
-  }
-
-  float2 UnpackFilterStrength(float rawStrength)
-  {
-    float2 strengthAndIsCorner = float2(0f, 0f);
-    if (rawStrength > .5) {
-      rawStrength -= .5;
-      strengthAndIsCorner.y = 1f;
-    }
-    strengthAndIsCorner.x = saturate(rawStrength * 2f);
-
-    return strengthAndIsCorner;
   }
 
   /**
@@ -293,14 +283,7 @@ namespace PSMAA
       float threshold = max(detectionFactors.x, PSMAA_THRESHOLD_FLOOR);
 
       // CMAA LCA START
-      float4 maxLocalDeltas;
-      maxLocalDeltas.r = Functions::max(deltas.gba);
-      maxLocalDeltas.g = Functions::max(deltas.bar);
-      maxLocalDeltas.b = Functions::max(deltas.arg);
-      maxLocalDeltas.a = Functions::max(deltas.rgb);
-
-      // TODO: try this method instead
-      // float4 maxLocalDeltas = Functions::max(deltas.gbar, deltas.barg, deltas.argb);
+      float4 maxLocalDeltas = Functions::max(deltas.gbar, deltas.barg, deltas.argb);
 
       deltas -= maxLocalDeltas * detectionFactors.y;
       // CMAA LCA END
@@ -308,7 +291,7 @@ namespace PSMAA
       float4 edges = step(threshold, deltas);
       if (Functions::sum(edges) < 2f) // Leave filter strength as 0f for straight lines, to prevent blur
       { 
-        filteringStrength = float2(0f,0f); // TODO: Test if turning this on or off changes visual quality
+        filteringStrength = float2(0f,0f);
         return;
       }
 
@@ -323,19 +306,16 @@ namespace PSMAA
 
       float4 correctedEdges = step(threshold, correctedDeltas);
       float cornerNumber = (correctedEdges.r + correctedEdges.b) * (correctedEdges.g + correctedEdges.a);
-      // bool isCorner = cornerNumber == 1f;
       float isCorner = cornerNumber == 1f ? 1f : 0f;
       // GREATEST CORNER DELTA CORRECTION END
 
       // redo to get normal edges, use that to calc filter strength
       cornerNumber = (edges.r + edges.b) * (edges.g + edges.a);
-      // Determine fitler strength based on the number of corners detected
+      // Determine filter strength based on the number of corners detected
       float strength = max(cornerNumber / 4f, PSMAA_PRE_PROCESSING_MIN_STRENGTH);
       strength = strength * PSMAA_PRE_PROCESSING_STRENGTH;
 
       // OUTPUT
-      // cram marker for cornerdetection and the strength into one float
-      // filteringStrength = saturate((strength + (float)isCorner) / 2f); // TODO: check if this conversion actually works!
       filteringStrength = float2(strength, isCorner);
     }
 
@@ -346,13 +326,9 @@ namespace PSMAA
       out float4 filteredColor
     )
     {
-      // float rawStrength = PSMAASamplePoint(filterStrengthTex, texcoord).r;
-      // float2 strengthAndIsCorner = UnpackFilterStrength(rawStrength);
-
       float2 strengthAndIsCorner = PSMAASamplePoint(filterStrengthTex, texcoord).rg;
 
-      // if(strengthAndIsCorner.y == 1f || strengthAndIsCorner.x == 0f) discard; // skip if corner or no filtering needed
-      if(strengthAndIsCorner.y >= .9f || strengthAndIsCorner.x < PSMAA_PRE_PROCESSING_STRENGTH_THRESH) discard; // skip if corner or no filtering needed
+      if(strengthAndIsCorner.y >= .9f || strengthAndIsCorner.x <= PSMAA_PRE_PROCESSING_STRENGTH_THRESH) discard; // skip if corner or no filtering needed
 
       // TODO: optimise using gathers
       // NW N NE
