@@ -6,134 +6,134 @@
 #include "ReShadeUI.fxh"
 
 uniform int _MaxSearchSteps < __UNIFORM_DRAG_INT1
-																	ui_label = "Max Search Steps";
-ui_min = 0;
-ui_max = 128;
-ui_step = 1;
+	ui_label = "Max Search Steps";
+	ui_min = 0;
+	ui_max = 128;
+	ui_step = 1;
 > = 32;
 
 uniform int _MaxSearchStepsDiag < __UNIFORM_DRAG_INT1
-																			ui_label = "Max Diagonal Search Steps";
-ui_min = 0;
-ui_max = 64;
-ui_step = 1;
+	ui_label = "Max Diagonal Search Steps";
+	ui_min = 0;
+	ui_max = 64;
+	ui_step = 1;
 > = 19;
 
 uniform int _CornerRounding < __UNIFORM_DRAG_INT1
-																	ui_label = "Corner Rounding";
-ui_min = 0;
-ui_max = 100;
-ui_step = 1;
+	ui_label = "Corner Rounding";
+	ui_min = 0;
+	ui_max = 100;
+	ui_step = 1;
 > = 10;
 
 uniform float2 _EdgeDetectionThreshold <
-		ui_label = "Edge Threshold";
-ui_type = "slider";
-ui_min = .004;
-ui_max = .15;
-ui_step = .001;
+	ui_label = "Edge Threshold";
+	ui_type = "slider";
+	ui_min = .004;
+	ui_max = .15;
+	ui_step = .001;
 > = float2(.005, .05);
 
 uniform float2 _CMAALCAFactor <
-		ui_label = "CMAA LCA Factor";
-ui_type = "slider";
-ui_min = 0;
-ui_max = .3;
-ui_step = .01;
+	ui_label = "CMAA LCA Factor";
+	ui_type = "slider";
+	ui_min = 0;
+	ui_max = .3;
+	ui_step = .01;
 > = float2(.22, .15);
 
 uniform float2 _SMAALCAFactor <
-		ui_label = "SMAA LCA Factor";
-ui_type = "slider";
-ui_min = 1.5;
-ui_max = 4f;
-ui_step = .1;
+	ui_label = "SMAA LCA Factor";
+	ui_type = "slider";
+	ui_min = 1.5;
+	ui_max = 4f;
+	ui_step = .1;
 > = float2(2f, 2f);
 
 uniform float2 _CMAALCAforSMAALCAFactor <
-		ui_label = "CMAA LCA adjust. of SMAA LCA";
-ui_type = "slider";
-ui_min = -1;
-ui_max = 1;
-ui_step = .01;
+	ui_label = "CMAA LCA adjust. of SMAA LCA";
+	ui_type = "slider";
+	ui_min = -1;
+	ui_max = 1;
+	ui_step = .01;
 > = float2(-.45, 0);
 
 uniform float _ThreshFloor < __UNIFORM_DRAG_FLOAT1
-																 ui_label = "Threshold floor";
-// TODO: build comprehensive texture + bitrate macro system to replace this sad ui_min value
-ui_min = .004;
-ui_max = .03;
-ui_step = .001;
+	ui_label = "Threshold floor";
+	// TODO: build comprehensive texture + bitrate macro system to replace this sad ui_min value
+	ui_min = .004;
+	ui_max = .03;
+	ui_step = .001;
 > = .01;
 
 uniform float _PreProcessingThresholdMultiplier <
-		ui_category = "Pre-Processing";
-ui_label = "ThresholdMultiplier";
-ui_type = "slider";
-ui_min = 1f;
-ui_max = 10f;
-ui_step = .1;
-ui_tooltip = "How much higher is the pre-processing threshold than the edge detection threshold?\n"
-						 "Recommended values [2..6]";
+	ui_category = "Pre-Processing";
+	ui_label = "ThresholdMultiplier";
+	ui_type = "slider";
+	ui_min = 1f;
+	ui_max = 10f;
+	ui_step = .1;
+	ui_tooltip = "How much higher is the pre-processing threshold than the edge detection threshold?\n"
+							"Recommended values [2..6]";
 > = 3.5f;
 
 uniform float _PreProcessingCmaaLCAMultiplier <
-		ui_category = "Pre-Processing";
-ui_label = "CmaaLCAMultiplier";
-ui_type = "slider";
-ui_min = .1;
-ui_max = 1f;
-ui_step = .01;
-ui_tooltip = "Recommended values [0.25..0.75]";
+	ui_category = "Pre-Processing";
+	ui_label = "CmaaLCAMultiplier";
+	ui_type = "slider";
+	ui_min = .1;
+	ui_max = 1f;
+	ui_step = .01;
+	ui_tooltip = "Recommended values [0.25..0.75]";
 > = .65;
 
 uniform float _PreProcessingStrength <
-		ui_category = "Pre-Processing";
-ui_label = "Strength";
-ui_type = "slider";
-ui_min = 0f;
-ui_max = 1f;
-ui_step = .01;
-ui_tooltip = "Strength of the pre-processing step.\n"
-						 "Recommended values [0.5..0.85]";
+	ui_category = "Pre-Processing";
+	ui_label = "Strength";
+	ui_type = "slider";
+	ui_min = 0f;
+	ui_max = 1f;
+	ui_step = .01;
+	ui_tooltip = "Strength of the pre-processing step.\n"
+							"Recommended values [0.5..0.85]";
 > = .65;
 
 uniform float _PreProcessingStrengthThresh <
-		ui_category = "Pre-Processing";
-ui_label = "Strength thresh";
-ui_type = "slider";
-ui_min = 0f;
-ui_max = .15f;
-ui_step = .001;
-ui_tooltip = "Strengths below this val are skipped";
+	ui_category = "Pre-Processing";
+	ui_label = "Strength thresh";
+	ui_type = "slider";
+	ui_min = 0f;
+	ui_max = .15f;
+	ui_step = .001;
+	ui_tooltip = "Strengths below this val are skipped";
 > = .15;
 
 uniform float _PreProcessingLumaPreservationBias <
-		ui_category = "Pre-Processing";
-ui_label = "LumaPreservationBias";
-ui_type = "slider";
-ui_min = -.8f;
-ui_max = .8f;
-ui_step = .05;
+	ui_category = "Pre-Processing";
+	ui_label = "LumaPreservationBias";
+	ui_type = "slider";
+	ui_min = -.8f;
+	ui_max = .8f;
+	ui_step = .05;
 > = .5f;
 
 uniform float _PreProcessingLumaPreservationStrength <
-		ui_category = "Pre-Processing";
-ui_label = "LumaPreservationStrength";
-ui_type = "slider";
-ui_min = 1f;
-ui_max = 3f;
-ui_step = .05;
-ui_tooltip = "1 = normal strength, 5 = max";
+	ui_category = "Pre-Processing";
+	ui_label = "LumaPreservationStrength";
+	ui_type = "slider";
+	ui_min = 1f;
+	ui_max = 3f;
+	ui_step = .05;
+	ui_tooltip = "1 = normal strength, 5 = max";
 > = 1.5f;
 
 uniform float _PreProcessingGreatestCornerCorrectionStrength <
-		ui_category = "Pre-Processing";
-ui_label = "Greatest Corner Correction Strength";
-ui_type = "slider";
-ui_min = 0f;
-ui_max = 1f;
-ui_step = .01;
+	ui_category = "Pre-Processing";
+	ui_label = "Greatest Corner Correction Strength";
+	ui_type = "slider";
+	ui_min = 0f;
+	ui_max = 1f;
+	ui_step = .01;
 > = .85;
 
 // uniform float _RangeCramTarget <
@@ -144,14 +144,14 @@ ui_step = .01;
 // > = 1f;
 
 uniform bool _ShowOldPreProcessing <
-		ui_category = "Pre-Processing";
-ui_label = "Show Old Pre-Processing";
-ui_tooltip = "Use the old pre-processing method.";
+	ui_category = "Pre-Processing";
+	ui_label = "Show Old Pre-Processing";
+	ui_tooltip = "Use the old pre-processing method.";
 > = false;
 
 uniform bool _SmoothingEnabled <
-		ui_category = "Bean Smoothing";
-ui_label = "Enable Bean Smoothing";
+	ui_category = "Bean Smoothing";
+	ui_label = "Enable Bean Smoothing";
 > = true;
 
 // uniform bool _OldSmoothingEnabled <
@@ -160,39 +160,39 @@ ui_label = "Enable Bean Smoothing";
 // > = false;
 
 uniform bool _SmoothingDeltaWeightDebug <
-		ui_category = "Bean Smoothing";
-ui_label = "_SmoothingDeltaWeightDebug";
+	ui_category = "Bean Smoothing";
+	ui_label = "_SmoothingDeltaWeightDebug";
 > = false;
 
 uniform float _SmoothingMinDeltaWeight <
-		ui_category = "Bean Smoothing";
-ui_label = "_SmoothingMinDeltaWeight";
-ui_type = "slider";
-ui_min = 0f;
-ui_max = .2;
-ui_step = 0.01f;
+	ui_category = "Bean Smoothing";
+	ui_label = "_SmoothingMinDeltaWeight";
+	ui_type = "slider";
+	ui_min = 0f;
+	ui_max = .2;
+	ui_step = 0.01f;
 > = .1;
 
 uniform float _SmoothingMaxDeltaWeight <
-		ui_category = "Bean Smoothing";
-ui_label = "_SmoothingMaxDeltaWeight";
-ui_type = "slider";
-ui_min = .15;
-ui_max = .75;
-ui_step = 0.01f;
+	ui_category = "Bean Smoothing";
+	ui_label = "_SmoothingMaxDeltaWeight";
+	ui_type = "slider";
+	ui_min = .15;
+	ui_max = .75;
+	ui_step = 0.01f;
 > = .5;
 
 uniform float _SmoothingDeltaWeightDynamicThreshold <
-		ui_category = "Bean Smoothing";
-ui_label = "Dynamic threshold";
-ui_type = "slider";
-ui_min = 0f;
-ui_max = 1f;
-ui_step = 0.01f;
+	ui_category = "Bean Smoothing";
+	ui_label = "Dynamic threshold";
+	ui_type = "slider";
+	ui_min = 0f;
+	ui_max = 1f;
+	ui_step = 0.01f;
 > = .8;
 
 #ifndef SHOW_DEBUG
-#define SHOW_DEBUG 0
+	#define SHOW_DEBUG 0
 #endif
 // preprocessor variable dedicated to debug library, turns it on or off
 #define SHARED_DEBUG__ACTIVE_ SHOW_DEBUG
@@ -203,7 +203,7 @@ uniform int _Debug <
 		ui_category = "Debug";
 ui_type = "combo";
 ui_label = "Debug output";
-ui_items = "None\0Local Luma\0Filtered Copy\0Deltas\0Edges\0";
+ui_items = "None\0Max Local Luma\0Deltas\0Edges\0";
 > = 0;
 
 #endif
@@ -230,9 +230,6 @@ ui_items = "None\0Local Luma\0Filtered Copy\0Deltas\0Edges\0";
 #define PSMAAGatherLeftEdges(tex, coord) tex2Dgather(tex, coord, 0);
 #define PSMAAGatherTopEdges(tex, coord) tex2Dgather(tex, coord, 1);
 
-#ifndef USE_OLD_PREPROCESSING
-	#define USE_OLD_PREPROCESSING 1
-#endif
 #define PSMAA_PRE_PROCESSING_THRESHOLD_MULTIPLIER _PreProcessingThresholdMultiplier
 #define PSMAA_PRE_PROCESSING_CMAA_LCA_FACTOR_MULTIPLIER _PreProcessingCmaaLCAMultiplier
 #define PSMAA_PRE_PROCESSING_EXTRA_PIXEL_SOFTENING .15
@@ -242,9 +239,6 @@ ui_items = "None\0Local Luma\0Filtered Copy\0Deltas\0Edges\0";
 #define PSMAA_PRE_PROCESSING_MIN_STRENGTH .15
 #define PSMAA_PRE_PROCESSING_STRENGTH_THRESH _PreProcessingStrengthThresh
 #define PSMAA_PRE_PROCESSING_GREATEST_CORNER_CORRECTION_STRENGTH _PreProcessingGreatestCornerCorrectionStrength
-#ifndef PSMAA_ALPHA_PASSTHROUGH
-#define PSMAA_ALPHA_PASSTHROUGH 0
-#endif
 #define PSMAA_EDGE_DETECTION_FACTORS_HIGH_LUMA float4(_EdgeDetectionThreshold.y, _CMAALCAFactor.y, _SMAALCAFactor.y, _CMAALCAforSMAALCAFactor.y)
 #define PSMAA_EDGE_DETECTION_FACTORS_LOW_LUMA float4(_EdgeDetectionThreshold.x, _CMAALCAFactor.x, _SMAALCAFactor.x, _CMAALCAforSMAALCAFactor.x)
 
@@ -308,17 +302,6 @@ sampler colorLinearSampler
 	Texture = colorInputTex;
 	MipFilter = Point;
 	SRGBTexture = true;
-};
-
-texture filteredCopyTex
-{
-	Width = BUFFER_WIDTH;
-	Height = BUFFER_HEIGHT;
-	Format = RGB10A2;
-};
-sampler filteredCopySampler
-{
-	Texture = filteredCopyTex;
 };
 
 texture maxLocalLumaTex
@@ -414,17 +397,7 @@ sampler searchSampler
 	MagFilter = Point;
 };
 
-#if USE_OLD_PREPROCESSING
-void PSMAAPreProcessingPSWrapper(
-	float4 position : SV_POSITION,
-	float2 texcoord : TEXCOORD0,
-	out float maxLocalLuma : SV_TARGET0,
-	out float4 filteredCopy : SV_TARGET1
-)
-{
-	PSMAAOld::Pass::PreProcessingPS(texcoord, colorGammaSampler, filteredCopy, maxLocalLuma);
-}
-#else
+
 void PSMAAPreProcessingPSWrapper(
 	float4 position : SV_POSITION,
 	float2 texcoord : TEXCOORD0,
@@ -435,7 +408,6 @@ void PSMAAPreProcessingPSWrapper(
 {
 	PSMAA::Pass::PreProcessingPS(texcoord, colorGammaSampler, maxLocalLuma, originalLuma, filteringStrength);
 }
-#endif
 
 void PSMAAFilteringPSWrapper(
 		float4 position : SV_Position,
@@ -443,14 +415,6 @@ void PSMAAFilteringPSWrapper(
 		out float4 color : SV_Target)
 {
 	PSMAA::Pass::FilteringPS(texcoord, colorLinearSampler, filterStrengthSampler, color);
-}
-
-void PSMAAPreProcessingOutputPSWrapper(
-		float4 position : SV_Position,
-		float2 texcoord : TEXCOORD0,
-		out float4 color : SV_Target)
-{
-	PSMAA::Pass::PreProcessingOutputPS(texcoord, filteredCopySampler, colorGammaSampler, color);
 }
 
 // TODO: consider trying to calculate this in the PS instead.
@@ -470,11 +434,7 @@ void PSMAADeltaCalulationPSWrapper(
 		float4 offset[1] : TEXCOORD1,
 		out float2 deltas : SV_Target0)
 {
-#if USE_OLD_PREPROCESSING
-	PSMAA::Pass::DeltaCalculationPS(texcoord, offset, filteredCopySampler, deltas);
-#else
 	PSMAA::Pass::DeltaCalculationPS(texcoord, offset, colorGammaSampler, deltas);
-#endif
 }
 
 void PSMAAEdgeDetectionVSWrapper(
@@ -546,21 +506,6 @@ void PSMAABlendingPSWrapper(
 	}
 	else if (_Debug == 2)
 	{
-		float4 gammaColor = tex2D(filteredCopySampler, texcoord).rgba;
-
-		// Convert to linear color space (standard sRGB conversion)
-		float4 linearColor;
-		float3 sRGB = gammaColor.rgb;
-		float3 isDark = sRGB <= 0.04045; // Handle dark values differently
-		float3 linearDark = sRGB / 12.92;
-		float3 linearBright = pow((sRGB + 0.055) / 1.055, 2.4);
-		linearColor.rgb = lerp(linearBright, linearDark, isDark);
-		linearColor.a = gammaColor.a;
-
-		color = linearColor;
-	}
-	else if (_Debug == 3)
-	{
 		color = tex2D(deltaSampler, texcoord).rgba;
 	}
 	else
@@ -594,21 +539,6 @@ void SmoothingPSWrapper(
 
 technique PSMAA
 {
-#if USE_OLD_PREPROCESSING
-	pass PreProcessing
-	{
-		VertexShader = PostProcessVS;
-		PixelShader = PSMAAPreProcessingPSWrapper;
-		RenderTarget0 = maxLocalLumaTex;
-		RenderTarget1 = filteredCopyTex;
-		// ClearRenderTargets = true;
-	}
-	pass OutputProcess
-	{
-		VertexShader = PostProcessVS;
-		PixelShader = PSMAAPreProcessingOutputPSWrapper;
-	}
-#else
 	pass PreProcessing
 	{
 		VertexShader = PostProcessVS;
@@ -624,7 +554,6 @@ technique PSMAA
 		PixelShader = PSMAAFilteringPSWrapper;
 		SRGBWriteEnable = true;
 	}
-#endif
 	pass DeltaCalculation
 	{
 		VertexShader = PSMAADeltaCalulationVSWrapper;

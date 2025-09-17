@@ -18,7 +18,6 @@
 // #define PSMAA_PRE_PROCESSING_MIN_STRENGTH
 // #define PSMAA_PRE_PROCESSING_STRENGTH_THRESH
 // #define PSMAA_PRE_PROCESSING_EXPLICIT_ZERO
-// #define PSMAA_ALPHA_PASSTHROUGH
 // #define PSMAA_THRESHOLD_FLOOR
 // #define PSMAA_EDGE_DETECTION_FACTORS_HIGH_LUMA
 // #define PSMAA_EDGE_DETECTION_FACTORS_LOW_LUM
@@ -48,7 +47,6 @@
 // #define PSMAA_PRE_PROCESSING_MIN_STRENGTH .15
 // #define PSMAA_PRE_PROCESSING_STRENGTH_THRESH .15
 // #define PSMAA_PRE_PROCESSING_EXPLICIT_ZERO true
-// #define PSMAA_ALPHA_PASSTHROUGH 0
 // #define PSMAA_THRESHOLD_FLOOR 0.018
 // #define PSMAA_EDGE_DETECTION_FACTORS_HIGH_LUMA float4(threshold, CMAALCAFactor, SMAALCAFactor, SMAALCAAdjustmentBiasByCMAALocalContrast)
 // #define PSMAA_EDGE_DETECTION_FACTORS_LOW_LUMA float4(threshold, CMAALCAFactor, SMAALCAFactor, SMAALCAAdjustmentBiasByCMAALocalContrast)
@@ -334,38 +332,24 @@ namespace PSMAA
       // NW N NE
       // W  C  E
       // SW S SE
+      // Keep the alpha from the original texture
+      float4 CRaw = PSMAASampleLevelZero(colorLinearTex, texcoord);
+      float3 C = CRaw.rgb;
       float3 NW = PSMAASampleLevelZeroOffset(colorLinearTex, texcoord, float2(-1, -1)).rgb;
       float3 W = PSMAASampleLevelZeroOffset(colorLinearTex, texcoord, float2(-1, 0)).rgb;
       float3 SW = PSMAASampleLevelZeroOffset(colorLinearTex, texcoord, float2(-1, 1)).rgb;
       float3 N = PSMAASampleLevelZeroOffset(colorLinearTex, texcoord, float2(0, -1)).rgb;
-      float3 C = PSMAASampleLevelZero(colorLinearTex, texcoord).rgb;
       float3 S = PSMAASampleLevelZeroOffset(colorLinearTex, texcoord, float2(0, 1)).rgb;
       float3 NE = PSMAASampleLevelZeroOffset(colorLinearTex, texcoord, float2(1, -1)).rgb;
       float3 E = PSMAASampleLevelZeroOffset(colorLinearTex, texcoord, float2(1, 0)).rgb;
       float3 SE = PSMAASampleLevelZeroOffset(colorLinearTex, texcoord, float2(1, 1)).rgb;
 
-      filteredColor = CalcLocalAvg(
+      float3 filteredLocalAvg = CalcLocalAvg(
         NW, N, NE, W, C, E, SW, S, SE,
         strengthAndIsCorner.x);
-    }
 
-    void PreProcessingOutputPS(
-        float2 texcoord,
-        PSMAATexture2D(filteredCopyTex),
-        PSMAATexture2D(colorTex),
-        out float4 color)
-    {
-#if PSMAA_ALPHA_PASSTHROUGH
-
-      float oldAlpha = PSMAASamplePoint(colorTex, texcoord).a;
-      float3 filteredColor = PSMAASamplePoint(filteredCopyTex, texcoord).rgb;
-      color = float4(filteredColor, oldAlpha);
-
-#else
-
-      color = PSMAASamplePoint(filteredCopyTex, texcoord);
-
-#endif
+      // OUTPUT with localavg and original alpha
+      filteredColor = float4(filteredLocalAvg, CRaw.a);
     }
 
     /**
