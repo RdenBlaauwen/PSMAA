@@ -136,13 +136,6 @@ uniform float _PreProcessingGreatestCornerCorrectionStrength <
 	ui_step = .01;
 > = .85;
 
-// uniform float _RangeCramTarget <
-// 	ui_category = "Pre-Processing";
-// 	ui_label = "_RangeCramTarget";
-// 	ui_type = "slider";
-// 	ui_min = 0f; ui_max = 2f; ui_step = 0.01f;
-// > = 1f;
-
 uniform bool _ShowOldPreProcessing <
 	ui_category = "Pre-Processing";
 	ui_label = "Show Old Pre-Processing";
@@ -203,7 +196,7 @@ uniform int _Debug <
 		ui_category = "Debug";
 ui_type = "combo";
 ui_label = "Debug output";
-ui_items = "None\0Max Local Luma\0Deltas\0Edges\0";
+ui_items = "None\0Max Local Luma\0Luma\0Filtered image only\0Deltas\0Edges\0";
 > = 0;
 
 #endif
@@ -505,6 +498,14 @@ void PSMAABlendingPSWrapper(
 		color = tex2D(maxLocalLumaSampler, texcoord).rrrr;
 	}
 	else if (_Debug == 2)
+	{
+		color = tex2D(originalLumaSampler, texcoord).rrrr;
+	}
+	else if (_Debug == 3)
+	{
+		color = tex2D(colorLinearSampler, texcoord);
+	}
+	else if (_Debug == 4)
 	{
 		color = tex2D(deltaSampler, texcoord).rgba;
 	}
