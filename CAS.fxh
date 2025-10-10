@@ -32,7 +32,7 @@ static void CasSetup(
   // const1 = AU1_AF1(sharp);
 
   // Sharpness value
-  const1 = -rcp(lerp(8f, 5f, saturate(sharpness)));
+  const1 = -rcp(lerp(8f, 5f, saturate(sharpness))); // TODO: seems unncessary to use lerp?
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -41,10 +41,13 @@ static void CasSetup(
 //                                                     NON-PACKED VERSION
 //==============================================================================================================================
 void CasFilter(
-    out float3 pix, // Output values, non-vector so port between CasFilter() and CasFilterH() is easy.
-    AU2 ip,         // Integer pixel position in output.
+    // AU2 ip,
+    float2 texcoord, // Integer pixel position in output.
     // AU4 const1,
-    float const1)
+    float const1,
+    sampler colorSampler,
+    out float3 pix // Output values, non-vector so port between CasFilter() and CasFilterH() is easy.
+)
 {
   // Debug a checker pattern of on/off tiles for visual inspection.
   // #ifdef CAS_DEBUG_CHECKER
@@ -60,16 +63,15 @@ void CasFilter(
   // a b c
   // d e f
   // g h i
-  ASU2 sp = ASU2(ip);
-  float3 a = CasLoad(sp + ASU2(-1, -1));
-  float3 b = CasLoad(sp + ASU2(0, -1));
-  float3 c = CasLoad(sp + ASU2(1, -1));
-  float3 d = CasLoad(sp + ASU2(-1, 0));
-  float3 e = CasLoad(sp);
-  float3 f = CasLoad(sp + ASU2(1, 0));
-  float3 g = CasLoad(sp + ASU2(-1, 1));
-  float3 h = CasLoad(sp + ASU2(0, 1));
-  float3 i = CasLoad(sp + ASU2(1, 1));
+  float3 a = tex2Doffset(colorSampler, texcoord, float2(-1, -1));
+  float3 b = tex2Doffset(colorSampler, texcoord, float2(0, -1));
+  float3 c = tex2Doffset(colorSampler, texcoord, float2(1, -1));
+  float3 d = tex2Doffset(colorSampler, texcoord, float2(-1, 0));
+  float3 e = tex2D(colorSampler, texcoord);
+  float3 f = tex2Doffset(colorSampler, texcoord, float2(1, 0));
+  float3 g = tex2Doffset(colorSampler, texcoord, float2(-1, 1));
+  float3 h = tex2Doffset(colorSampler, texcoord, float2(0, 1));
+  float3 i = tex2Doffset(colorSampler, texcoord, float2(1, 1));
 
   // Soft min and max.
   //  a b c             b
@@ -86,11 +88,10 @@ void CasFilter(
 
   // Smooth minimum distance to signal limit divided by smooth max
   float3 rcpM = rcp(mx);
-
-  float3 amp = sat(min(mn, 2f - mx) * rcpM);
+  float3 amp = saturate(min(mn, 2f - mx) * rcpM);
 
   // Shaping amount of sharpening
-  amp = sqrt(amp);
+  amp = sqrt(amp); // TODO: rsqrt?
 
   // Filter shape.
   //  0 w 0
@@ -98,8 +99,8 @@ void CasFilter(
   //  0 w 0
   // float peak = AF1_AU1(const1.x);
   float peak = const1;
-  float3 w = amp * peak;
+  float3 w = amp * peak; // TODO: apply -rcp()?
   // Filter
   float3 rcpWeight = rcp(1f + 4f * w);
-  pix = sat((b * w + d * w + f * w + h * w + e) * rcpWeight);
+  pix = saturate((b * w + d * w + f * w + h * w + e) * rcpWeight); // TODO: I think most of these calcs can be done on one go
 }
