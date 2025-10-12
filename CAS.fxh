@@ -22,85 +22,98 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //==============================================================================================================================
 
-static void CasSetup(
-    // out uint const1,
-    out float const1,
-    float sharpness // 0 := default (lower ringing), 1 := maximum (higest ringing)
-)
-{
-  // float sharp = -rcp(lerp(8.0, 5.0, saturate(sharpness)));
-  // const1 = AU1_AF1(sharp);
+// DEPENDENCIES
+// This shader needs:
+// - Functions.fxh
 
-  // Sharpness value
-  const1 = -rcp(lerp(8f, 5f, saturate(sharpness))); // TODO: seems unncessary to use lerp?
-}
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//_____________________________________________________________/\_______________________________________________________________
-//==============================================================================================================================
-//                                                     NON-PACKED VERSION
-//==============================================================================================================================
-void CasFilter(
-    // AU2 ip,
-    float2 texcoord, // Integer pixel position in output.
-    // AU4 const1,
-    float const1,
-    sampler colorSampler,
-    out float3 pix // Output values, non-vector so port between CasFilter() and CasFilterH() is easy.
-)
-{
-  // Debug a checker pattern of on/off tiles for visual inspection.
-  // #ifdef CAS_DEBUG_CHECKER
-  //   if ((((ip.x ^ ip.y) >> 8u) & 1u) == 0u)
-  //   {
-  //     float3 pix0 = CasLoad(ASU2(ip));
-  //     pixR = pix0.r;
-  //     pixG = pix0.g;
-  //     pixB = pix0.b;
-  //     return;
-  //   }
-  // #endif
-  // a b c
-  // d e f
-  // g h i
-  float3 a = tex2Doffset(colorSampler, texcoord, float2(-1, -1));
-  float3 b = tex2Doffset(colorSampler, texcoord, float2(0, -1));
-  float3 c = tex2Doffset(colorSampler, texcoord, float2(1, -1));
-  float3 d = tex2Doffset(colorSampler, texcoord, float2(-1, 0));
-  float3 e = tex2D(colorSampler, texcoord);
-  float3 f = tex2Doffset(colorSampler, texcoord, float2(1, 0));
-  float3 g = tex2Doffset(colorSampler, texcoord, float2(-1, 1));
-  float3 h = tex2Doffset(colorSampler, texcoord, float2(0, 1));
-  float3 i = tex2Doffset(colorSampler, texcoord, float2(1, 1));
+// MACROS
+// #define CAS_BETTER_DIAGONALS
+//
+// examples
+// #define CAS_BETTER_DIAGONALS 1
 
-  // Soft min and max.
-  //  a b c             b
-  //  d e f * 0.5  +  d e f * 0.5
-  //  g h i             h
-  // These are 2.0x bigger (factored out the extra multiply)
-  float3 mn = Functions::min(d, e, f, b, h);
-  float3 mn2 = Functions::min(mn, a, c, g, i);
-  mn = mn + mn2;
+namespace CAS {
+  void CasSetup(
+      // out uint const1,
+      out float const1,
+      float sharpness // 0 := default (lower ringing), 1 := maximum (higest ringing)
+  )
+  {
+    // Sharpness value
+    const1 = -rcp(8f - 3f * sharpness);
+  }
 
-  float3 mx = Functions::max(d, e, f, b, h);
-  float3 mx2 = Functions::max(mx, a, c, g, i);
-  mx = mx + mx2;
+  void CasFilter(
+      float2 texcoord,
+      float const1,
+      sampler colorLinearSampler,
+      out float3 pix
+  )
+  {
+    // a b c
+    // d e f
+    // g h i
+    float3 a = tex2Doffset(colorLinearSampler, texcoord, float2(-1, -1));
+    float3 b = tex2Doffset(colorLinearSampler, texcoord, float2(0, -1));
+    float3 c = tex2Doffset(colorLinearSampler, texcoord, float2(1, -1));
+    float3 d = tex2Doffset(colorLinearSampler, texcoord, float2(-1, 0));
+    float3 e = tex2D(colorLinearSampler, texcoord);
+    float3 f = tex2Doffset(colorLinearSampler, texcoord, float2(1, 0));
+    float3 g = tex2Doffset(colorLinearSampler, texcoord, float2(-1, 1));
+    float3 h = tex2Doffset(colorLinearSampler, texcoord, float2(0, 1));
+    float3 i = tex2Doffset(colorLinearSampler, texcoord, float2(1, 1));
 
-  // Smooth minimum distance to signal limit divided by smooth max
-  float3 rcpM = rcp(mx);
-  float3 amp = saturate(min(mn, 2f - mx) * rcpM);
+    // Soft min and max.
+    //  a b c             b
+    //  d e f * 0.5  +  d e f * 0.5
+    //  g h i             h
+    // These are 2.0x bigger (factored out the extra multiply)
+    float3 mn = Functions::min(d, e, f, b, h);
 
-  // Shaping amount of sharpening
-  amp = sqrt(amp); // TODO: rsqrt?
+    #if CAS_BETTER_DIAGONALS
+      float3 mn2 = Functions::min(mn, a, c, g, i);
+      mn = mn + mn2;
+    #endif
 
-  // Filter shape.
-  //  0 w 0
-  //  w 1 w
-  //  0 w 0
-  // float peak = AF1_AU1(const1.x);
-  float peak = const1;
-  float3 w = amp * peak; // TODO: apply -rcp()?
-  // Filter
-  float3 rcpWeight = rcp(1f + 4f * w);
-  pix = saturate((b * w + d * w + f * w + h * w + e) * rcpWeight); // TODO: I think most of these calcs can be done on one go
+    float3 mx = Functions::max(d, e, f, b, h);
+
+    #if CAS_BETTER_DIAGONALS
+      float3 mx2 = Functions::max(mx, a, c, g, i);
+      mx = mx + mx2;
+    #endif
+
+    // Smooth minimum distance to signal limit divided by smooth max
+    float3 rcpM = rcp(mx);
+
+    #if CAS_BETTER_DIAGONALS
+      float3 amp = saturate(min(mn, 2f - mx) * rcpM);
+    #else
+      float3 amp = saturate(min(mn, 1f - mx) * rcpM);
+    #endif
+
+    // Shaping amount of sharpening
+    amp = sqrt(amp);
+
+    // Filter shape.
+    //  0 w 0
+    //  w 1 w
+    //  0 w 0
+    float peak = const1;
+    float3 w = amp * peak;
+    // Filter
+    float3 rcpWeight = rcp(1f + 4f * w);
+    pix = saturate(((b + d + f + h) * w + e) * rcpWeight);
+  }
+
+  // Generic PS
+  void CASPS(
+      float2 texcoord, // Integer pixel position in output.
+      sampler colorLinearSampler,
+      out float3 pix
+  )
+  {
+    float const1;
+    CasSetup(const1, 1f);
+    CasFilter(texcoord, const1, colorLinearSampler, pix);
+  }
 }

@@ -184,6 +184,16 @@ uniform float _SmoothingDeltaWeightDynamicThreshold <
 	ui_step = 0.01f;
 > = .8;
 
+uniform bool _SharpeningEnabled <
+	ui_category = "Sharpening";
+	ui_label = "Enable CAS Sharpening";
+> = false;
+
+uniform bool _UseOldCas <
+	ui_category = "Sharpening";
+	ui_label = "_UseOldCas";
+> = false;
+
 #ifndef SHOW_DEBUG
 	#define SHOW_DEBUG 0
 #endif
@@ -283,6 +293,13 @@ ui_items = "None\0Max Local Luma\0Luma\0Filtered image only\0Deltas\0Edges\0";
 #define SmoothingGatherTopDeltas(tex, coord) PSMAAGatherTopEdges(tex, texcoord);
 
 #include ".\BeanSmoothing.fxh"
+
+#ifndef CAS_BETTER_DIAGONALS
+	#define CAS_BETTER_DIAGONALS 1
+#endif
+
+#include ".\CAS.fxh"
+#include ".\CAS.old.fxh"
 
 texture colorInputTex : COLOR;
 sampler colorGammaSampler
@@ -538,6 +555,21 @@ void SmoothingPSWrapper(
 	BeanSmoothing::SmoothingPS(texcoord, offset, deltaSampler, weightSampler, colorGammaSampler, maxLocalLumaSampler, color);
 }
 
+void CASPSWrapper(
+		float4 position : SV_Position,
+		float2 texcoord : TEXCOORD0,
+		out float3 color : SV_Target)
+{
+	if (!_SharpeningEnabled)
+		discard;
+	if (_UseOldCas)
+	{
+		CASOld::CASPS(texcoord, colorLinearSampler, color);
+		return;
+	}
+	CAS::CASPS(texcoord, colorLinearSampler, color);
+}
+
 technique PSMAA
 {
 	pass PreProcessing
@@ -601,5 +633,11 @@ technique PSMAA
 	{
 		VertexShader = SMAANeighborhoodBlendingVSWrapper;
 		PixelShader = SmoothingPSWrapper;
+	}
+	pass Sharpening
+	{
+		VertexShader = PostProcessVS;
+		PixelShader = CASPSWrapper;
+		SRGBWriteEnable = true;
 	}
 }
