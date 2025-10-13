@@ -1,4 +1,5 @@
-// IMPLEMENTATION
+//// IMPLEMENTATION
+// MACROS
 // The following preprocessor variables should be defined in the main file:
 // #define PSMAA_USE_SIMPLIFIED_DELTA_CALCULATION
 // #define PSMAA_BUFFER_METRICS
@@ -21,12 +22,18 @@
 // #define PSMAA_THRESHOLD_FLOOR
 // #define PSMAA_EDGE_DETECTION_FACTORS_HIGH_LUMA
 // #define PSMAA_EDGE_DETECTION_FACTORS_LOW_LUM
-// #define PSMAA_PRE_PROCESSING_GREATEST_CORNER_CORRECTION_STRENGTH TODO: remove after testing
 // These are float4's with the following values:
 // x: threshold
 // y: CMAA LCA factor
 // z: SMAA LCA factor
 // w: SMAA LCA adjustment bias by CMAA local contrast
+// #define PSMAA_PRE_PROCESSING_GREATEST_CORNER_CORRECTION_STRENGTH //TODO: turn into proper macrp withd efault value and right location
+// #define PSMAA_SHARPENING_COMPENSATION_STRENGTH
+// #define PSMAA_SHARPENING_COMPENSATION_CUTOFF
+// #define PSMAA_SHARPENING_EDGE_BIAS (range -4f..0f)
+// #define PSMAA_SHARPENING_SHARPNESS
+// #define PSMAA_SHARPENING_BLENDING_STRENGTH
+// #define PSMAA_SHARPENING_DEBUG
 //
 // Reshade example:
 // #define PSMAA_USE_SIMPLIFIED_DELTA_CALCULATION 0
@@ -50,6 +57,18 @@
 // #define PSMAA_THRESHOLD_FLOOR 0.018
 // #define PSMAA_EDGE_DETECTION_FACTORS_HIGH_LUMA float4(threshold, CMAALCAFactor, SMAALCAFactor, SMAALCAAdjustmentBiasByCMAALocalContrast)
 // #define PSMAA_EDGE_DETECTION_FACTORS_LOW_LUMA float4(threshold, CMAALCAFactor, SMAALCAFactor, SMAALCAAdjustmentBiasByCMAALocalContrast)
+// #define PSMAA_SHARPENING_COMPENSATION_STRENGTH .65f
+// #define PSMAA_SHARPENING_COMPENSATION_CUTOFF .5f
+// #define PSMAA_SHARPENING_EDGE_BIAS -1f
+// #define PSMAA_SHARPENING_SHARPNESS 0f
+// #define PSMAA_SHARPENING_BLENDING_STRENGTH 0f
+// #define PSMAA_SHARPENING_DEBUG false
+
+// DEPENDENCIES START
+#define CAS_BETTER_DIAGONALS 1
+
+#include ".\CAS.fxh"
+// DEPENDENCIES END
 
 namespace PSMAA
 {
@@ -499,6 +518,74 @@ namespace PSMAA
       edges.xy *= step(finalDelta, localContrastAdaptationFactor * delta.xy);
 
       edgesOutput = edges;
+    }
+
+    void SharpeningPS(
+        float2 texcoord, // Integer pixel position in output.
+        sampler initialLumaSampler,
+        sampler colorGammaSampler,
+        sampler deltaSampler,
+        sampler colorLinearSampler,
+        out float3 pix
+    )
+    {
+      static const float NearZero = 1f/127f;
+      float initLuma = tex2D(initialLumaSampler, texcoord).r;
+      float3 currentColor = tex2D(colorGammaSampler, texcoord).rgb;
+      float currentLuma = Color::luma(currentColor);
+      float blendingChange = saturate(abs(currentLuma - initLuma) - NearZero);
+
+      pix = float(blendingChange).xxx;
+
+      // if((blendingChange + PSMAA_SHARPENING_BLENDING_STRENGTH) <= 0f) discard; TODO: reactivate, test perf difference
+
+      // Shape blending change val limit compensation strength at extreme values
+      // TODO: refactor, encapsulate into it's own function, with explanation of functioning
+      float compensationStrength = min(blendingChange * PSMAA_SHARPENING_COMPENSATION_STRENGTH/PSMAA_SHARPENING_COMPENSATION_CUTOFF, PSMAA_SHARPENING_COMPENSATION_STRENGTH);
+
+      float4 deltas;
+      #if __RENDERER__ >= 0xa000 // if DX10 or above
+        // get edge data from the bottom (x), bottom-right (y), right (z),
+        // and current pixels (w), in that order.
+        float4 leftDeltas = tex2Dgather(deltaSampler, texcoord, 0);
+        float4 topDeltas = tex2Dgather(deltaSampler, texcoord, 1);
+        deltas = float4(
+          leftDeltas.w,
+          topDeltas.w,
+          leftDeltas.z,
+          topDeltas.x
+        );
+      #else // if DX9
+        float offset = mad(PSMAA_BUFFER_METRICS.xyxy, float4(1f, 0f, 0f, 1f), texcoord.xyxy);
+        deltas = float4(
+          PSMAASampleLevelZero(deltaSampler, texcoord).rg,
+          PSMAASampleLevelZero(deltaSampler, offset.xy).r, 
+          PSMAASampleLevelZero(deltaSampler, offset.zw).g
+        ); 
+      #endif
+
+      float deltaSum = Functions::sum(deltas);
+      // Reduce sharpening strength based on number of edges
+      // Edge Bias is negative or 0, so edgeBiasStrength is <= 0f;
+      float edgeBiasStrength = deltaSum * PSMAA_SHARPENING_EDGE_BIAS;
+
+      float sharpeningStrength = PSMAA_SHARPENING_BLENDING_STRENGTH + compensationStrength + edgeBiasStrength;
+
+      if(PSMAA_SHARPENING_DEBUG){
+        pix = saturate(sharpeningStrength);
+        return;
+      }
+
+      if(sharpeningStrength <= 0f) discard; //TODO: reactivate, test perf difference
+
+      // sharpeningStrength of up to 1f is used to determine the blending strength...
+      float blendingStrength = saturate(sharpeningStrength);
+      // ...everything above that is sheared off and added to the sharpness
+      float sharpness = PSMAA_SHARPENING_SHARPNESS + saturate(sharpeningStrength - 1f);
+
+      float const1;
+      CasSetup(const1, sharpness);
+      CasFilter(texcoord, const1, blendingStrength, colorLinearSampler, pix);
     }
   }
 }

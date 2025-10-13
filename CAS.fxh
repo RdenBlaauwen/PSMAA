@@ -33,6 +33,16 @@
 // #define CAS_BETTER_DIAGONALS 1
 
 namespace CAS {
+  float3 CasLoad(sampler colorLinearSampler, float2 texcoord)
+  {
+    return tex2D(colorLinearSampler, texcoord).rgb;
+  }
+
+  float3 CasLoad(sampler colorLinearSampler, float2 texcoord, float2 offset)
+  {
+    return tex2Doffset(colorLinearSampler, texcoord, offset).rgb;
+  }
+
   void CasSetup(
       // out uint const1,
       out float const1,
@@ -43,26 +53,14 @@ namespace CAS {
     const1 = -rcp(8f - 3f * sharpness);
   }
 
-  void CasFilter(
-      float2 texcoord,
-      float const1,
-      sampler colorLinearSampler,
-      out float3 pix
+  float3 CasCalculations(
+    float3 a, float3 b, float3 c,
+    float3 d, float3 e, float3 f,
+    float3 g, float3 h, float3 i,
+    float const1
   )
   {
-    // a b c
-    // d e f
-    // g h i
-    float3 a = tex2Doffset(colorLinearSampler, texcoord, float2(-1, -1));
-    float3 b = tex2Doffset(colorLinearSampler, texcoord, float2(0, -1));
-    float3 c = tex2Doffset(colorLinearSampler, texcoord, float2(1, -1));
-    float3 d = tex2Doffset(colorLinearSampler, texcoord, float2(-1, 0));
-    float3 e = tex2D(colorLinearSampler, texcoord);
-    float3 f = tex2Doffset(colorLinearSampler, texcoord, float2(1, 0));
-    float3 g = tex2Doffset(colorLinearSampler, texcoord, float2(-1, 1));
-    float3 h = tex2Doffset(colorLinearSampler, texcoord, float2(0, 1));
-    float3 i = tex2Doffset(colorLinearSampler, texcoord, float2(1, 1));
-
+    
     // Soft min and max.
     //  a b c             b
     //  d e f * 0.5  +  d e f * 0.5
@@ -102,18 +100,56 @@ namespace CAS {
     float3 w = amp * peak;
     // Filter
     float3 rcpWeight = rcp(1f + 4f * w);
-    pix = saturate(((b + d + f + h) * w + e) * rcpWeight);
+    return saturate(((b + d + f + h) * w + e) * rcpWeight);
   }
 
-  // Generic PS
-  void CASPS(
-      float2 texcoord, // Integer pixel position in output.
+  void CasWrapper(
+      float2 texcoord,
+      float const1,
+      sampler colorLinearSampler,
+      out float3 original,
+      out float3 processed
+  )
+  {
+    // a b c
+    // d e f
+    // g h i
+    float3 a = CasLoad(colorLinearSampler, texcoord, float2(-1, -1));
+    float3 b = CasLoad(colorLinearSampler, texcoord, float2(0, -1));
+    float3 c = CasLoad(colorLinearSampler, texcoord, float2(1, -1));
+    float3 d = CasLoad(colorLinearSampler, texcoord, float2(-1, 0));
+    original = CasLoad(colorLinearSampler, texcoord);
+    float3 f = CasLoad(colorLinearSampler, texcoord, float2(1, 0));
+    float3 g = CasLoad(colorLinearSampler, texcoord, float2(-1, 1));
+    float3 h = CasLoad(colorLinearSampler, texcoord, float2(0, 1));
+    float3 i = CasLoad(colorLinearSampler, texcoord, float2(1, 1));
+
+    processed = CasCalculations(a, b, c, d, original, f, g, h, i, const1);
+  }
+
+  void CasFilter(
+      float2 texcoord,
+      float const1,
+      sampler colorLinearSampler,
+      out float3 pix
+  )
+  {    
+    float3 original; // goes unused, just to satisfy the wrapper params
+    CasWrapper(texcoord, const1, colorLinearSampler, original, pix);
+  }
+
+  // custom overload for blending strength
+  void CasFilter(
+      float2 texcoord,
+      float const1,
+      float blendingStrength,
       sampler colorLinearSampler,
       out float3 pix
   )
   {
-    float const1;
-    CasSetup(const1, 1f);
-    CasFilter(texcoord, const1, colorLinearSampler, pix);
+    float3 original;
+    float3 result;
+    CasWrapper(texcoord, const1, colorLinearSampler, original, result);
+    pix = lerp(original, result, blendingStrength);
   }
 }

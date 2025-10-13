@@ -194,6 +194,57 @@ uniform bool _UseOldCas <
 	ui_label = "_UseOldCas";
 > = false;
 
+uniform float _SharpeningCompensationStrength <
+    ui_category = "Sharpening";
+    ui_label = "Compensation Strength";
+    ui_type = "slider";
+    ui_min = 0f;
+    ui_max = 2f;
+    ui_step = .1;
+> = 1.2;
+
+uniform float _SharpeningCompensationCutoff <
+    ui_category = "Sharpening";
+    ui_label = "Compensation Cutoff";
+    ui_type = "slider";
+    ui_min = 0f;
+    ui_max = 1f;
+    ui_step = .01;
+> = .15;
+
+uniform float _SharpeningEdgeBias <
+    ui_category = "Sharpening";
+    ui_label = "Edge Bias";
+    ui_type = "slider";
+    ui_min = -4f;
+    ui_max = 0f;
+    ui_step = .1;
+> = -1f;
+
+uniform float _SharpeningSharpness <
+    ui_category = "Sharpening";
+    ui_label = "Sharpness";
+    ui_type = "slider";
+    ui_min = 0f;
+    ui_max = 1f;
+    ui_step = .01;
+> = 0f;
+
+uniform float _SharpeningBlendingStrength <
+    ui_category = "Sharpening";
+    ui_label = "Blending Strength";
+    ui_type = "slider";
+    ui_min = 0f;
+    ui_max = 1f;
+    ui_step = .01;
+> = .5;
+
+uniform bool _SharpeningDebug <
+		ui_category = "Sharpening";
+		ui_label = "_SharpeningDebug";
+		ui_type = "radio";
+> = false;
+
 #ifndef SHOW_DEBUG
 	#define SHOW_DEBUG 0
 #endif
@@ -228,7 +279,7 @@ ui_items = "None\0Max Local Luma\0Luma\0Filtered image only\0Deltas\0Edges\0";
 #define PSMAA_PIXEL_SIZE BUFFER_PIXEL_SIZE
 #define PSMAATexture2D(tex) sampler tex
 #define PSMAASamplePoint(tex, coord) tex2D(tex, coord)
-#define PSMAASampleLevelZero(tex, coord) tex2Dlod(tex, float4(coord, 0.0, 0.0))
+#define PSMAASampleLevelZero(tex, coord) tex2Dlod(tex, float4(coord, 0f, 0f))
 #define PSMAASampleLevelZeroOffset(tex, coord, offset) tex2Dlodoffset(tex, float4(coord, coord), offset)
 #define PSMAAGatherLeftEdges(tex, coord) tex2Dgather(tex, coord, 0);
 #define PSMAAGatherTopEdges(tex, coord) tex2Dgather(tex, coord, 1);
@@ -244,6 +295,12 @@ ui_items = "None\0Max Local Luma\0Luma\0Filtered image only\0Deltas\0Edges\0";
 #define PSMAA_PRE_PROCESSING_GREATEST_CORNER_CORRECTION_STRENGTH _PreProcessingGreatestCornerCorrectionStrength
 #define PSMAA_EDGE_DETECTION_FACTORS_HIGH_LUMA float4(_EdgeDetectionThreshold.y, _CMAALCAFactor.y, _SMAALCAFactor.y, _CMAALCAforSMAALCAFactor.y)
 #define PSMAA_EDGE_DETECTION_FACTORS_LOW_LUMA float4(_EdgeDetectionThreshold.x, _CMAALCAFactor.x, _SMAALCAFactor.x, _CMAALCAforSMAALCAFactor.x)
+#define PSMAA_SHARPENING_COMPENSATION_STRENGTH _SharpeningCompensationStrength
+#define PSMAA_SHARPENING_COMPENSATION_CUTOFF _SharpeningCompensationCutoff
+#define PSMAA_SHARPENING_EDGE_BIAS _SharpeningEdgeBias
+#define PSMAA_SHARPENING_SHARPNESS _SharpeningSharpness
+#define PSMAA_SHARPENING_BLENDING_STRENGTH _SharpeningBlendingStrength
+#define PSMAA_SHARPENING_DEBUG _SharpeningDebug
 
 #include ".\PSMAA.fxh"
 #include ".\PSMAA.old.fxh"
@@ -293,13 +350,6 @@ ui_items = "None\0Max Local Luma\0Luma\0Filtered image only\0Deltas\0Edges\0";
 #define SmoothingGatherTopDeltas(tex, coord) PSMAAGatherTopEdges(tex, texcoord);
 
 #include ".\BeanSmoothing.fxh"
-
-#ifndef CAS_BETTER_DIAGONALS
-	#define CAS_BETTER_DIAGONALS 1
-#endif
-
-#include ".\CAS.fxh"
-#include ".\CAS.old.fxh"
 
 texture colorInputTex : COLOR;
 sampler colorGammaSampler
@@ -562,12 +612,14 @@ void CASPSWrapper(
 {
 	if (!_SharpeningEnabled)
 		discard;
-	if (_UseOldCas)
-	{
-		CASOld::CASPS(texcoord, colorLinearSampler, color);
-		return;
-	}
-	CAS::CASPS(texcoord, colorLinearSampler, color);
+	// if (_UseOldCas)
+	// {
+	// 	CASOld::CASPS(texcoord, colorLinearSampler, color);
+	// 	return;
+	// }
+	// CAS::CASPS(texcoord, colorLinearSampler, color);
+
+	PSMAA::Pass::SharpeningPS(texcoord, originalLumaSampler, colorGammaSampler, deltaSampler, colorLinearSampler, color);
 }
 
 technique PSMAA
