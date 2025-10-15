@@ -189,11 +189,6 @@ uniform bool _SharpeningEnabled <
 	ui_label = "Enable CAS Sharpening";
 > = false;
 
-uniform bool _UseOldCas <
-	ui_category = "Sharpening";
-	ui_label = "_UseOldCas";
-> = false;
-
 uniform float _SharpeningCompensationStrength <
     ui_category = "Sharpening";
     ui_label = "Compensation Strength";
@@ -219,7 +214,7 @@ uniform float _SharpeningEdgeBias <
     ui_min = -4f;
     ui_max = 0f;
     ui_step = .1;
-> = -1f;
+> = -1.5f;
 
 uniform float _SharpeningSharpness <
     ui_category = "Sharpening";
@@ -237,7 +232,7 @@ uniform float _SharpeningBlendingStrength <
     ui_min = 0f;
     ui_max = 1f;
     ui_step = .01;
-> = .5;
+> = .75;
 
 uniform bool _SharpeningDebug <
 		ui_category = "Sharpening";

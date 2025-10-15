@@ -31,6 +31,7 @@
 // #define PSMAA_SHARPENING_COMPENSATION_STRENGTH
 // #define PSMAA_SHARPENING_COMPENSATION_CUTOFF
 // #define PSMAA_SHARPENING_EDGE_BIAS (range -4f..0f)
+// #define PSMAA_SHARPENING_EDGE_BIAS_WEIGHTS
 // #define PSMAA_SHARPENING_SHARPNESS
 // #define PSMAA_SHARPENING_BLENDING_STRENGTH
 // #define PSMAA_SHARPENING_DEBUG
@@ -60,6 +61,7 @@
 // #define PSMAA_SHARPENING_COMPENSATION_STRENGTH .65f
 // #define PSMAA_SHARPENING_COMPENSATION_CUTOFF .5f
 // #define PSMAA_SHARPENING_EDGE_BIAS -1f
+#define PSMAA_SHARPENING_EDGE_BIAS_WEIGHTS float4(.4, .8, 1.2, 1.6)
 // #define PSMAA_SHARPENING_SHARPNESS 0f
 // #define PSMAA_SHARPENING_BLENDING_STRENGTH 0f
 // #define PSMAA_SHARPENING_DEBUG false
@@ -250,6 +252,42 @@ namespace PSMAA
     edges.rg *= step(finalDelta, LCAFactors.x * currDeltas);
 
     return edges;
+  }
+
+  /**
+  * Maps (scales) an input to an output such that the speed at wich the output grows, the max value it reaches
+  * and when that max value is reached can be controlled. When the max value is reached, the output just "flatlines".
+  *
+  * @param ceiling the maximum value the output can reach. 
+  * @param cutoffValue the value of the input at which the ceiling is reached
+  */
+  float scaleSignal(float input, float ceiling, float cutoffValue)
+  {
+    float growthspeed = ceiling / cutoffValue;
+    return min(input * growthspeed, ceiling);
+  }
+
+  float calcEdgeBiasStrength(float4 deltas)
+  {
+    static const float4 Weights = PSMAA_SHARPENING_EDGE_BIAS_WEIGHTS;
+
+    float2 transverseMax = max(deltas.rg, deltas.ba);
+    float2 transverseMin = min(deltas.rg, deltas.ba);
+
+    float cornerDelta = Functions::min(transverseMax);
+    float lineDelta = Functions::max(transverseMin);
+
+    float4 factors;
+    // straight edge delta (largest delta)
+    factors.r = Functions::max(transverseMax);
+    // corner delta (2nd largest delta)
+    factors.g = max(cornerDelta, lineDelta); 
+    // cup delta (3rd largest delta)
+    factors.b = min(cornerDelta, lineDelta); 
+    // pix delta (smallest delta)
+    factors.a = Functions::min(transverseMin);
+
+    return dot(factors, Weights) * PSMAA_SHARPENING_EDGE_BIAS;
   }
 
   namespace Pass
@@ -537,11 +575,10 @@ namespace PSMAA
 
       pix = float(blendingChange).xxx;
 
-      // if((blendingChange + PSMAA_SHARPENING_BLENDING_STRENGTH) <= 0f) discard; TODO: reactivate, test perf difference
+      if((blendingChange + PSMAA_SHARPENING_BLENDING_STRENGTH) <= 0f) discard;
 
       // Shape blending change val limit compensation strength at extreme values
-      // TODO: refactor, encapsulate into it's own function, with explanation of functioning
-      float compensationStrength = min(blendingChange * PSMAA_SHARPENING_COMPENSATION_STRENGTH/PSMAA_SHARPENING_COMPENSATION_CUTOFF, PSMAA_SHARPENING_COMPENSATION_STRENGTH);
+      float compensationStrength = scaleSignal(blendingChange, PSMAA_SHARPENING_COMPENSATION_STRENGTH, PSMAA_SHARPENING_COMPENSATION_CUTOFF);
 
       float4 deltas;
       #if __RENDERER__ >= 0xa000 // if DX10 or above
@@ -564,10 +601,9 @@ namespace PSMAA
         ); 
       #endif
 
-      float deltaSum = Functions::sum(deltas);
       // Reduce sharpening strength based on number of edges
       // Edge Bias is negative or 0, so edgeBiasStrength is <= 0f;
-      float edgeBiasStrength = deltaSum * PSMAA_SHARPENING_EDGE_BIAS;
+      float edgeBiasStrength = calcEdgeBiasStrength(deltas);
 
       float sharpeningStrength = PSMAA_SHARPENING_BLENDING_STRENGTH + compensationStrength + edgeBiasStrength;
 
@@ -576,12 +612,12 @@ namespace PSMAA
         return;
       }
 
-      if(sharpeningStrength <= 0f) discard; //TODO: reactivate, test perf difference
+      if(sharpeningStrength <= 0f) discard;
 
       // sharpeningStrength of up to 1f is used to determine the blending strength...
       float blendingStrength = saturate(sharpeningStrength);
       // ...everything above that is sheared off and added to the sharpness
-      float sharpness = PSMAA_SHARPENING_SHARPNESS + saturate(sharpeningStrength - 1f);
+      float sharpness = saturate(PSMAA_SHARPENING_SHARPNESS + saturate(sharpeningStrength - 1f));
 
       float const1;
       CasSetup(const1, sharpness);
