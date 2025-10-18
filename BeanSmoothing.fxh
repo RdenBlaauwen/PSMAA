@@ -25,10 +25,45 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  *-------------------------------------------------------------------------------*/
-
-// This code needs code from the SMAA shader. Make sure to include it before this file.
-// It also needs some of the same pre-processor definitions as the SMAA shader,
-// so make sure to include this file after any relevant SMAA pre-processor definitions.
+ /**
+ *                  _______  ___  ___       ___           ___
+ *                 /       ||   \/   |     /   \         /   \
+ *                |   (---- |  \  /  |    /  ^  \       /  ^  \
+ *                 \   \    |  |\/|  |   /  /_\  \     /  /_\  \
+ *              ----)   |   |  |  |  |  /  _____  \   /  _____  \
+ *             |_______/    |__|  |__| /__/     \__\ /__/     \__\
+ * 
+ *                               E N H A N C E D
+ *       S U B P I X E L   M O R P H O L O G I C A L   A N T I A L I A S I N G
+ *
+ *                         http://www.iryoku.com/smaa/
+ *
+ * Copyright (C) 2013 Jorge Jimenez (jorge@iryoku.com)
+ * Copyright (C) 2013 Jose I. Echevarria (joseignacioechevarria@gmail.com)
+ * Copyright (C) 2013 Belen Masia (bmasia@unizar.es)
+ * Copyright (C) 2013 Fernando Navarro (fernandn@microsoft.com)
+ * Copyright (C) 2013 Diego Gutierrez (diegog@unizar.es)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+ * of the Software, and to permit persons to whom the Software is furnished to
+ * do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software. As clarification, there
+ * is no requirement that the copyright notice and permission be included in
+ * binary distributions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
 
 // #define SMOOTHING_STRENGTH_MOD
 // #define EDGE_THRESHOLD_MOD
@@ -47,9 +82,10 @@
 // #define SMOOTHING_MAX_DELTA_WEIGHT
 // #define SMOOTHING_DELTA_WEIGHT_PREDICATION_FACTOR
 
-// #define SmoothingTexture2D(tex)
-// #define SmoothingSamplePoint(tex, coord)
 // #define SmoothingSampleLevelZero(tex, coord)
+// #define SmoothingSampleLevelZeroOffset(tex, coord, offset)
+// #define SmoothingGatherLeftDeltas(tex, coord)
+// #define SmoothingGatherTopDeltas(tex, coord)
 
 // examples
 // #define SMOOTHING_STRENGTH_MOD 1f
@@ -69,14 +105,31 @@
 // #define SMOOTHING_MAX_DELTA_WEIGHT .25
 // #define SMOOTHING_DELTA_WEIGHT_PREDICATION_FACTOR .8
 
-// #define SmoothingTexture2D(tex) sampler tex
-// #define SmoothingSamplePoint(tex, coord) tex2D(tex, coord)
+// Shorthands for sampling
 // #define SmoothingSampleLevelZero(tex, coord) tex2Dlod(tex, float4(coord, 0.0, 0.0))
+// #define SmoothingSampleLevelZeroOffset(tex, coord, offset) tex2Dlodoffset(tex, float4(coord, coord), offset)
 // #define SmoothingGatherLeftDeltas(tex, coord) tex2Dgather(tex, texcoord, 0);
 // #define SmoothingGatherTopDeltas(tex, coord) tex2Dgather(tex, texcoord, 1);
 
 namespace BeanSmoothing
 {
+  namespace SMAA {
+    // All code in the SMAA namespace originates from the original SMAA shader, 
+    // and is subject to the SMAA license included in the beginning of this file.
+    /**
+    * Conditional move:
+    */
+    void Movc(bool2 cond, inout float2 variable, float2 value) {
+        [flatten] if (cond.x) variable.x = value.x;
+        [flatten] if (cond.y) variable.y = value.y;
+    }
+
+    void Movc(bool4 cond, inout float4 variable, float4 value) {
+        Movc(cond.xy, variable.xy, value.xy);
+        Movc(cond.zw, variable.zw, value.zw);
+    }
+  }
+  
   float GetDelta(float3 colA, float3 colB){
     float3 delta = abs(colA - colB);
     return Color::luma(delta);
@@ -121,16 +174,16 @@ namespace BeanSmoothing
    *
    * Adapted from Lordbean's TSMAA shader.
    *
-   * SmoothingTexture2D(colorTex): A texture2D sampler that contains the color data to be smoothed.
+   * sampler colorTex: A texture2D sampler that contains the color data to be smoothed.
    *                               Must be a gamma sampler, as this shader works only in gamma space.
    */
-  float3 smooth(float2 texcoord, float4 offset, SmoothingTexture2D(colorTex), SmoothingTexture2D(blendSampler), float threshold, uint maxIterations) : SV_Target
+  float3 smooth(float2 texcoord, float4 offset, sampler colorTex, sampler blendSampler, float threshold, uint maxIterations) : SV_Target
   {
     const float3 debugColorNoHits = float3(0.0, 0.0, 0.0);
     const float3 debugColorSmallHit = float3(0.0, 0.0, 1.0);
     const float3 debugColorBigHit = float3(1.0, 0.0, 0.0);
 
-    float3 mid = SMAASampleLevelZero(colorTex, texcoord).rgb;
+    float3 mid = SmoothingSampleLevelZero(colorTex, texcoord).rgb;
 
     float lumaM = Color::luma(mid);
     float chromaM = saturation(mid);
@@ -139,10 +192,10 @@ namespace BeanSmoothing
       lumaM = 0.0;
 
     float4 lumas; // r = west, g = north, b = east, a = south
-    lumas.r = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(-1, 0)).rgb, useluma);
-    lumas.g = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(0, -1)).rgb, useluma);
-    lumas.b = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(1, 0)).rgb, useluma);
-    lumas.a = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(0, 1)).rgb, useluma);
+    lumas.r = dotweight(mid, SmoothingSampleLevelZeroOffset(colorTex, texcoord, int2(-1, 0)).rgb, useluma);
+    lumas.g = dotweight(mid, SmoothingSampleLevelZeroOffset(colorTex, texcoord, int2(0, -1)).rgb, useluma);
+    lumas.b = dotweight(mid, SmoothingSampleLevelZeroOffset(colorTex, texcoord, int2(1, 0)).rgb, useluma);
+    lumas.a = dotweight(mid, SmoothingSampleLevelZeroOffset(colorTex, texcoord, int2(0, 1)).rgb, useluma);
 
     float rangeMax = Functions::max(lumas.a, lumas.b, lumas.g, lumas.r, lumaM);
     float rangeMin = Functions::min(lumas.a, lumas.b, lumas.g, lumas.r, lumaM);
@@ -169,10 +222,10 @@ namespace BeanSmoothing
     }
 
     float4 diagLumas; // r = northwest, g = northeast, b = southeast, a = southwest
-    diagLumas.r = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(-1, -1)).rgb, useluma);
-    diagLumas.g = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(1, -1)).rgb, useluma);
-    diagLumas.b = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(1, 1)).rgb, useluma);
-    diagLumas.a = dotweight(mid, SMAASampleLevelZeroOffset(colorTex, texcoord, int2(-1, 1)).rgb, useluma);
+    diagLumas.r = dotweight(mid, SmoothingSampleLevelZeroOffset(colorTex, texcoord, int2(-1, -1)).rgb, useluma);
+    diagLumas.g = dotweight(mid, SmoothingSampleLevelZeroOffset(colorTex, texcoord, int2(1, -1)).rgb, useluma);
+    diagLumas.b = dotweight(mid, SmoothingSampleLevelZeroOffset(colorTex, texcoord, int2(1, 1)).rgb, useluma);
+    diagLumas.a = dotweight(mid, SmoothingSampleLevelZeroOffset(colorTex, texcoord, int2(-1, 1)).rgb, useluma);
 
     // These vals serve as caches, so they can be used later without having to redo them
     // It's just an optimisation thing, though the difference it makes is so small it could just be statistical noise.
@@ -191,9 +244,9 @@ namespace BeanSmoothing
     float lengthSign = horzSpan ? SMOOTHING_BUFFER_RCP_HEIGHT : SMOOTHING_BUFFER_RCP_WIDTH;
 
     float4 midWeights = float4(
-        SMAASampleLevelZero(blendSampler, offset.xy).a,
-        SMAASampleLevelZero(blendSampler, offset.zw).g,
-        SMAASampleLevelZero(blendSampler, texcoord).zx);
+        SmoothingSampleLevelZero(blendSampler, offset.xy).a,
+        SmoothingSampleLevelZero(blendSampler, offset.zw).g,
+        SmoothingSampleLevelZero(blendSampler, texcoord).zx);
 
     bool smaahoriz = max(midWeights.x, midWeights.z) > max(midWeights.y, midWeights.w);
     bool smaadata = any(midWeights);
@@ -210,7 +263,7 @@ namespace BeanSmoothing
     };
 
     float2 lumaNP = lumas.ga;
-    SMAAMovc(bool(!horzSpan).xx, lumaNP, lumas.rb);
+    SMAA::Movc(bool(!horzSpan).xx, lumaNP, lumas.rb);
 
     // x = north, y = south
     float2 gradients = abs(lumaNP - lumaM);
@@ -226,14 +279,14 @@ namespace BeanSmoothing
     static const float texelsize = .5; // TODO: constant?
 
     float2 offNP = float2(0.0, SMOOTHING_BUFFER_RCP_HEIGHT * texelsize);
-    SMAAMovc(bool(horzSpan).xx, offNP, float2(SMOOTHING_BUFFER_RCP_WIDTH * texelsize, 0.0));
-    SMAAMovc(bool2(!horzSpan, horzSpan), posB, mad(.5, lengthSign, posB));
+    SMAA::Movc(bool(horzSpan).xx, offNP, float2(SMOOTHING_BUFFER_RCP_WIDTH * texelsize, 0.0));
+    SMAA::Movc(bool2(!horzSpan, horzSpan), posB, mad(.5, lengthSign, posB));
 
     float2 posN = posB - offNP;
     float2 posP = posB + offNP;
 
-    float lumaEndN = dotweight(mid, SMAASampleLevelZero(colorTex, posN).rgb, useluma);
-    float lumaEndP = dotweight(mid, SMAASampleLevelZero(colorTex, posP).rgb, useluma);
+    float lumaEndN = dotweight(mid, SmoothingSampleLevelZero(colorTex, posN).rgb, useluma);
+    float lumaEndP = dotweight(mid, SmoothingSampleLevelZero(colorTex, posP).rgb, useluma);
 
     float gradientScaled = max(gradients.x, gradients.y) * 0.25;
     bool lumaMLTZero = mad(0.5, -lumaNN, lumaM) < 0.0;
@@ -258,14 +311,14 @@ namespace BeanSmoothing
         if (!doneN)
         {
           posN -= offNP;
-          lumaEndN = dotweight(mid, SMAASampleLevelZero(colorTex, posN).rgb, useluma);
+          lumaEndN = dotweight(mid, SmoothingSampleLevelZero(colorTex, posN).rgb, useluma);
           lumaEndN -= lumaNN;
           doneN = abs(lumaEndN) >= gradientScaled;
         }
         if (!doneP)
         {
           posP += offNP;
-          lumaEndP = dotweight(mid, SMAASampleLevelZero(colorTex, posP).rgb, useluma);
+          lumaEndP = dotweight(mid, SmoothingSampleLevelZero(colorTex, posP).rgb, useluma);
           lumaEndP -= lumaNN;
           doneP = abs(lumaEndP) >= gradientScaled;
         }
@@ -274,7 +327,7 @@ namespace BeanSmoothing
     }
 
     float2 dstNP = float2(texcoord.y - posN.y, posP.y - texcoord.y);
-    SMAAMovc(bool(horzSpan).xx, dstNP, float2(texcoord.x - posN.x, posP.x - texcoord.x));
+    SMAA::Movc(bool(horzSpan).xx, dstNP, float2(texcoord.x - posN.x, posP.x - texcoord.x));
 
     bool goodSpan = (dstNP.x < dstNP.y) ? ((lumaEndN < 0.0) != lumaMLTZero) : ((lumaEndP < 0.0) != lumaMLTZero);
     float pixelOffset = mad(-rcp(dstNP.y + dstNP.x), min(dstNP.x, dstNP.y), 0.5) * maxblending;
@@ -289,9 +342,9 @@ namespace BeanSmoothing
     }
 
     float2 posM = texcoord;
-    SMAAMovc(bool2(!horzSpan, horzSpan), posM, mad(lengthSign, subpixOut, posM));
+    SMAA::Movc(bool2(!horzSpan, horzSpan), posM, mad(lengthSign, subpixOut, posM));
 
-    return SMAASampleLevelZero(colorTex, posM).rgb;
+    return SmoothingSampleLevelZero(colorTex, posM).rgb;
   }
   
   /**
@@ -300,10 +353,10 @@ namespace BeanSmoothing
   void SmoothingPS(
     float2 texcoord,
     float4 offset,
-    SmoothingTexture2D(deltaTex),
-    SmoothingTexture2D(blendSampler),
-    SmoothingTexture2D(colorTex),
-    SmoothingTexture2D(lumaTex),
+    sampler deltaTex,
+    sampler blendSampler,
+    sampler colorTex,
+    sampler lumaTex,
     out float3 color
   )
   {
@@ -326,7 +379,7 @@ namespace BeanSmoothing
     );
 #endif
 
-    float maxLocalLuma = SmoothingSamplePoint(lumaTex, texcoord).r;
+    float maxLocalLuma = tex2D(lumaTex, texcoord).r;
     float mod = GetIterationsMod(deltas, maxLocalLuma);
 
     // TODO: consider turning into prepreocssor check for performance. 
@@ -337,7 +390,7 @@ namespace BeanSmoothing
 
       // Check if there's a diff between original and result
       // Helps to detect cases where smooth() did an early return and changed nothing
-      float3 original = SmoothingSamplePoint(colorTex, texcoord).rgb;
+      float3 original = tex2D(colorTex, texcoord).rgb;
       // increase the change to make it more visible, especially for small changes
       float change = saturate(sqrt(GetDelta(original, result) * 9f));
       color = float3(0f, change, mod);

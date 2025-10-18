@@ -276,8 +276,8 @@ ui_items = "None\0Max Local Luma\0Luma\0Filtered image only\0Deltas\0Edges\0";
 #define PSMAASamplePoint(tex, coord) tex2D(tex, coord)
 #define PSMAASampleLevelZero(tex, coord) tex2Dlod(tex, float4(coord, 0f, 0f))
 #define PSMAASampleLevelZeroOffset(tex, coord, offset) tex2Dlodoffset(tex, float4(coord, coord), offset)
-#define PSMAAGatherLeftEdges(tex, coord) tex2Dgather(tex, coord, 0);
-#define PSMAAGatherTopEdges(tex, coord) tex2Dgather(tex, coord, 1);
+#define PSMAAGatherLeftEdges(tex, coord) tex2Dgather(tex, coord, 0)
+#define PSMAAGatherTopEdges(tex, coord) tex2Dgather(tex, coord, 1)
 
 #define PSMAA_PRE_PROCESSING_THRESHOLD_MULTIPLIER _PreProcessingThresholdMultiplier
 #define PSMAA_PRE_PROCESSING_CMAA_LCA_FACTOR_MULTIPLIER _PreProcessingCmaaLCAMultiplier
@@ -338,11 +338,6 @@ ui_items = "None\0Max Local Luma\0Luma\0Filtered image only\0Deltas\0Edges\0";
 #define SMOOTHING_MAX_DELTA_WEIGHT _SmoothingMaxDeltaWeight
 #define SMOOTHING_DELTA_WEIGHT_PREDICATION_FACTOR _SmoothingDeltaWeightDynamicThreshold
 #define SMOOTHING_ENABLED true
-#define SmoothingTexture2D(tex) PSMAATexture2D(tex)
-#define SmoothingSamplePoint(tex, coord) PSMAASamplePoint(tex, coord)
-#define SmoothingSampleLevelZero(tex, coord) PSMAASampleLevelZero(tex, coord)
-#define SmoothingGatherLeftDeltas(tex, coord) PSMAAGatherLeftEdges(tex, texcoord);
-#define SmoothingGatherTopDeltas(tex, coord) PSMAAGatherTopEdges(tex, texcoord);
 
 #include ".\BeanSmoothing.fxh"
 

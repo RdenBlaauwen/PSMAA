@@ -66,6 +66,12 @@
 // #define PSMAA_SHARPENING_BLENDING_STRENGTH 0f
 // #define PSMAA_SHARPENING_DEBUG false
 
+// Shorthands for sampling
+#define SmoothingSampleLevelZero(tex, coord) PSMAASampleLevelZero(tex, coord)
+#define SmoothingSampleLevelZeroOffset(tex, coord, offset) PSMAASampleLevelZeroOffset(tex, coord, offset)
+#define SmoothingGatherLeftDeltas(tex, coord) PSMAAGatherLeftEdges(tex, coord)
+#define SmoothingGatherTopDeltas(tex, coord) PSMAAGatherTopEdges(tex, coord)
+
 // DEPENDENCIES START
 #define CAS_BETTER_DIAGONALS 1
 
