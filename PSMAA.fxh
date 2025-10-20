@@ -58,6 +58,29 @@
 // #define PSMAA_THRESHOLD_FLOOR 0.018
 // #define PSMAA_EDGE_DETECTION_FACTORS_HIGH_LUMA float4(threshold, CMAALCAFactor, SMAALCAFactor, SMAALCAAdjustmentBiasByCMAALocalContrast)
 // #define PSMAA_EDGE_DETECTION_FACTORS_LOW_LUMA float4(threshold, CMAALCAFactor, SMAALCAFactor, SMAALCAAdjustmentBiasByCMAALocalContrast)
+
+#define SMOOTHING_SATURATION_DIVISOR_FLOOR 0.01
+#define SMOOTHING_DEBUG false
+#define SMOOTHING_BUFFER_RCP_HEIGHT PSMAA_BUFFER_METRICS.y
+#define SMOOTHING_BUFFER_RCP_WIDTH PSMAA_BUFFER_METRICS.x
+#define SMOOTHING_MIN_ITERATIONS 5f
+#define SMOOTHING_MAX_ITERATIONS 20f
+
+// #define PSMAA_SMOOTHING_DELTA_WEIGHT_PREDICATION_FACTOR .8
+#define PSMAA_SMOOTHING_DELTA_WEIGHT_FLOOR .06
+#define PSMAA_SMOOTHING_THRESHOLD .05
+// #define PSMAA_SMOOTHING_MIN_DELTA_WEIGHT .02
+// #define PSMAA_SMOOTHING_MAX_DELTA_WEIGHT .25
+// #define PSMAA_SMOOTHING_DELTA_WEIGHT_DEBUG false
+
+// Shorthands for sampling
+#define SmoothingSampleLevelZero(tex, coord) PSMAASampleLevelZero(tex, coord)
+#define SmoothingSampleLevelZeroOffset(tex, coord, offset) PSMAASampleLevelZeroOffset(tex, coord, offset)
+#define SmoothingGatherLeftDeltas(tex, coord) PSMAAGatherLeftEdges(tex, coord)
+#define SmoothingGatherTopDeltas(tex, coord) PSMAAGatherTopEdges(tex, coord)
+
+#include ".\BeanSmoothing.fxh"
+
 // #define PSMAA_SHARPENING_COMPENSATION_STRENGTH .65f
 // #define PSMAA_SHARPENING_COMPENSATION_CUTOFF .5f
 // #define PSMAA_SHARPENING_EDGE_BIAS -1f
@@ -65,12 +88,6 @@
 // #define PSMAA_SHARPENING_SHARPNESS 0f
 // #define PSMAA_SHARPENING_BLENDING_STRENGTH 0f
 // #define PSMAA_SHARPENING_DEBUG false
-
-// Shorthands for sampling
-#define SmoothingSampleLevelZero(tex, coord) PSMAASampleLevelZero(tex, coord)
-#define SmoothingSampleLevelZeroOffset(tex, coord, offset) PSMAASampleLevelZeroOffset(tex, coord, offset)
-#define SmoothingGatherLeftDeltas(tex, coord) PSMAAGatherLeftEdges(tex, coord)
-#define SmoothingGatherTopDeltas(tex, coord) PSMAAGatherTopEdges(tex, coord)
 
 // DEPENDENCIES START
 #define CAS_BETTER_DIAGONALS 1
@@ -118,6 +135,18 @@ namespace PSMAA
     deltas.y = GetDelta(cTop, cCurrent, rangeTop, rangeCurrent);
 
     return deltas;
+  }
+
+  float getSmoothingIterationsMod(float4 deltas, float maxLocalLuma)
+  {
+    float2 maxDeltaCorner = max(deltas.rb, deltas.ga);
+    // Use pythagorean theorem to calculate the "weight" of the contrast of the biggest corner
+    float deltaWeight = sqrt(Functions::sum(maxDeltaCorner * maxDeltaCorner));
+
+    float2 thresholds = float2(PSMAA_SMOOTHING_MIN_DELTA_WEIGHT, PSMAA_SMOOTHING_MAX_DELTA_WEIGHT);
+    thresholds *= mad(1f - maxLocalLuma, -PSMAA_SMOOTHING_DELTA_WEIGHT_PREDICATION_FACTOR, 1f);
+    thresholds = max(thresholds, PSMAA_SMOOTHING_DELTA_WEIGHT_FLOOR);
+    return smoothstep(thresholds.x, thresholds.y, deltaWeight);
   }
 
   /**
@@ -261,12 +290,12 @@ namespace PSMAA
   }
 
   /**
-  * Maps (scales) an input to an output such that the speed at wich the output grows, the max value it reaches
-  * and when that max value is reached can be controlled. When the max value is reached, the output just "flatlines".
-  *
-  * @param ceiling the maximum value the output can reach. 
-  * @param cutoffValue the value of the input at which the ceiling is reached
-  */
+   * Maps (scales) an input to an output such that the speed at wich the output grows, the max value it reaches
+   * and when that max value is reached can be controlled. When the max value is reached, the output just "flatlines".
+   *
+   * @param ceiling the maximum value the output can reach.
+   * @param cutoffValue the value of the input at which the ceiling is reached
+   */
   float scaleSignal(float input, float ceiling, float cutoffValue)
   {
     float growthspeed = ceiling / cutoffValue;
@@ -287,9 +316,9 @@ namespace PSMAA
     // straight edge delta (largest delta)
     factors.r = Functions::max(transverseMax);
     // corner delta (2nd largest delta)
-    factors.g = max(cornerDelta, lineDelta); 
+    factors.g = max(cornerDelta, lineDelta);
     // cup delta (3rd largest delta)
-    factors.b = min(cornerDelta, lineDelta); 
+    factors.b = min(cornerDelta, lineDelta);
     // pix delta (smallest delta)
     factors.a = Functions::min(transverseMin);
 
@@ -303,7 +332,7 @@ namespace PSMAA
         PSMAATexture2D(colorGammaTex), // input color texture (C)
         out float maxLocalLuma,        // output maximum luma from all nine samples
         out float originalLuma,        // luma of the original color, for change detection
-        out float2 filteringStrength    // strength at which FilteringPS is determned to run on this pixel
+        out float2 filteringStrength   // strength at which FilteringPS is determned to run on this pixel
     )
     {
       // TODO: optimise using gathers
@@ -351,8 +380,8 @@ namespace PSMAA
 
       float4 edges = step(threshold, deltas);
       if (Functions::sum(edges) < 2f) // Leave filter strength as 0f for straight lines, to prevent blur
-      { 
-        filteringStrength = float2(0f,0f);
+      {
+        filteringStrength = float2(0f, 0f);
         return;
       }
 
@@ -381,15 +410,15 @@ namespace PSMAA
     }
 
     void FilteringPS(
-      float2 texcoord,
-      PSMAATexture2D(colorLinearTex),
-      PSMAATexture2D(filterStrengthTex),
-      out float4 filteredColor
-    )
+        float2 texcoord,
+        PSMAATexture2D(colorLinearTex),
+        PSMAATexture2D(filterStrengthTex),
+        out float4 filteredColor)
     {
       float2 strengthAndIsCorner = PSMAASamplePoint(filterStrengthTex, texcoord).rg;
 
-      if(strengthAndIsCorner.y >= .9f || strengthAndIsCorner.x <= PSMAA_PRE_PROCESSING_STRENGTH_THRESH) discard; // skip if corner or no filtering needed
+      if (strengthAndIsCorner.y >= .9f || strengthAndIsCorner.x <= PSMAA_PRE_PROCESSING_STRENGTH_THRESH)
+        discard; // skip if corner or no filtering needed
 
       // TODO: optimise using gathers
       // NW N NE
@@ -408,8 +437,8 @@ namespace PSMAA
       float3 SE = PSMAASampleLevelZeroOffset(colorLinearTex, texcoord, float2(1, 1)).rgb;
 
       float3 filteredLocalAvg = CalcLocalAvg(
-        NW, N, NE, W, C, E, SW, S, SE,
-        strengthAndIsCorner.x);
+          NW, N, NE, W, C, E, SW, S, SE,
+          strengthAndIsCorner.x);
 
       // OUTPUT with localavg and original alpha
       filteredColor = float4(filteredLocalAvg, CRaw.a);
@@ -564,16 +593,73 @@ namespace PSMAA
       edgesOutput = edges;
     }
 
+    /**
+     * Wrapper around BeanSmoothing
+     */
+    void SmoothingPS(
+        float2 texcoord,
+        float4 offset,
+        sampler deltaTex,
+        sampler blendSampler,
+        sampler colorTex,
+        sampler lumaTex,
+        out float3 color)
+    {
+      float4 deltas;
+#if __RENDERER__ >= 0xa000 // if DX10 or above
+      // get edge data from the bottom (x), bottom-right (y), right (z),
+      // and current pixels (w), in that order.
+      float4 leftDeltas = SmoothingGatherLeftDeltas(deltaTex, texcoord);
+      float4 topDeltas = SmoothingGatherTopDeltas(deltaTex, texcoord);
+      deltas = float4(
+          leftDeltas.w,
+          topDeltas.w,
+          leftDeltas.z,
+          topDeltas.x);
+#else // if DX9
+      deltas = float4(
+          SmoothingSampleLevelZero(deltaTex, texcoord).rg,
+          SmoothingSampleLevelZero(deltaTex, offset.xy).r,
+          SmoothingSampleLevelZero(deltaTex, offset.zw).g);
+#endif
+
+      float maxLocalLuma = tex2D(lumaTex, texcoord).r;
+      float mod = getSmoothingIterationsMod(deltas, maxLocalLuma);
+
+      // TODO: consider turning into prepreocssor check for performance.
+      // Consider turning into func that can detect early returns too by checking delta between new and old color
+      if (PSMAA_SMOOTHING_DELTA_WEIGHT_DEBUG)
+      {
+        int maxIterations = BeanSmoothing::calcMaxSmoothingIterations(mod);
+        float3 result = smooth(texcoord, offset, colorTex, blendSampler, PSMAA_SMOOTHING_THRESHOLD, maxIterations);
+
+        // Check if there's a diff between original and result
+        // Helps to detect cases where smooth() did an early return and changed nothing
+        float3 original = tex2D(colorTex, texcoord).rgb;
+        // increase the change to make it more visible, especially for small changes
+        float change = saturate(sqrt(GetDelta(original, result) * 9f));
+        color = float3(0f, change, mod);
+        return;
+      }
+
+      // if close to 0f, discard.
+      if (mod < 1e-5f)
+        discard; // TODO: make standard 'nullish' function check.
+
+      uint maxIterations = BeanSmoothing::calcMaxSmoothingIterations(mod);
+
+      color = BeanSmoothing::smooth(texcoord, offset, colorTex, blendSampler, PSMAA_SMOOTHING_THRESHOLD, maxIterations);
+    }
+
     void SharpeningPS(
         float2 texcoord, // Integer pixel position in output.
         sampler initialLumaSampler,
         sampler colorGammaSampler,
         sampler deltaSampler,
         sampler colorLinearSampler,
-        out float3 pix
-    )
+        out float3 pix)
     {
-      static const float NearZero = 1f/127f;
+      static const float NearZero = 1f / 127f;
       float initLuma = tex2D(initialLumaSampler, texcoord).r;
       float3 currentColor = tex2D(colorGammaSampler, texcoord).rgb;
       float currentLuma = Color::luma(currentColor);
@@ -581,31 +667,30 @@ namespace PSMAA
 
       pix = float(blendingChange).xxx;
 
-      if((blendingChange + PSMAA_SHARPENING_BLENDING_STRENGTH) <= 0f) discard;
+      if ((blendingChange + PSMAA_SHARPENING_BLENDING_STRENGTH) <= 0f)
+        discard;
 
       // Shape blending change val limit compensation strength at extreme values
       float compensationStrength = scaleSignal(blendingChange, PSMAA_SHARPENING_COMPENSATION_STRENGTH, PSMAA_SHARPENING_COMPENSATION_CUTOFF);
 
       float4 deltas;
-      #if __RENDERER__ >= 0xa000 // if DX10 or above
-        // get edge data from the bottom (x), bottom-right (y), right (z),
-        // and current pixels (w), in that order.
-        float4 leftDeltas = tex2Dgather(deltaSampler, texcoord, 0);
-        float4 topDeltas = tex2Dgather(deltaSampler, texcoord, 1);
-        deltas = float4(
+#if __RENDERER__ >= 0xa000 // if DX10 or above
+      // get edge data from the bottom (x), bottom-right (y), right (z),
+      // and current pixels (w), in that order.
+      float4 leftDeltas = tex2Dgather(deltaSampler, texcoord, 0);
+      float4 topDeltas = tex2Dgather(deltaSampler, texcoord, 1);
+      deltas = float4(
           leftDeltas.w,
           topDeltas.w,
           leftDeltas.z,
-          topDeltas.x
-        );
-      #else // if DX9
-        float offset = mad(PSMAA_BUFFER_METRICS.xyxy, float4(1f, 0f, 0f, 1f), texcoord.xyxy);
-        deltas = float4(
+          topDeltas.x);
+#else // if DX9
+      float offset = mad(PSMAA_BUFFER_METRICS.xyxy, float4(1f, 0f, 0f, 1f), texcoord.xyxy);
+      deltas = float4(
           PSMAASampleLevelZero(deltaSampler, texcoord).rg,
-          PSMAASampleLevelZero(deltaSampler, offset.xy).r, 
-          PSMAASampleLevelZero(deltaSampler, offset.zw).g
-        ); 
-      #endif
+          PSMAASampleLevelZero(deltaSampler, offset.xy).r,
+          PSMAASampleLevelZero(deltaSampler, offset.zw).g);
+#endif
 
       // Reduce sharpening strength based on number of edges
       // Edge Bias is negative or 0, so edgeBiasStrength is <= 0f;
@@ -613,12 +698,14 @@ namespace PSMAA
 
       float sharpeningStrength = PSMAA_SHARPENING_BLENDING_STRENGTH + compensationStrength + edgeBiasStrength;
 
-      if(PSMAA_SHARPENING_DEBUG){
+      if (PSMAA_SHARPENING_DEBUG)
+      {
         pix = saturate(sharpeningStrength);
         return;
       }
 
-      if(sharpeningStrength <= 0f) discard;
+      if (sharpeningStrength <= 0f)
+        discard;
 
       // sharpeningStrength of up to 1f is used to determine the blending strength...
       float blendingStrength = saturate(sharpeningStrength);
