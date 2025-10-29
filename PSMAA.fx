@@ -147,10 +147,10 @@ uniform bool _SmoothingEnabled <
 ui_label = "Enable Bean Smoothing";
 > = true;
 
-// uniform bool _OldSmoothingEnabled <
-// 	ui_category = "Bean Smoothing";
-// 	ui_label = "use old Smoothing";
-// > = false;
+uniform bool _OldSmoothingEnabled <
+	ui_category = "Bean Smoothing";
+	ui_label = "use old Smoothing";
+> = false;
 
 uniform bool _SmoothingDeltaWeightDebug <
 		ui_category = "Bean Smoothing";
@@ -290,12 +290,12 @@ ui_items = "None\0Max Local Luma\0Luma\0Filtered image only\0Deltas\0Edges\0";
 #define PSMAA_PRE_PROCESSING_GREATEST_CORNER_CORRECTION_STRENGTH _PreProcessingGreatestCornerCorrectionStrength
 #define PSMAA_EDGE_DETECTION_FACTORS_HIGH_LUMA float4(_EdgeDetectionThreshold.y, _CMAALCAFactor.y, _SMAALCAFactor.y, _CMAALCAforSMAALCAFactor.y)
 #define PSMAA_EDGE_DETECTION_FACTORS_LOW_LUMA float4(_EdgeDetectionThreshold.x, _CMAALCAFactor.x, _SMAALCAFactor.x, _CMAALCAforSMAALCAFactor.x)
-#define SMOOTHING_BUFFER_RCP_HEIGHT BUFFER_RCP_HEIGHT
-#define SMOOTHING_BUFFER_RCP_WIDTH BUFFER_RCP_WIDTH
-#define SMOOTHING_DELTA_WEIGHT_DEBUG _SmoothingDeltaWeightDebug
-#define SMOOTHING_MIN_DELTA_WEIGHT _SmoothingMinDeltaWeight
-#define SMOOTHING_MAX_DELTA_WEIGHT _SmoothingMaxDeltaWeight
-#define SMOOTHING_DELTA_WEIGHT_PREDICATION_FACTOR _SmoothingDeltaWeightDynamicThreshold
+// #define SMOOTHING_BUFFER_RCP_HEIGHT BUFFER_RCP_HEIGHT
+// #define SMOOTHING_BUFFER_RCP_WIDTH BUFFER_RCP_WIDTH
+#define PSMAA_SMOOTHING_DELTA_WEIGHT_DEBUG _SmoothingDeltaWeightDebug
+#define PSMAA_SMOOTHING_MIN_DELTA_WEIGHT _SmoothingMinDeltaWeight
+#define PSMAA_SMOOTHING_MAX_DELTA_WEIGHT _SmoothingMaxDeltaWeight
+#define PSMAA_SMOOTHING_DELTA_WEIGHT_PREDICATION_FACTOR _SmoothingDeltaWeightDynamicThreshold
 #define SMOOTHING_ENABLED true
 #define PSMAA_SHARPENING_COMPENSATION_STRENGTH _SharpeningCompensationStrength
 #define PSMAA_SHARPENING_COMPENSATION_CUTOFF _SharpeningCompensationCutoff
@@ -305,7 +305,7 @@ ui_items = "None\0Max Local Luma\0Luma\0Filtered image only\0Deltas\0Edges\0";
 #define PSMAA_SHARPENING_DEBUG _SharpeningDebug
 
 #include ".\PSMAA.fxh"
-#include ".\PSMAA.old.fxh"
+// #include ".\PSMAA.old.fxh"
 
 #ifdef SMAA_PRESET_CUSTOM
 #define SMAA_MAX_SEARCH_STEPS _MaxSearchSteps
@@ -573,11 +573,11 @@ void SmoothingPSWrapper(
 {
 	if (!_SmoothingEnabled)
 		discard;
-	// if (_OldSmoothingEnabled){
-	// 	BeanSmoothingOld::SmoothingPS(texcoord, offset, deltaSampler, weightSampler, colorGammaSampler, color);
-	// 	return;
-	// }
-	BeanSmoothing::SmoothingPS(texcoord, offset, deltaSampler, weightSampler, colorGammaSampler, maxLocalLumaSampler, color);
+	if (_OldSmoothingEnabled){
+		PSMAAOld::Pass::SmoothingPS(texcoord, offset, deltaSampler, weightSampler, colorLinearSampler, maxLocalLumaSampler, color);
+		return;
+	}
+	PSMAA::Pass::SmoothingPS(texcoord, offset, deltaSampler, weightSampler, colorLinearSampler, maxLocalLumaSampler, color);
 }
 
 void CASPSWrapper(
@@ -660,6 +660,7 @@ technique PSMAA
 	{
 		VertexShader = SMAANeighborhoodBlendingVSWrapper;
 		PixelShader = SmoothingPSWrapper;
+		SRGBWriteEnable = true;
 	}
 	pass Sharpening
 	{

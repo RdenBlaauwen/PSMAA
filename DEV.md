@@ -1,5 +1,6 @@
 # TODO
 
+- Remoe Smoothing's delta-based iteration calculation, look for alternative way to prevent blur and save performance.
 - Build solution for calculating luminosity from color, and weighting components for luma in shared library.
 - Split pre-processing pass into separate "edge detection" and softening passes, and perform the latter in linear space. 
   - This should prevent the resulting localavg from being too dark, without needing band-aid solutions to improve luminosity.
