@@ -72,6 +72,9 @@
 // #define PSMAA_SMOOTHING_MIN_DELTA_WEIGHT .02
 // #define PSMAA_SMOOTHING_MAX_DELTA_WEIGHT .25
 // #define PSMAA_SMOOTHING_DELTA_WEIGHT_DEBUG false
+// #define PSMAA_SMOOTHING_THRESHOLDS float2(.025, .075) //threshold at min and max luma
+// #define PSMAA_SMOOTHING_THRESHOLD_DEPTH_GROWTH_FACTOR 2.5 // threshold multiplier based on depth
+// #define PSMAA_SMOOTHING_THRESHOLD_DEPTH_GROWTH_START .5
 
 // Shorthands for sampling
 #define SmoothingSampleLevelZero(tex, coord) PSMAASampleLevelZero(tex, coord)
@@ -137,6 +140,9 @@ namespace PSMAA
     return deltas;
   }
 
+  // A number between 0 - 1 indicating whether the min or amx amount of smoothing iterations should be used.
+  // What number of iterations is considered min or max is out of scope for this function and
+  // should be decided elsewhere, based on this mod's value.
   float getSmoothingIterationsMod(float4 deltas, float maxLocalLuma)
   {
     float2 maxDeltaCorner = max(deltas.rb, deltas.ga);
@@ -754,14 +760,19 @@ namespace PSMAAOld
 #endif
 
       float maxLocalLuma = tex2D(lumaTex, texcoord).r;
+      float distance = ReShade::GetLinearizedDepth(texcoord);
+      float distanceMod = saturate(max(distance - PSMAA_SMOOTHING_THRESHOLD_DEPTH_GROWTH_START, 0f) / (1f - PSMAA_SMOOTHING_THRESHOLD_DEPTH_GROWTH_START));
+
       float mod = PSMAA::getSmoothingIterationsMod(deltas, maxLocalLuma);
+      float threshold = lerp(PSMAA_SMOOTHING_THRESHOLDS.x, PSMAA_SMOOTHING_THRESHOLDS.y, maxLocalLuma);
+      threshold *= mad(distanceMod, PSMAA_SMOOTHING_THRESHOLD_DEPTH_GROWTH_FACTOR, 1f);
 
       // TODO: consider turning into prepreocssor check for performance.
       // Consider turning into func that can detect early returns too by checking delta between new and old color
       if (PSMAA_SMOOTHING_DELTA_WEIGHT_DEBUG)
       {
         int maxIterations = BeanSmoothing::calcMaxSmoothingIterations(mod);
-        float3 result = BeanSmoothing::smooth(texcoord, offset, colorTex, blendSampler, PSMAA_SMOOTHING_THRESHOLD, maxIterations);
+        float3 result = BeanSmoothing::smooth(texcoord, offset, colorTex, blendSampler, threshold, maxIterations);
 
         // Check if there's a diff between original and result
         // Helps to detect cases where smooth() did an early return and changed nothing
@@ -778,7 +789,7 @@ namespace PSMAAOld
 
       uint maxIterations = BeanSmoothing::calcMaxSmoothingIterations(mod);
 
-      color = BeanSmoothing::smooth(texcoord, offset, colorTex, blendSampler, PSMAA_SMOOTHING_THRESHOLD, maxIterations);
+      color = BeanSmoothing::smooth(texcoord, offset, colorTex, blendSampler, threshold, maxIterations);
     }
   }
 }

@@ -184,6 +184,35 @@ ui_max = 1f;
 ui_step = 0.01f;
 > = .8;
 
+uniform float2 _SmoothingThresholds <
+	ui_category = "Bean Smoothing";
+	ui_label = "_SmoothingThresholds";
+	ui_type = "slider";
+	ui_min = .01;
+	ui_max = .25;
+	ui_step = .001;
+> = float2(.025, .075);
+
+uniform float _SmoothingThresholdDepthGrowthFactor <
+	ui_category = "Bean Smoothing";
+	ui_label = "_SmoothingThresholdDepthGrowthFactor";
+	ui_type = "slider";
+	ui_min = 1f;
+	ui_max = 4f;
+	ui_step = .1;
+	ui_label = "How much the thresholds grow with distance.";
+> = 2.5;
+
+uniform float _SmoothingThresholdDepthGrowthStart <
+	ui_category = "Bean Smoothing";
+	ui_label = "_SmoothingThresholdDepthGrowthStart";
+	ui_type = "slider";
+	ui_min = 0f;
+	ui_max = 1f;
+	ui_step = .01;
+	ui_label = "At which distance does the smoothing threshold start growing.";
+> = .5;
+
 uniform bool _SharpeningEnabled <
 		ui_category = "Sharpening";
 ui_label = "Enable CAS Sharpening";
@@ -296,6 +325,9 @@ ui_items = "None\0Max Local Luma\0Luma\0Filtered image only\0Deltas\0Edges\0";
 #define PSMAA_SMOOTHING_MIN_DELTA_WEIGHT _SmoothingMinDeltaWeight
 #define PSMAA_SMOOTHING_MAX_DELTA_WEIGHT _SmoothingMaxDeltaWeight
 #define PSMAA_SMOOTHING_DELTA_WEIGHT_PREDICATION_FACTOR _SmoothingDeltaWeightDynamicThreshold
+#define PSMAA_SMOOTHING_THRESHOLDS _SmoothingThresholds
+#define PSMAA_SMOOTHING_THRESHOLD_DEPTH_GROWTH_START _SmoothingThresholdDepthGrowthStart
+#define PSMAA_SMOOTHING_THRESHOLD_DEPTH_GROWTH_FACTOR _SmoothingThresholdDepthGrowthFactor
 #define SMOOTHING_ENABLED true
 #define PSMAA_SHARPENING_COMPENSATION_STRENGTH _SharpeningCompensationStrength
 #define PSMAA_SHARPENING_COMPENSATION_CUTOFF _SharpeningCompensationCutoff
