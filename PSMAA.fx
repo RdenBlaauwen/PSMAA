@@ -328,6 +328,9 @@ ui_items = "None\0Max Local Luma\0Luma\0Filtered image only\0Deltas\0Edges\0";
 #define PSMAA_SMOOTHING_THRESHOLDS _SmoothingThresholds
 #define PSMAA_SMOOTHING_THRESHOLD_DEPTH_GROWTH_START _SmoothingThresholdDepthGrowthStart
 #define PSMAA_SMOOTHING_THRESHOLD_DEPTH_GROWTH_FACTOR _SmoothingThresholdDepthGrowthFactor
+#ifndef PSMAA_SMOOTHING_USE_COLOR_SPACE
+	#define PSMAA_SMOOTHING_USE_COLOR_SPACE 0
+#endif
 #define SMOOTHING_ENABLED true
 #define PSMAA_SHARPENING_COMPENSATION_STRENGTH _SharpeningCompensationStrength
 #define PSMAA_SHARPENING_COMPENSATION_CUTOFF _SharpeningCompensationCutoff
@@ -605,11 +608,15 @@ void SmoothingPSWrapper(
 {
 	if (!_SmoothingEnabled)
 		discard;
-	if (_OldSmoothingEnabled){
-		PSMAAOld::Pass::SmoothingPS(texcoord, offset, deltaSampler, weightSampler, colorLinearSampler, maxLocalLumaSampler, color);
-		return;
-	}
-	PSMAA::Pass::SmoothingPS(texcoord, offset, deltaSampler, weightSampler, colorLinearSampler, maxLocalLumaSampler, color);
+	// if (_OldSmoothingEnabled){
+	// 	PSMAAOld::Pass::SmoothingPS(texcoord, offset, deltaSampler, weightSampler, colorLinearSampler, maxLocalLumaSampler, color);
+	// 	return;
+	// }
+	#if PSMAA_SMOOTHING_USE_COLOR_SPACE
+		PSMAA::Pass::SmoothingPS(texcoord, offset, deltaSampler, weightSampler, colorLinearSampler, maxLocalLumaSampler, color);
+	#else
+		PSMAA::Pass::SmoothingPS(texcoord, offset, deltaSampler, weightSampler, colorGammaSampler, maxLocalLumaSampler, color);
+	#endif
 }
 
 void CASPSWrapper(
@@ -625,7 +632,6 @@ void CASPSWrapper(
 	// 	return;
 	// }
 	// CAS::CASPS(texcoord, colorLinearSampler, color);
-
 	PSMAA::Pass::SharpeningPS(texcoord, originalLumaSampler, colorGammaSampler, deltaSampler, colorLinearSampler, color);
 }
 
@@ -692,7 +698,9 @@ technique PSMAA
 	{
 		VertexShader = SMAANeighborhoodBlendingVSWrapper;
 		PixelShader = SmoothingPSWrapper;
-		SRGBWriteEnable = true;
+		#if PSMAA_SMOOTHING_USE_COLOR_SPACE
+			SRGBWriteEnable = true;
+		#endif
 	}
 	pass Sharpening
 	{

@@ -1,11 +1,7 @@
 # TODO
 
-- Remoe Smoothing's delta-based iteration calculation, look for alternative way to prevent blur and save performance.
+- Replace Smoothing's haard threshold with a smoothstepped threshold where everything between the lower and upper bounds has a lower maxblending and nr of iterations than everything >= the upper bound.
 - Build solution for calculating luminosity from color, and weighting components for luma in shared library.
-- Split pre-processing pass into separate "edge detection" and softening passes, and perform the latter in linear space. 
-  - This should prevent the resulting localavg from being too dark, without needing band-aid solutions to improve luminosity.
-  - The existing output pass can be used as the smoothing pass.
-- Consider adding a luminosity preservation technique to the smoothing pass, which preserves small changes disproporionately more than large changes (to prevent smoothing of anomalous pixels being undone)
 - Find a way to prevent smoothing on texels with low-ish deltas but high-ish neighbouring deltas to prevent blur en performance overhead.
 - Implement new contrast adaptation system which arranges local deltas into "shapes" just like in "Bean softening".
   - needs more than jsut the basic 4 circumferential deltas to work.
@@ -56,3 +52,11 @@ Fortunately, it wasn't necessary. Testing showed that just using an RG8 buffer, 
  This way you can delete the extra output pass after the precprocessing pass and you may turn the blending pass into a computeshader too.
 
 This doesn't work. filteredcopy is in gamma space and needs to stay that way for edge detection to work. the blending pass is in linear space and has to stay that way for the blending to work. No solution to this.
+
+## Smoothing in color space vs gamma space
+
+Running smoothing in color space kinda works, but causes it to no longer make edges which have already been blended by SMAA, smoother. It also causes some random artifacts along some edges. I supposed the algo really has been made to run in gamma, and fixing this is above my paygrade. For now I just created the option to switch betwene color and gamma, depending on preferences.
+
+## Luma preservation in Smoothing
+
+Tried to adjsut the result of smoothing pass according to the change in luma such that e.g. if the luma of the original pixel is 1.2x higher than that of the result, the result is multiplied by 1.2. But this just completely undid the results of the smoothing pass, so I gave up on this approach.

@@ -126,6 +126,8 @@ namespace BeanSmoothing
     return (uint)(lerp(SMOOTHING_MIN_ITERATIONS, SMOOTHING_MAX_ITERATIONS, mod) + .5);
   }
 
+  // This function provides the smoothest results when working in gamma space, but this also causes the output to darken.
+  // Running in linear space is better for more clarity, but the results are less smooth and have some artifacts.
   float3 smooth(float2 texcoord, float4 offset, sampler colorTex, sampler blendSampler, float threshold, uint maxIterations) : SV_Target
   {
     const float3 debugColorNoHits = float3(0.0,0.0,0.0);
@@ -212,11 +214,12 @@ namespace BeanSmoothing
   
     float2 posB = texcoord;
     
-    float texelsize = 0.5; // TODO: constant?
+    const float texelsize = 0.5; // TODO: Macro?
+    const float lengthSignDivided = lengthSign / 2f;
 
     float2 offNP = float2(0.0, SMOOTHING_BUFFER_RCP_HEIGHT * texelsize);
     SMAA::Movc(bool(horzSpan).xx, offNP, float2(SMOOTHING_BUFFER_RCP_WIDTH * texelsize, 0.0));
-    SMAA::Movc(bool2(!horzSpan, horzSpan), posB, float2(posB.x + lengthSign / 2.0, posB.y + lengthSign / 2.0));
+    SMAA::Movc(bool2(!horzSpan, horzSpan), posB, float2(posB.x + lengthSignDivided, posB.y + lengthSignDivided));
     
     float2 posN = posB - offNP;
     float2 posP = posB + offNP;
@@ -224,10 +227,10 @@ namespace BeanSmoothing
     float lumaEndN = dotweight(mid, SmoothingSampleLevelZero(colorTex, posN).rgb, useluma);
     float lumaEndP = dotweight(mid, SmoothingSampleLevelZero(colorTex, posP).rgb, useluma);
   
-    float gradientScaled = max(abs(gradientN), abs(gradientS)) * 0.25;
-    bool lumaMLTZero = mad(0.5, -lumaNN, lumaM) < 0.0;
+    float gradientScaled = max(abs(gradientN), abs(gradientS)) * .25;
+    bool lumaMLTZero = mad(.5, -lumaNN, lumaM) < 0f;
   
-    lumaNN *= 0.5;
+    lumaNN *= .5;
     
     lumaEndN -= lumaNN;
     lumaEndP -= lumaNN;
