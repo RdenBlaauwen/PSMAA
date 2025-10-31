@@ -326,8 +326,8 @@ ui_items = "None\0Max Local Luma\0Luma\0Filtered image only\0Deltas\0Edges\0";
 #define PSMAA_SMOOTHING_MAX_DELTA_WEIGHT _SmoothingMaxDeltaWeight
 #define PSMAA_SMOOTHING_DELTA_WEIGHT_PREDICATION_FACTOR _SmoothingDeltaWeightDynamicThreshold
 #define PSMAA_SMOOTHING_THRESHOLDS _SmoothingThresholds
-#define PSMAA_SMOOTHING_THRESHOLD_DEPTH_GROWTH_START _SmoothingThresholdDepthGrowthStart
-#define PSMAA_SMOOTHING_THRESHOLD_DEPTH_GROWTH_FACTOR _SmoothingThresholdDepthGrowthFactor
+#define SMOOTHING_THRESHOLD_DEPTH_GROWTH_START _SmoothingThresholdDepthGrowthStart
+#define SMOOTHING_THRESHOLD_DEPTH_GROWTH_FACTOR _SmoothingThresholdDepthGrowthFactor
 #ifndef PSMAA_SMOOTHING_USE_COLOR_SPACE
 	#define PSMAA_SMOOTHING_USE_COLOR_SPACE 0
 #endif

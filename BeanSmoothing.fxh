@@ -70,6 +70,8 @@
 // #define SMOOTHING_BUFFER_RCP_HEIGHT BUFFER_RCP_HEIGHT
 // #define SMOOTHING_BUFFER_RCP_WIDTH BUFFER_RCP_WIDTH
 // #define SMOOTHING_DEBUG false
+// #define SMOOTHING_THRESHOLD_DEPTH_GROWTH_START .5
+// #define SMOOTHING_THRESHOLD_DEPTH_GROWTH_FACTOR 2.5
 // #define SMOOTHING_MIN_ITERATIONS 3f
 // #define SMOOTHING_MAX_ITERATIONS 15f
 
@@ -118,6 +120,17 @@ namespace BeanSmoothing
   float dotsat(float3 rgb, float L)
   {
     return ((Functions::max(rgb) - Functions::min(rgb)) / (1.0 - (2.0 * L - 1.0) + trunc(L)));
+  }
+
+  // Function which takes a depth value and produces a curve which is 0f until the depth equals a set start value, 
+  // then grows until it reaches a set maximum value at depth == 1f. Finally adds the result to 1f to produce a value which
+  // can be multiplied with thresholds to grow them based on depth.
+  float calcDepthGrowthFactor(float depth)
+  {
+    float flooredCurve = max(depth - SMOOTHING_THRESHOLD_DEPTH_GROWTH_START, 0f);
+    float rcpGrowthFactor = 1f - SMOOTHING_THRESHOLD_DEPTH_GROWTH_START;
+    float curve = saturate(flooredCurve / rcpGrowthFactor);
+    return mad(curve, SMOOTHING_THRESHOLD_DEPTH_GROWTH_FACTOR, 1f);
   }
 
   // Calculate the maximum number of iterations based on the mod value that the smoothing algorithm may perform

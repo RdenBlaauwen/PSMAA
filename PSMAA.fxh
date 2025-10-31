@@ -73,8 +73,8 @@
 // #define PSMAA_SMOOTHING_MAX_DELTA_WEIGHT .25
 // #define PSMAA_SMOOTHING_DELTA_WEIGHT_DEBUG false
 // #define PSMAA_SMOOTHING_THRESHOLDS float2(.025, .075) //threshold at min and max luma
-// #define PSMAA_SMOOTHING_THRESHOLD_DEPTH_GROWTH_FACTOR 2.5 // threshold multiplier based on depth
-// #define PSMAA_SMOOTHING_THRESHOLD_DEPTH_GROWTH_START .5
+// #define SMOOTHING_THRESHOLD_DEPTH_GROWTH_START .5
+// #define SMOOTHING_THRESHOLD_DEPTH_GROWTH_FACTOR 2.5 // threshold multiplier based on depth
 
 // Shorthands for sampling
 #define SmoothingSampleLevelZero(tex, coord) PSMAASampleLevelZero(tex, coord)
@@ -630,12 +630,12 @@ namespace PSMAA
 #endif
 
       float maxLocalLuma = tex2D(lumaTex, texcoord).r;
-      float distance = ReShade::GetLinearizedDepth(texcoord);
-      float distanceMod = saturate(max(distance - PSMAA_SMOOTHING_THRESHOLD_DEPTH_GROWTH_START, 0f) / (1f - PSMAA_SMOOTHING_THRESHOLD_DEPTH_GROWTH_START));
 
       float mod = PSMAA::getSmoothingIterationsMod(deltas, maxLocalLuma);
       float threshold = lerp(PSMAA_SMOOTHING_THRESHOLDS.x, PSMAA_SMOOTHING_THRESHOLDS.y, maxLocalLuma);
-      threshold *= mad(distanceMod, PSMAA_SMOOTHING_THRESHOLD_DEPTH_GROWTH_FACTOR, 1f);
+
+      float depth = ReShade::GetLinearizedDepth(texcoord);
+      threshold *= BeanSmoothing::calcDepthGrowthFactor(depth);
 
       // TODO: consider turning into prepreocssor check for performance.
       // Consider turning into func that can detect early returns too by checking delta between new and old color
