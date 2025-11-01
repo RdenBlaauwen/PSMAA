@@ -69,8 +69,7 @@
 // #define PSMAA_SMOOTHING_DELTA_WEIGHT_PREDICATION_FACTOR .8
 #define PSMAA_SMOOTHING_DELTA_WEIGHT_FLOOR .06
 #define PSMAA_SMOOTHING_THRESHOLD .05
-// #define PSMAA_SMOOTHING_MIN_DELTA_WEIGHT .02
-// #define PSMAA_SMOOTHING_MAX_DELTA_WEIGHT .25
+// #define PSMAA_SMOOTHING_DELTA_WEIGHTS float2(.02, .25) // min and max delta
 // #define PSMAA_SMOOTHING_DELTA_WEIGHT_DEBUG false
 // #define PSMAA_SMOOTHING_THRESHOLDS float2(.025, .075) //threshold at min and max luma
 // #define SMOOTHING_THRESHOLD_DEPTH_GROWTH_START .5
@@ -149,7 +148,7 @@ namespace PSMAA
     // Use pythagorean theorem to calculate the "weight" of the contrast of the biggest corner
     float deltaWeight = sqrt(Functions::sum(maxDeltaCorner * maxDeltaCorner));
 
-    float2 thresholds = float2(PSMAA_SMOOTHING_MIN_DELTA_WEIGHT, PSMAA_SMOOTHING_MAX_DELTA_WEIGHT);
+    float2 thresholds = float2(PSMAA_SMOOTHING_DELTA_WEIGHTS.x, PSMAA_SMOOTHING_DELTA_WEIGHTS.y);
     thresholds *= mad(1f - maxLocalLuma, -PSMAA_SMOOTHING_DELTA_WEIGHT_PREDICATION_FACTOR, 1f);
     thresholds = max(thresholds, PSMAA_SMOOTHING_DELTA_WEIGHT_FLOOR);
     return smoothstep(thresholds.x, thresholds.y, deltaWeight);

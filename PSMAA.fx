@@ -157,23 +157,14 @@ uniform bool _SmoothingDeltaWeightDebug <
 ui_label = "_SmoothingDeltaWeightDebug";
 > = false;
 
-uniform float _SmoothingMinDeltaWeight <
+uniform float2 _SmoothingDeltaWeights <
 		ui_category = "Bean Smoothing";
-ui_label = "_SmoothingMinDeltaWeight";
+ui_label = "_SmoothingDeltaWeights";
 ui_type = "slider";
 ui_min = 0f;
-ui_max = .2;
-ui_step = 0.01f;
-> = .1;
-
-uniform float _SmoothingMaxDeltaWeight <
-		ui_category = "Bean Smoothing";
-ui_label = "_SmoothingMaxDeltaWeight";
-ui_type = "slider";
-ui_min = .15;
 ui_max = .75;
 ui_step = 0.01f;
-> = .5;
+> = float2(.1, .5);
 
 uniform float _SmoothingDeltaWeightDynamicThreshold <
 		ui_category = "Bean Smoothing";
@@ -191,7 +182,17 @@ uniform float2 _SmoothingThresholds <
 	ui_min = .01;
 	ui_max = .25;
 	ui_step = .001;
-> = float2(.025, .075);
+> = float2(.01, .075);
+
+uniform float _SmoothingThresholdDepthGrowthStart <
+	ui_category = "Bean Smoothing";
+	ui_label = "_SmoothingThresholdDepthGrowthStart";
+	ui_type = "slider";
+	ui_min = 0f;
+	ui_max = 1f;
+	ui_step = .01;
+	ui_label = "At which distance does the smoothing threshold start growing.";
+> = .35;
 
 uniform float _SmoothingThresholdDepthGrowthFactor <
 	ui_category = "Bean Smoothing";
@@ -202,16 +203,6 @@ uniform float _SmoothingThresholdDepthGrowthFactor <
 	ui_step = .1;
 	ui_label = "How much the thresholds grow with distance.";
 > = 2.5;
-
-uniform float _SmoothingThresholdDepthGrowthStart <
-	ui_category = "Bean Smoothing";
-	ui_label = "_SmoothingThresholdDepthGrowthStart";
-	ui_type = "slider";
-	ui_min = 0f;
-	ui_max = 1f;
-	ui_step = .01;
-	ui_label = "At which distance does the smoothing threshold start growing.";
-> = .5;
 
 uniform bool _SharpeningEnabled <
 		ui_category = "Sharpening";
@@ -322,8 +313,7 @@ ui_items = "None\0Max Local Luma\0Luma\0Filtered image only\0Deltas\0Edges\0";
 // #define SMOOTHING_BUFFER_RCP_HEIGHT BUFFER_RCP_HEIGHT
 // #define SMOOTHING_BUFFER_RCP_WIDTH BUFFER_RCP_WIDTH
 #define PSMAA_SMOOTHING_DELTA_WEIGHT_DEBUG _SmoothingDeltaWeightDebug
-#define PSMAA_SMOOTHING_MIN_DELTA_WEIGHT _SmoothingMinDeltaWeight
-#define PSMAA_SMOOTHING_MAX_DELTA_WEIGHT _SmoothingMaxDeltaWeight
+#define PSMAA_SMOOTHING_DELTA_WEIGHTS _SmoothingDeltaWeights
 #define PSMAA_SMOOTHING_DELTA_WEIGHT_PREDICATION_FACTOR _SmoothingDeltaWeightDynamicThreshold
 #define PSMAA_SMOOTHING_THRESHOLDS _SmoothingThresholds
 #define SMOOTHING_THRESHOLD_DEPTH_GROWTH_START _SmoothingThresholdDepthGrowthStart
