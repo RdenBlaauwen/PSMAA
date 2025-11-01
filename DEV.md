@@ -1,7 +1,10 @@
 # TODO
 
 - Replace Smoothing's haard threshold with a smoothstepped threshold where everything between the lower and upper bounds has a lower maxblending and nr of iterations than everything >= the upper bound.
-- Build solution for calculating luminosity from color, and weighting components for luma in shared library.
+- Update libraries:
+  - Build solution for calculating luminosity from color, and weighting components for luma in shared library.
+  - make standard 'nullish' function check for vals close, but not equal, to 0.
+    - Use the discard in PSMAA.fxh's Smoothing pass to figure out what it should be for a given input type.
 - Find a way to prevent smoothing on texels with low-ish deltas but high-ish neighbouring deltas to prevent blur en performance overhead.
 - Implement new contrast adaptation system which arranges local deltas into "shapes" just like in "Bean softening".
   - needs more than jsut the basic 4 circumferential deltas to work.
