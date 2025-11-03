@@ -272,7 +272,7 @@ uniform int _Debug <
 		ui_category = "Debug";
 ui_type = "combo";
 ui_label = "Debug output";
-ui_items = "None\0Max Local Luma\0Luma\0Filtered image only\0Deltas\0Edges\0";
+ui_items = "None\0Max Local Luma\0Luma\0Filter strength weights\0Filtered image only\0Deltas\0Edges\0";
 > = 0;
 
 #endif
@@ -560,28 +560,12 @@ void PSMAABlendingPSWrapper(
 	{
 		color = SMAANeighborhoodBlendingPS(texcoord, offset, colorLinearSampler, weightSampler).rgba;
 	}
-	else if (_Debug == 1)
-	{
-		color = tex2D(maxLocalLumaSampler, texcoord).rrrr;
-	}
-	else if (_Debug == 2)
-	{
-		color = tex2D(originalLumaSampler, texcoord).rrrr;
-	}
-	else if (_Debug == 3)
-	{
-		color = tex2D(colorLinearSampler, texcoord);
-	}
 	else if (_Debug == 4)
 	{
-		color = tex2D(deltaSampler, texcoord).rgba;
+		color = tex2D(colorLinearSampler, texcoord);
+	} else {
+		discard;
 	}
-	else
-	{
-		color = tex2D(edgesSampler, texcoord).rgba;
-	}
-
-	color = Debug::applyDebugOptions(color);
 
 #else
 
@@ -624,6 +608,41 @@ void CASPSWrapper(
 	// CAS::CASPS(texcoord, colorLinearSampler, color);
 	PSMAA::Pass::SharpeningPS(texcoord, originalLumaSampler, colorGammaSampler, deltaSampler, colorLinearSampler, color);
 }
+
+#if SHOW_DEBUG
+void PSMAADebugPS(
+		float4 position : SV_Position,
+		float2 texcoord : TEXCOORD0,
+		float4 offset : TEXCOORD1,
+		out float4 color : SV_Target)
+{
+	if (_Debug == 1)
+	{
+		color = tex2D(maxLocalLumaSampler, texcoord).rrrr;
+	}
+	else if (_Debug == 2)
+	{
+		color = tex2D(originalLumaSampler, texcoord).rrrr;
+	}
+	else if (_Debug == 3)
+	{
+		color = float4(tex2D(filterStrengthSampler, texcoord).rg, 0f, 0f);
+	}
+	else if (_Debug == 5)
+	{
+		color = tex2D(deltaSampler, texcoord).rgba;
+	}
+	else if (_Debug == 6)
+	{
+		color = tex2D(edgesSampler, texcoord).rgba;
+	} else {
+		color = tex2D(colorLinearSampler, texcoord);
+	}
+
+	color = Debug::applyDebugOptions(color);
+}
+#endif
+
 
 technique PSMAA
 {
@@ -698,4 +717,12 @@ technique PSMAA
 		PixelShader = CASPSWrapper;
 		SRGBWriteEnable = true;
 	}
+	#if SHOW_DEBUG
+		pass Debug
+		{
+			VertexShader = SMAANeighborhoodBlendingVSWrapper;
+			PixelShader = PSMAADebugPS;
+			SRGBWriteEnable = true;
+		}	
+	#endif
 }
