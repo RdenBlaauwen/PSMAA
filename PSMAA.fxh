@@ -661,6 +661,41 @@ namespace PSMAA
       color = BeanSmoothing::smooth(texcoord, offset, colorTex, blendSampler, threshold, maxIterations);
     }
 
+    void BlendingPS(
+      float2 texcoord,
+      float4 offset,
+      sampler colorLinearSampler,
+      sampler blendWeightSampler,
+      sampler filterStrengthSampler,
+      out float4 color
+    ){
+      color = SMAANeighborhoodBlendingPS(
+        texcoord,
+        offset,
+        colorLinearSampler,
+        blendWeightSampler
+      ).rgba;
+
+      float2 strengthAndIsCorner = PSMAASamplePoint(filterStrengthSampler, texcoord).rg;
+      if (strengthAndIsCorner.y < .9f || strengthAndIsCorner.x <= PSMAA_PRE_PROCESSING_STRENGTH_THRESH) return;
+      
+      float3 NW = PSMAASampleLevelZeroOffset(colorLinearSampler, texcoord, float2(-1, -1)).rgb;
+      float3 W = PSMAASampleLevelZeroOffset(colorLinearSampler, texcoord, float2(-1, 0)).rgb;
+      float3 SW = PSMAASampleLevelZeroOffset(colorLinearSampler, texcoord, float2(-1, 1)).rgb;
+      float3 N = PSMAASampleLevelZeroOffset(colorLinearSampler, texcoord, float2(0, -1)).rgb;
+      float3 S = PSMAASampleLevelZeroOffset(colorLinearSampler, texcoord, float2(0, 1)).rgb;
+      float3 NE = PSMAASampleLevelZeroOffset(colorLinearSampler, texcoord, float2(1, -1)).rgb;
+      float3 E = PSMAASampleLevelZeroOffset(colorLinearSampler, texcoord, float2(1, 0)).rgb;
+      float3 SE = PSMAASampleLevelZeroOffset(colorLinearSampler, texcoord, float2(1, 1)).rgb;
+      
+      float3 filteredLocalAvg = CalcLocalAvg(
+          NW, N, NE, W, color.rgb, E, SW, S, SE,
+          strengthAndIsCorner.x);
+
+      // OUTPUT with localavg and original alpha
+      color = float4(filteredLocalAvg, color.a);
+    }
+
     void SharpeningPS(
         float2 texcoord, // Integer pixel position in output.
         sampler initialLumaSampler,

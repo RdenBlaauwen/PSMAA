@@ -142,6 +142,11 @@ ui_label = "Show Old Pre-Processing";
 ui_tooltip = "Use the old pre-processing method.";
 > = false;
 
+uniform bool _UseOldBlending <
+	ui_category = "Blending";
+	ui_label = "_UseOldBlendingg";
+> = false;
+
 uniform bool _SmoothingEnabled <
 		ui_category = "Bean Smoothing";
 ui_label = "Enable Bean Smoothing";
@@ -329,9 +334,6 @@ ui_items = "None\0Max Local Luma\0Luma\0Filter strength weights\0Filtered image 
 #define PSMAA_SHARPENING_BLENDING_STRENGTH _SharpeningBlendingStrength
 #define PSMAA_SHARPENING_DEBUG _SharpeningDebug
 
-#include ".\PSMAA.fxh"
-// #include ".\PSMAA.old.fxh"
-
 #ifdef SMAA_PRESET_CUSTOM
 #define SMAA_MAX_SEARCH_STEPS _MaxSearchSteps
 #define SMAA_MAX_SEARCH_STEPS_DIAG _MaxSearchStepsDiag
@@ -352,6 +354,7 @@ ui_items = "None\0Max Local Luma\0Luma\0Filter strength weights\0Filtered image 
 #define SMAA_BRANCH [branch]
 
 #include ".\SMAA.fxh"
+#include ".\PSMAA.fxh"
 
 texture colorInputTex : COLOR;
 sampler colorGammaSampler
@@ -558,7 +561,11 @@ void PSMAABlendingPSWrapper(
 
 	if (_Debug == 0)
 	{
-		color = SMAANeighborhoodBlendingPS(texcoord, offset, colorLinearSampler, weightSampler).rgba;
+		if(_UseOldBlending){
+			color = SMAANeighborhoodBlendingPS(texcoord, offset, colorLinearSampler, weightSampler).rgba;
+			return;
+		}
+		PSMAA::Pass::BlendingPS(texcoord, offset, colorLinearSampler, weightSampler, filterStrengthSampler, color);
 	}
 	else if (_Debug == 4)
 	{
@@ -568,8 +575,11 @@ void PSMAABlendingPSWrapper(
 	}
 
 #else
-
-	color = SMAANeighborhoodBlendingPS(texcoord, offset, colorLinearSampler, weightSampler).rgba;
+	if(_UseOldBlending){
+		color = SMAANeighborhoodBlendingPS(texcoord, offset, colorLinearSampler, weightSampler).rgba;
+		return;
+	}
+	PSMAA::Pass::BlendingPS(texcoord, offset, colorLinearSampler, weightSampler, filterStrengthSampler, color);
 
 #endif
 }
