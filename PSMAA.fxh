@@ -13,8 +13,8 @@
 // #define PSMAA_PRE_PROCESSING_THRESHOLD_MULTIPLIER
 // #define PSMAA_PRE_PROCESSING_CMAA_LCA_FACTOR_MULTIPLIER
 // #define PSMAA_PRE_PROCESSING_EXTRA_PIXEL_SOFTENING
-// #define PSMAA_PRE_PROCESSING_LUMA_PRESERVATION_BIAS
-// #define PSMAA_PRE_PROCESSING_LUMA_PRESERVATION_STRENGTH
+// #define APB_LUMA_PRESERVATION_BIAS
+// #define APB_LUMA_PRESERVATION_STRENGTH
 // #define PSMAA_PRE_PROCESSING_STRENGTH
 // #define PSMAA_PRE_PROCESSING_MIN_STRENGTH
 // #define PSMAA_PRE_PROCESSING_STRENGTH_THRESH
@@ -49,8 +49,6 @@
 // #define PSMAA_PRE_PROCESSING_THRESHOLD_MULTIPLIER 1f
 // #define PSMAA_PRE_PROCESSING_CMAA_LCA_FACTOR_MULTIPLIER 1f
 // #define PSMAA_PRE_PROCESSING_EXTRA_PIXEL_SOFTENING .15
-// #define PSMAA_PRE_PROCESSING_LUMA_PRESERVATION_BIAS .5
-// #define PSMAA_PRE_PROCESSING_LUMA_PRESERVATION_STRENGTH 1f
 // #define PSMAA_PRE_PROCESSING_STRENGTH 1f
 // #define PSMAA_PRE_PROCESSING_MIN_STRENGTH .15
 // #define PSMAA_PRE_PROCESSING_STRENGTH_THRESH .15
@@ -58,6 +56,11 @@
 // #define PSMAA_THRESHOLD_FLOOR 0.018
 // #define PSMAA_EDGE_DETECTION_FACTORS_HIGH_LUMA float4(threshold, CMAALCAFactor, SMAALCAFactor, SMAALCAAdjustmentBiasByCMAALocalContrast)
 // #define PSMAA_EDGE_DETECTION_FACTORS_LOW_LUMA float4(threshold, CMAALCAFactor, SMAALCAFactor, SMAALCAAdjustmentBiasByCMAALocalContrast)
+
+// #define APB_LUMA_PRESERVATION_BIAS .5
+// #define APB_LUMA_PRESERVATION_STRENGTH 1f
+
+#include ".\AnomalousPixelBlending.fxh"
 
 #define SMOOTHING_SATURATION_DIVISOR_FLOOR 0.01
 #define SMOOTHING_DEBUG false
@@ -152,84 +155,6 @@ namespace PSMAA
     thresholds *= mad(1f - maxLocalLuma, -PSMAA_SMOOTHING_DELTA_WEIGHT_PREDICATION_FACTOR, 1f);
     thresholds = max(thresholds, PSMAA_SMOOTHING_DELTA_WEIGHT_FLOOR);
     return smoothstep(thresholds.x, thresholds.y, deltaWeight);
-  }
-
-  /**
-   * Calculates a weighted average of a 9 tap pattern of pixels.
-   * returns float3 localavg
-   */
-  float3 CalcLocalAvg(
-      float3 NW, float3 N, float3 NE,
-      float3 W, float3 C, float3 E,
-      float3 SW, float3 S, float3 SE,
-      float strength)
-  {
-    // pattern:
-    //  e f g
-    //  h a b
-    //  i c d
-    // TODO: optimise by caching repeating values, and by calculating inverse of the constants
-    // and applying them to the sums using MAD operations where possible.
-    // Reinforced
-    float3 bottomHalf = (W + C + E + SW + S + SE) / 6f;
-    float3 topHalf = (N + C + E + NW + W + NE) / 6f;
-    float3 leftHalf = (NW + W + SW + N + C + S) / 6f;
-    float3 rightHalf = (N + C + S + NE + E + SE) / 6f;
-
-    float3 diagHalfNW = (SW + C + NE + N + W + NW) / 6f;
-    float3 diagHalfSE = (SW + C + NE + E + SE + S) / 6f;
-    float3 diagHalfNE = (NW + C + SE + NE + E + N) / 6f;
-    float3 diagHalfSW = (NW + C + SE + W + S + SW) / 6f;
-
-    float3 diag1 = (NW + C + SE) / 3f;
-    float3 diag2 = (SW + C + NE) / 3f;
-
-    float3 horz = (W + C + E) / 3f;
-    float3 vert = (N + C + S) / 3f;
-
-    float3 maxDesired = Functions::max(leftHalf, bottomHalf, diag1, diag2, topHalf, rightHalf, diagHalfNE, diagHalfNW, diagHalfSE, diagHalfSW);
-    float3 minDesired = Functions::min(leftHalf, bottomHalf, diag1, diag2, topHalf, rightHalf, diagHalfNE, diagHalfNW, diagHalfSE, diagHalfSW);
-
-    float3 maxLine = Functions::max(horz, vert, maxDesired);
-    float3 minLine = Functions::min(horz, vert, minDesired);
-
-    // Weakened
-    float3 surround = (W + N + E + S + C) / 5f;
-    float3 diagSurround = (NW + NE + SW + SE + C) / 5f;
-
-    float3 maxUndesired = max(surround, diagSurround);
-    float3 minUndesired = min(surround, diagSurround);
-
-    // Constants for local average calculation
-    static const float undesiredAmount = 2f;
-    static const float DesiredPatternsWeight = 2f;
-    static const float LineWeight = 1.3f;
-    // Multiply by 2f, because each sum is from a pair of values
-    static const float LocalAvgDenominator = mad(DesiredPatternsWeight + LineWeight, 2f, -undesiredAmount);
-
-    float3 undesiredSum = -maxUndesired - minUndesired;
-    float3 lineSum = maxLine + minLine;
-    float3 desiredSum = maxDesired + minDesired;
-
-    lineSum = mad(lineSum, LineWeight, undesiredSum);
-    desiredSum = mad(desiredSum, DesiredPatternsWeight, lineSum);
-    float3 localavg = desiredSum / LocalAvgDenominator;
-
-    // If the new target pixel value is less bright than the max desired shape, boost it's value accordingly
-    float maxLuma = Color::luma(maxLine);
-    float minLuma = Color::luma(minLine);
-    float localLuma = Color::luma(localavg);
-    // TODO: try using delta between origLuma and localLuma to determine strength and direction of the boost/weakening
-    // if new value is brighter than max desired shape, boost strength is 0f and localavg should be multiplied by 1f. Else, boost it.
-    float boost = saturate(maxLuma - localLuma);
-    float weaken = minLuma - localLuma;
-    float origLuma = Color::luma(C);
-    float direction = PSMAA_PRE_PROCESSING_LUMA_PRESERVATION_BIAS + origLuma - localLuma;
-    direction = saturate(mad(direction, PSMAA_PRE_PROCESSING_LUMA_PRESERVATION_STRENGTH, .5));
-    float mod = lerp(weaken, boost, direction);
-    localavg *= 1f + mod; // add to 1, because the operation must increase the local avg, not take fraction of it
-
-    return lerp(C, localavg, strength);
   }
 
   void GatherNeighborDeltas(
@@ -441,7 +366,7 @@ namespace PSMAA
       float3 E = PSMAASampleLevelZeroOffset(colorLinearTex, texcoord, float2(1, 0)).rgb;
       float3 SE = PSMAASampleLevelZeroOffset(colorLinearTex, texcoord, float2(1, 1)).rgb;
 
-      float3 filteredLocalAvg = CalcLocalAvg(
+      float3 filteredLocalAvg = AnomalousPixelBlending::CalcLocalAvg(
           NW, N, NE, W, C, E, SW, S, SE,
           strengthAndIsCorner.x);
 
@@ -662,23 +587,24 @@ namespace PSMAA
     }
 
     void BlendingPS(
-      float2 texcoord,
-      float4 offset,
-      sampler colorLinearSampler,
-      sampler blendWeightSampler,
-      sampler filterStrengthSampler,
-      out float4 color
-    ){
+        float2 texcoord,
+        float4 offset,
+        sampler colorLinearSampler,
+        sampler blendWeightSampler,
+        sampler filterStrengthSampler,
+        out float4 color)
+    {
       color = SMAANeighborhoodBlendingPS(
-        texcoord,
-        offset,
-        colorLinearSampler,
-        blendWeightSampler
-      ).rgba;
+                  texcoord,
+                  offset,
+                  colorLinearSampler,
+                  blendWeightSampler)
+                  .rgba;
 
       float2 strengthAndIsCorner = PSMAASamplePoint(filterStrengthSampler, texcoord).rg;
-      if (strengthAndIsCorner.y < .9f || strengthAndIsCorner.x <= PSMAA_PRE_PROCESSING_STRENGTH_THRESH) return;
-      
+      if (strengthAndIsCorner.y < .9f || strengthAndIsCorner.x <= PSMAA_PRE_PROCESSING_STRENGTH_THRESH)
+        return;
+
       float3 NW = PSMAASampleLevelZeroOffset(colorLinearSampler, texcoord, float2(-1, -1)).rgb;
       float3 W = PSMAASampleLevelZeroOffset(colorLinearSampler, texcoord, float2(-1, 0)).rgb;
       float3 SW = PSMAASampleLevelZeroOffset(colorLinearSampler, texcoord, float2(-1, 1)).rgb;
@@ -687,8 +613,8 @@ namespace PSMAA
       float3 NE = PSMAASampleLevelZeroOffset(colorLinearSampler, texcoord, float2(1, -1)).rgb;
       float3 E = PSMAASampleLevelZeroOffset(colorLinearSampler, texcoord, float2(1, 0)).rgb;
       float3 SE = PSMAASampleLevelZeroOffset(colorLinearSampler, texcoord, float2(1, 1)).rgb;
-      
-      float3 filteredLocalAvg = CalcLocalAvg(
+
+      float3 filteredLocalAvg = AnomalousPixelBlending::CalcLocalAvg(
           NW, N, NE, W, color.rgb, E, SW, S, SE,
           strengthAndIsCorner.x);
 

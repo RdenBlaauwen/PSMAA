@@ -143,8 +143,8 @@ ui_tooltip = "Use the old pre-processing method.";
 > = false;
 
 uniform bool _UseOldBlending <
-	ui_category = "Blending";
-	ui_label = "_UseOldBlendingg";
+		ui_category = "Blending";
+ui_label = "_UseOldBlendingg";
 > = false;
 
 uniform bool _SmoothingEnabled <
@@ -153,8 +153,8 @@ ui_label = "Enable Bean Smoothing";
 > = true;
 
 uniform bool _OldSmoothingEnabled <
-	ui_category = "Bean Smoothing";
-	ui_label = "use old Smoothing";
+		ui_category = "Bean Smoothing";
+ui_label = "use old Smoothing";
 > = false;
 
 uniform bool _SmoothingDeltaWeightDebug <
@@ -181,32 +181,32 @@ ui_step = 0.01f;
 > = .8;
 
 uniform float2 _SmoothingThresholds <
-	ui_category = "Bean Smoothing";
-	ui_label = "_SmoothingThresholds";
-	ui_type = "slider";
-	ui_min = .01;
-	ui_max = .25;
-	ui_step = .001;
+		ui_category = "Bean Smoothing";
+ui_label = "_SmoothingThresholds";
+ui_type = "slider";
+ui_min = .01;
+ui_max = .25;
+ui_step = .001;
 > = float2(.01, .075);
 
 uniform float _SmoothingThresholdDepthGrowthStart <
-	ui_category = "Bean Smoothing";
-	ui_label = "_SmoothingThresholdDepthGrowthStart";
-	ui_type = "slider";
-	ui_min = 0f;
-	ui_max = 1f;
-	ui_step = .01;
-	ui_label = "At which distance does the smoothing threshold start growing.";
+		ui_category = "Bean Smoothing";
+ui_label = "_SmoothingThresholdDepthGrowthStart";
+ui_type = "slider";
+ui_min = 0f;
+ui_max = 1f;
+ui_step = .01;
+ui_label = "At which distance does the smoothing threshold start growing.";
 > = .35;
 
 uniform float _SmoothingThresholdDepthGrowthFactor <
-	ui_category = "Bean Smoothing";
-	ui_label = "_SmoothingThresholdDepthGrowthFactor";
-	ui_type = "slider";
-	ui_min = 1f;
-	ui_max = 4f;
-	ui_step = .1;
-	ui_label = "How much the thresholds grow with distance.";
+		ui_category = "Bean Smoothing";
+ui_label = "_SmoothingThresholdDepthGrowthFactor";
+ui_type = "slider";
+ui_min = 1f;
+ui_max = 4f;
+ui_step = .1;
+ui_label = "How much the thresholds grow with distance.";
 > = 2.5;
 
 uniform bool _SharpeningEnabled <
@@ -307,8 +307,8 @@ ui_items = "None\0Max Local Luma\0Luma\0Filter strength weights\0Filtered image 
 #define PSMAA_PRE_PROCESSING_THRESHOLD_MULTIPLIER _PreProcessingThresholdMultiplier
 #define PSMAA_PRE_PROCESSING_CMAA_LCA_FACTOR_MULTIPLIER _PreProcessingCmaaLCAMultiplier
 #define PSMAA_PRE_PROCESSING_EXTRA_PIXEL_SOFTENING .15
-#define PSMAA_PRE_PROCESSING_LUMA_PRESERVATION_BIAS _PreProcessingLumaPreservationBias
-#define PSMAA_PRE_PROCESSING_LUMA_PRESERVATION_STRENGTH _PreProcessingLumaPreservationStrength
+#define APB_LUMA_PRESERVATION_BIAS _PreProcessingLumaPreservationBias
+#define APB_LUMA_PRESERVATION_STRENGTH _PreProcessingLumaPreservationStrength
 #define PSMAA_PRE_PROCESSING_STRENGTH _PreProcessingStrength
 #define PSMAA_PRE_PROCESSING_MIN_STRENGTH .15
 #define PSMAA_PRE_PROCESSING_STRENGTH_THRESH _PreProcessingStrengthThresh
@@ -324,7 +324,7 @@ ui_items = "None\0Max Local Luma\0Luma\0Filter strength weights\0Filtered image 
 #define SMOOTHING_THRESHOLD_DEPTH_GROWTH_START _SmoothingThresholdDepthGrowthStart
 #define SMOOTHING_THRESHOLD_DEPTH_GROWTH_FACTOR _SmoothingThresholdDepthGrowthFactor
 #ifndef PSMAA_SMOOTHING_USE_COLOR_SPACE
-	#define PSMAA_SMOOTHING_USE_COLOR_SPACE 0
+#define PSMAA_SMOOTHING_USE_COLOR_SPACE 0
 #endif
 #define SMOOTHING_ENABLED true
 #define PSMAA_SHARPENING_COMPENSATION_STRENGTH _SharpeningCompensationStrength
@@ -561,7 +561,8 @@ void PSMAABlendingPSWrapper(
 
 	if (_Debug == 0)
 	{
-		if(_UseOldBlending){
+		if (_UseOldBlending)
+		{
 			color = SMAANeighborhoodBlendingPS(texcoord, offset, colorLinearSampler, weightSampler).rgba;
 			return;
 		}
@@ -570,12 +571,15 @@ void PSMAABlendingPSWrapper(
 	else if (_Debug == 4)
 	{
 		color = tex2D(colorLinearSampler, texcoord);
-	} else {
+	}
+	else
+	{
 		discard;
 	}
 
 #else
-	if(_UseOldBlending){
+	if (_UseOldBlending)
+	{
 		color = SMAANeighborhoodBlendingPS(texcoord, offset, colorLinearSampler, weightSampler).rgba;
 		return;
 	}
@@ -592,15 +596,15 @@ void SmoothingPSWrapper(
 {
 	if (!_SmoothingEnabled)
 		discard;
-	// if (_OldSmoothingEnabled){
-	// 	PSMAAOld::Pass::SmoothingPS(texcoord, offset, deltaSampler, weightSampler, colorLinearSampler, maxLocalLumaSampler, color);
-	// 	return;
-	// }
-	#if PSMAA_SMOOTHING_USE_COLOR_SPACE
-		PSMAA::Pass::SmoothingPS(texcoord, offset, deltaSampler, weightSampler, colorLinearSampler, maxLocalLumaSampler, color);
-	#else
-		PSMAA::Pass::SmoothingPS(texcoord, offset, deltaSampler, weightSampler, colorGammaSampler, maxLocalLumaSampler, color);
-	#endif
+// if (_OldSmoothingEnabled){
+// 	PSMAAOld::Pass::SmoothingPS(texcoord, offset, deltaSampler, weightSampler, colorLinearSampler, maxLocalLumaSampler, color);
+// 	return;
+// }
+#if PSMAA_SMOOTHING_USE_COLOR_SPACE
+	PSMAA::Pass::SmoothingPS(texcoord, offset, deltaSampler, weightSampler, colorLinearSampler, maxLocalLumaSampler, color);
+#else
+	PSMAA::Pass::SmoothingPS(texcoord, offset, deltaSampler, weightSampler, colorGammaSampler, maxLocalLumaSampler, color);
+#endif
 }
 
 void CASPSWrapper(
@@ -645,14 +649,15 @@ void PSMAADebugPS(
 	else if (_Debug == 6)
 	{
 		color = tex2D(edgesSampler, texcoord).rgba;
-	} else {
+	}
+	else
+	{
 		color = tex2D(colorLinearSampler, texcoord);
 	}
 
 	color = Debug::applyDebugOptions(color);
 }
 #endif
-
 
 technique PSMAA
 {
@@ -717,9 +722,9 @@ technique PSMAA
 	{
 		VertexShader = SMAANeighborhoodBlendingVSWrapper;
 		PixelShader = SmoothingPSWrapper;
-		#if PSMAA_SMOOTHING_USE_COLOR_SPACE
-			SRGBWriteEnable = true;
-		#endif
+#if PSMAA_SMOOTHING_USE_COLOR_SPACE
+		SRGBWriteEnable = true;
+#endif
 	}
 	pass Sharpening
 	{
@@ -727,12 +732,12 @@ technique PSMAA
 		PixelShader = CASPSWrapper;
 		SRGBWriteEnable = true;
 	}
-	#if SHOW_DEBUG
-		pass Debug
-		{
-			VertexShader = SMAANeighborhoodBlendingVSWrapper;
-			PixelShader = PSMAADebugPS;
-			SRGBWriteEnable = true;
-		}	
-	#endif
+#if SHOW_DEBUG
+	pass Debug
+	{
+		VertexShader = SMAANeighborhoodBlendingVSWrapper;
+		PixelShader = PSMAADebugPS;
+		SRGBWriteEnable = true;
+	}
+#endif
 }

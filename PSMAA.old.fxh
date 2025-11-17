@@ -13,8 +13,8 @@
 // #define PSMAA_PRE_PROCESSING_THRESHOLD_MULTIPLIER
 // #define PSMAA_PRE_PROCESSING_CMAA_LCA_FACTOR_MULTIPLIER
 // #define PSMAA_PRE_PROCESSING_EXTRA_PIXEL_SOFTENING
-// #define PSMAA_PRE_PROCESSING_LUMA_PRESERVATION_BIAS
-// #define PSMAA_PRE_PROCESSING_LUMA_PRESERVATION_STRENGTH
+// #define APB_LUMA_PRESERVATION_BIAS
+// #define APB_LUMA_PRESERVATION_STRENGTH
 // #define PSMAA_PRE_PROCESSING_STRENGTH
 // #define PSMAA_PRE_PROCESSING_MIN_STRENGTH
 // #define PSMAA_PRE_PROCESSING_STRENGTH_THRESH
@@ -49,8 +49,8 @@
 // #define PSMAA_PRE_PROCESSING_THRESHOLD_MULTIPLIER 1f
 // #define PSMAA_PRE_PROCESSING_CMAA_LCA_FACTOR_MULTIPLIER 1f
 // #define PSMAA_PRE_PROCESSING_EXTRA_PIXEL_SOFTENING .15
-// #define PSMAA_PRE_PROCESSING_LUMA_PRESERVATION_BIAS .5
-// #define PSMAA_PRE_PROCESSING_LUMA_PRESERVATION_STRENGTH 1f
+// #define APB_LUMA_PRESERVATION_BIAS .5
+// #define APB_LUMA_PRESERVATION_STRENGTH 1f
 // #define PSMAA_PRE_PROCESSING_STRENGTH 1f
 // #define PSMAA_PRE_PROCESSING_MIN_STRENGTH .15
 // #define PSMAA_PRE_PROCESSING_STRENGTH_THRESH .15
@@ -219,8 +219,8 @@ namespace PSMAAOld
     float boost = saturate(maxLuma - localLuma);
     float weaken = minLuma - localLuma;
     float origLuma = Color::luma(C);
-    float direction = PSMAA_PRE_PROCESSING_LUMA_PRESERVATION_BIAS + origLuma - localLuma;
-    direction = saturate(mad(direction, PSMAA_PRE_PROCESSING_LUMA_PRESERVATION_STRENGTH, .5));
+    float direction = APB_LUMA_PRESERVATION_BIAS + origLuma - localLuma;
+    direction = saturate(mad(direction, APB_LUMA_PRESERVATION_STRENGTH, .5));
     float mod = lerp(weaken, boost, direction);
     localavg *= 1f + mod; // add to 1, because the operation must increase the local avg, not take fraction of it
 
