@@ -4,6 +4,7 @@
 // #define APB_LUMA_PRESERVATION_BIAS .5
 // #define APB_LUMA_PRESERVATION_STRENGTH 1f
 // #define APB_MIN_FILTER_STRENGTH .15
+// #define APB_FILTER_STRENGTH_DELTA_WEIGHTS float4(.15, .25, .25, .5)
 
 // DEPENDENCIES
 // #include "Functions.fxh"
@@ -45,6 +46,27 @@ namespace AnomalousPixelBlending
     // Determine filter strength based on the number of corners detected
     return = max(cornerNumber / 4f, APB_MIN_FILTER_STRENGTH);
   }
+
+  // TODO: test this experimental function
+  // float calcBlendingStrength(float4 deltas)
+  // {
+  //   static const float4 Weights = APB_FILTER_STRENGTH_DELTA_WEIGHTS;
+
+  //   float2 transverseMax = max(deltas.rg, deltas.ba);
+  //   float2 transverseMin = min(deltas.rg, deltas.ba);
+
+  //   float4 factors;
+  //   // thin line delta
+  //   factors.r = Functions::max(transverseMin);
+  //   // corner delta
+  //   factors.g = Functions::min(transverseMax);
+  //   // cup delta
+  //   factors.b = Functions::min(factors.rg);
+  //   // isolated pixel delta
+  //   factors.a = Functions::min(transverseMin);
+
+  //   return dot(factors, Weights);
+  // }
 
   /**
    * Calculates a weighted average of a 9 tap pattern of pixels.
