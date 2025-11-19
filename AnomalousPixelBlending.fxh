@@ -3,9 +3,49 @@
 // The values are defaults and can be changed as needed:
 // #define APB_LUMA_PRESERVATION_BIAS .5
 // #define APB_LUMA_PRESERVATION_STRENGTH 1f
+// #define APB_MIN_FILTER_STRENGTH .15
+
+// DEPENDENCIES
+// #include "Functions.fxh"
+// #include "Color.fxh"
 
 namespace AnomalousPixelBlending
 {
+  float4 applyLCA(float4 deltas, float lcaFactor)
+  {
+    float4 maxLocalDeltas = Functions::max(deltas.gbar, deltas.barg, deltas.argb);
+
+    return mad(maxLocalDeltas, -lcaFactor, deltas);
+  }
+
+  float4 applyCornerCorrection(float4 deltas)
+  {
+    float2 greatestCornerDeltas = max(deltas.rg, deltas.ba);
+    float avgGreatestCornerDelta = (greatestCornerDeltas.x + greatestCornerDeltas.y) / 2f;
+    // taking the square, then dividing by the average greatest corner delta diminishes smaller deltas
+    // and preserves the deltas of the largest corner
+    return (deltas * deltas) / avgGreatestCornerDelta;
+  }
+
+  bool checkIfCorner(float4 deltas, float cornerCorrectionStrength, float edgeThreshold)
+  {
+    float4 correctedDeltas = applyCornerCorrection(deltas);
+    correctedDeltas = lerp(deltas, correctedDeltas, cornerCorrectionStrength);
+
+    float4 correctedEdges = step(edgeThreshold, correctedDeltas);
+    float cornerNumber = (correctedEdges.r + correctedEdges.b) * (correctedEdges.g + correctedEdges.a);
+    return cornerNumber == 1f;
+  }
+
+  float calcBlendingStrength(float4 edges)
+  {
+    // TODO: use deltas instead, and use sharpening's logic mebi
+    // redo to get normal edges, use that to calc filter strength
+    cornerNumber = (edges.r + edges.b) * (edges.g + edges.a);
+    // Determine filter strength based on the number of corners detected
+    return = max(cornerNumber / 4f, APB_MIN_FILTER_STRENGTH);
+  }
+
   /**
    * Calculates a weighted average of a 9 tap pattern of pixels.
    * returns float3 localavg

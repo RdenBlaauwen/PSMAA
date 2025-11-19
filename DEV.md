@@ -6,6 +6,7 @@
 - Filtering:
   - Consider replacing current filterstrength calculation with something that uses smoothstepped edges instead of the current hard ones. Should give more rpeciese results and less shimmering.
   - Consider removing CMAA LCA, as it doesn't seem to be doing much atm.
+  - Test functionality where pixels neighbouring pixels with high filter strengths are also treated. Helps preserve detail, but at a higher perf cost.
 - Update libraries:
   - Build solution for calculating luminosity from color, and weighting components for luma in shared library.
   - make standard 'nullish' function check for vals close, but not equal, to 0.
@@ -30,7 +31,7 @@
 
 ## sRGB textures
 
-Only RGBA8 textures can be written to using sRGB passes. And only RGBA8 textures can be used in sRGB (aka linear) samplers. And the backbuffer of course. 
+Only RGBA8 textures can be written to using sRGB passes. And only RGBA8 textures can be used in sRGB (aka linear) samplers. And the backbuffer of course.
 
 I originally wanted to use RGB10A2 textures for the filtered copies, but after seeing the blending pass wouldn't be able to write to them or samples from them, I decided to let that go and settle for RGBA8.
 
@@ -57,7 +58,8 @@ Tried seeing how many detlas would go above a value of 1/2 using a quickly built
 Fortunately, it wasn't necessary. Testing showed that just using an RG8 buffer, without any hoops and special cramming methods, produced a virtually indistinguishable result from using RG16f. So I'm just using RG8 from now on.
 
 ### Have the blending pass sample the filteredcopy instead of the backbuffer.
- This way you can delete the extra output pass after the precprocessing pass and you may turn the blending pass into a computeshader too.
+
+This way you can delete the extra output pass after the precprocessing pass and you may turn the blending pass into a computeshader too.
 
 This doesn't work. filteredcopy is in gamma space and needs to stay that way for edge detection to work. the blending pass is in linear space and has to stay that way for the blending to work. No solution to this.
 

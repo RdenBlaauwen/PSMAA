@@ -12,7 +12,6 @@
 // #define PSMAAGatherTopEdges(tex, coord)
 // #define PSMAA_PRE_PROCESSING_THRESHOLD_MULTIPLIER
 // #define PSMAA_PRE_PROCESSING_CMAA_LCA_FACTOR_MULTIPLIER
-// #define PSMAA_PRE_PROCESSING_EXTRA_PIXEL_SOFTENING
 // #define APB_LUMA_PRESERVATION_BIAS
 // #define APB_LUMA_PRESERVATION_STRENGTH
 // #define PSMAA_PRE_PROCESSING_STRENGTH
@@ -48,9 +47,7 @@
 // #define PSMAAGatherTopEdges(tex, coord) tex2Dgather(tex, texcoord, 1);
 // #define PSMAA_PRE_PROCESSING_THRESHOLD_MULTIPLIER 1f
 // #define PSMAA_PRE_PROCESSING_CMAA_LCA_FACTOR_MULTIPLIER 1f
-// #define PSMAA_PRE_PROCESSING_EXTRA_PIXEL_SOFTENING .15
 // #define PSMAA_PRE_PROCESSING_STRENGTH 1f
-// #define PSMAA_PRE_PROCESSING_MIN_STRENGTH .15
 // #define PSMAA_PRE_PROCESSING_STRENGTH_THRESH .15
 // #define PSMAA_PRE_PROCESSING_EXPLICIT_ZERO true
 // #define PSMAA_THRESHOLD_FLOOR 0.018
@@ -59,6 +56,7 @@
 
 // #define APB_LUMA_PRESERVATION_BIAS .5
 // #define APB_LUMA_PRESERVATION_STRENGTH 1f
+#define APB_MIN_FILTER_STRENGTH .15
 
 #include ".\AnomalousPixelBlending.fxh"
 
@@ -332,7 +330,7 @@ namespace PSMAA
       // redo to get normal edges, use that to calc filter strength
       cornerNumber = (edges.r + edges.b) * (edges.g + edges.a);
       // Determine filter strength based on the number of corners detected
-      float strength = max(cornerNumber / 4f, PSMAA_PRE_PROCESSING_MIN_STRENGTH);
+      float strength = max(cornerNumber / 4f, APB_MIN_FILTER_STRENGTH);
       strength = strength * PSMAA_PRE_PROCESSING_STRENGTH;
 
       // OUTPUT

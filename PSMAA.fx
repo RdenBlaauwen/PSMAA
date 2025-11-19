@@ -306,11 +306,9 @@ ui_items = "None\0Max Local Luma\0Luma\0Filter strength weights\0Filtered image 
 
 #define PSMAA_PRE_PROCESSING_THRESHOLD_MULTIPLIER _PreProcessingThresholdMultiplier
 #define PSMAA_PRE_PROCESSING_CMAA_LCA_FACTOR_MULTIPLIER _PreProcessingCmaaLCAMultiplier
-#define PSMAA_PRE_PROCESSING_EXTRA_PIXEL_SOFTENING .15
 #define APB_LUMA_PRESERVATION_BIAS _PreProcessingLumaPreservationBias
 #define APB_LUMA_PRESERVATION_STRENGTH _PreProcessingLumaPreservationStrength
 #define PSMAA_PRE_PROCESSING_STRENGTH _PreProcessingStrength
-#define PSMAA_PRE_PROCESSING_MIN_STRENGTH .15
 #define PSMAA_PRE_PROCESSING_STRENGTH_THRESH _PreProcessingStrengthThresh
 #define PSMAA_PRE_PROCESSING_GREATEST_CORNER_CORRECTION_STRENGTH _PreProcessingGreatestCornerCorrectionStrength
 #define PSMAA_EDGE_DETECTION_FACTORS_HIGH_LUMA float4(_EdgeDetectionThreshold.y, _CMAALCAFactor.y, _SMAALCAFactor.y, _CMAALCAforSMAALCAFactor.y)
