@@ -1,100 +1,3 @@
-//// IMPLEMENTATION
-// MACROS
-// The following preprocessor variables should be defined in the main file:
-// #define PSMAA_USE_SIMPLIFIED_DELTA_CALCULATION
-// #define PSMAA_BUFFER_METRICS
-// #define PSMAA_PIXEL_SIZE
-// #define PSMAATexture2D(tex)
-// #define PSMAASamplePoint(tex, coord)
-// #define PSMAASampleLevelZero(tex, coord)
-// #define PSMAASampleLevelZeroOffset(tex, coord, offset)
-// #define PSMAAGatherLeftEdges(tex, coord)
-// #define PSMAAGatherTopEdges(tex, coord)
-// #define PSMAA_PRE_PROCESSING_THRESHOLD_MULTIPLIER
-// #define PSMAA_PRE_PROCESSING_CMAA_LCA_FACTOR_MULTIPLIER
-// #define PSMAA_PRE_PROCESSING_EXTRA_PIXEL_SOFTENING
-// #define APB_LUMA_PRESERVATION_BIAS
-// #define APB_LUMA_PRESERVATION_STRENGTH
-// #define PSMAA_PRE_PROCESSING_STRENGTH
-// #define PSMAA_PRE_PROCESSING_MIN_STRENGTH
-// #define PSMAA_PRE_PROCESSING_STRENGTH_THRESH
-// #define PSMAA_PRE_PROCESSING_EXPLICIT_ZERO
-// #define PSMAA_THRESHOLD_FLOOR
-// #define PSMAA_EDGE_DETECTION_FACTORS_HIGH_LUMA
-// #define PSMAA_EDGE_DETECTION_FACTORS_LOW_LUM
-// These are float4's with the following values:
-// x: threshold
-// y: CMAA LCA factor
-// z: SMAA LCA factor
-// w: SMAA LCA adjustment bias by CMAA local contrast
-// #define PSMAA_PRE_PROCESSING_GREATEST_CORNER_CORRECTION_STRENGTH //TODO: turn into proper macrp withd efault value and right location
-// #define PSMAA_SHARPENING_COMPENSATION_STRENGTH
-// #define PSMAA_SHARPENING_COMPENSATION_CUTOFF
-// #define PSMAA_SHARPENING_EDGE_BIAS (range -4f..0f)
-// #define PSMAA_SHARPENING_EDGE_BIAS_WEIGHTS
-// #define PSMAA_SHARPENING_SHARPNESS
-// #define PSMAA_SHARPENING_BLENDING_STRENGTH
-// #define PSMAA_SHARPENING_DEBUG
-//
-// Reshade example:
-// #define PSMAA_USE_SIMPLIFIED_DELTA_CALCULATION 0
-// #define PSMAA_BUFFER_METRICS float4(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT, BUFFER_WIDTH, BUFFER_HEIGHT)
-// #define PSMAA_PIXEL_SIZE BUFFER_PIXEL_SIZE
-// #define PSMAATexture2D(tex) sampler tex
-// #define PSMAASamplePoint(tex, coord) tex2D(tex, coord)
-// #define PSMAASampleLevelZero(tex, coord) tex2Dlod(tex, float4(coord, 0.0, 0.0))
-// #define PSMAASampleLevelZeroOffset(tex, coord, offset) tex2Dlodoffset(tex, float4(coord, coord), offset)
-// #define PSMAAGatherLeftEdges(tex, coord) tex2Dgather(tex, texcoord, 0);
-// #define PSMAAGatherTopEdges(tex, coord) tex2Dgather(tex, texcoord, 1);
-// #define PSMAA_PRE_PROCESSING_THRESHOLD_MULTIPLIER 1f
-// #define PSMAA_PRE_PROCESSING_CMAA_LCA_FACTOR_MULTIPLIER 1f
-// #define PSMAA_PRE_PROCESSING_EXTRA_PIXEL_SOFTENING .15
-// #define APB_LUMA_PRESERVATION_BIAS .5
-// #define APB_LUMA_PRESERVATION_STRENGTH 1f
-// #define PSMAA_PRE_PROCESSING_STRENGTH 1f
-// #define PSMAA_PRE_PROCESSING_MIN_STRENGTH .15
-// #define PSMAA_PRE_PROCESSING_STRENGTH_THRESH .15
-// #define PSMAA_PRE_PROCESSING_EXPLICIT_ZERO true
-// #define PSMAA_THRESHOLD_FLOOR 0.018
-// #define PSMAA_EDGE_DETECTION_FACTORS_HIGH_LUMA float4(threshold, CMAALCAFactor, SMAALCAFactor, SMAALCAAdjustmentBiasByCMAALocalContrast)
-// #define PSMAA_EDGE_DETECTION_FACTORS_LOW_LUMA float4(threshold, CMAALCAFactor, SMAALCAFactor, SMAALCAAdjustmentBiasByCMAALocalContrast)
-
-#define SMOOTHING_SATURATION_DIVISOR_FLOOR 0.01
-#define SMOOTHING_DEBUG false
-#define SMOOTHING_BUFFER_RCP_HEIGHT PSMAA_BUFFER_METRICS.y
-#define SMOOTHING_BUFFER_RCP_WIDTH PSMAA_BUFFER_METRICS.x
-#define SMOOTHING_MIN_ITERATIONS 5f
-#define SMOOTHING_MAX_ITERATIONS 20f
-
-// #define PSMAA_SMOOTHING_DELTA_WEIGHT_PREDICATION_FACTOR .8
-#define PSMAA_SMOOTHING_DELTA_WEIGHT_FLOOR .06
-#define PSMAA_SMOOTHING_THRESHOLD .05
-// #define PSMAA_SMOOTHING_MIN_DELTA_WEIGHT .02
-// #define PSMAA_SMOOTHING_MAX_DELTA_WEIGHT .25
-// #define PSMAA_SMOOTHING_DELTA_WEIGHT_DEBUG false
-
-// Shorthands for sampling
-#define SmoothingSampleLevelZero(tex, coord) PSMAASampleLevelZero(tex, coord)
-#define SmoothingSampleLevelZeroOffset(tex, coord, offset) PSMAASampleLevelZeroOffset(tex, coord, offset)
-#define SmoothingGatherLeftDeltas(tex, coord) PSMAAGatherLeftEdges(tex, coord)
-#define SmoothingGatherTopDeltas(tex, coord) PSMAAGatherTopEdges(tex, coord)
-
-#include ".\BeanSmoothing.fxh"
-
-// #define PSMAA_SHARPENING_COMPENSATION_STRENGTH .65f
-// #define PSMAA_SHARPENING_COMPENSATION_CUTOFF .5f
-// #define PSMAA_SHARPENING_EDGE_BIAS -1f
-#define PSMAA_SHARPENING_EDGE_BIAS_WEIGHTS float4(.4, .8, 1.2, 1.6)
-// #define PSMAA_SHARPENING_SHARPNESS 0f
-// #define PSMAA_SHARPENING_BLENDING_STRENGTH 0f
-// #define PSMAA_SHARPENING_DEBUG false
-
-// DEPENDENCIES START
-#define CAS_BETTER_DIAGONALS 1
-
-#include ".\CAS.fxh"
-// DEPENDENCIES END
-
 namespace PSMAAOld
 {
   /**
@@ -137,94 +40,19 @@ namespace PSMAAOld
     return deltas;
   }
 
+  // A number between 0 - 1 indicating whether the min or amx amount of smoothing iterations should be used.
+  // What number of iterations is considered min or max is out of scope for this function and
+  // should be decided elsewhere, based on this mod's value.
   float getSmoothingIterationsMod(float4 deltas, float maxLocalLuma)
   {
     float2 maxDeltaCorner = max(deltas.rb, deltas.ga);
     // Use pythagorean theorem to calculate the "weight" of the contrast of the biggest corner
     float deltaWeight = sqrt(Functions::sum(maxDeltaCorner * maxDeltaCorner));
 
-    float2 thresholds = float2(PSMAA_SMOOTHING_MIN_DELTA_WEIGHT, PSMAA_SMOOTHING_MAX_DELTA_WEIGHT);
+    float2 thresholds = float2(PSMAA_SMOOTHING_DELTA_WEIGHTS.x, PSMAA_SMOOTHING_DELTA_WEIGHTS.y);
     thresholds *= mad(1f - maxLocalLuma, -PSMAA_SMOOTHING_DELTA_WEIGHT_PREDICATION_FACTOR, 1f);
     thresholds = max(thresholds, PSMAA_SMOOTHING_DELTA_WEIGHT_FLOOR);
     return smoothstep(thresholds.x, thresholds.y, deltaWeight);
-  }
-
-  /**
-   * Calculates a weighted average of a 9 tap pattern of pixels.
-   * returns float3 localavg
-   */
-  float3 CalcLocalAvg(
-      float3 NW, float3 N, float3 NE,
-      float3 W, float3 C, float3 E,
-      float3 SW, float3 S, float3 SE,
-      float strength)
-  {
-    // pattern:
-    //  e f g
-    //  h a b
-    //  i c d
-    // TODO: optimise by caching repeating values, and by calculating inverse of the constants
-    // and applying them to the sums using MAD operations where possible.
-    // Reinforced
-    float3 bottomHalf = (W + C + E + SW + S + SE) / 6f;
-    float3 topHalf = (N + C + E + NW + W + NE) / 6f;
-    float3 leftHalf = (NW + W + SW + N + C + S) / 6f;
-    float3 rightHalf = (N + C + S + NE + E + SE) / 6f;
-
-    float3 diagHalfNW = (SW + C + NE + N + W + NW) / 6f;
-    float3 diagHalfSE = (SW + C + NE + E + SE + S) / 6f;
-    float3 diagHalfNE = (NW + C + SE + NE + E + N) / 6f;
-    float3 diagHalfSW = (NW + C + SE + W + S + SW) / 6f;
-
-    float3 diag1 = (NW + C + SE) / 3f;
-    float3 diag2 = (SW + C + NE) / 3f;
-
-    float3 horz = (W + C + E) / 3f;
-    float3 vert = (N + C + S) / 3f;
-
-    float3 maxDesired = Functions::max(leftHalf, bottomHalf, diag1, diag2, topHalf, rightHalf, diagHalfNE, diagHalfNW, diagHalfSE, diagHalfSW);
-    float3 minDesired = Functions::min(leftHalf, bottomHalf, diag1, diag2, topHalf, rightHalf, diagHalfNE, diagHalfNW, diagHalfSE, diagHalfSW);
-
-    float3 maxLine = Functions::max(horz, vert, maxDesired);
-    float3 minLine = Functions::min(horz, vert, minDesired);
-
-    // Weakened
-    float3 surround = (W + N + E + S + C) / 5f;
-    float3 diagSurround = (NW + NE + SW + SE + C) / 5f;
-
-    float3 maxUndesired = max(surround, diagSurround);
-    float3 minUndesired = min(surround, diagSurround);
-
-    // Constants for local average calculation
-    static const float undesiredAmount = 2f;
-    static const float DesiredPatternsWeight = 2f;
-    static const float LineWeight = 1.3f;
-    // Multiply by 2f, because each sum is from a pair of values
-    static const float LocalAvgDenominator = mad(DesiredPatternsWeight + LineWeight, 2f, -undesiredAmount);
-
-    float3 undesiredSum = -maxUndesired - minUndesired;
-    float3 lineSum = maxLine + minLine;
-    float3 desiredSum = maxDesired + minDesired;
-
-    lineSum = mad(lineSum, LineWeight, undesiredSum);
-    desiredSum = mad(desiredSum, DesiredPatternsWeight, lineSum);
-    float3 localavg = desiredSum / LocalAvgDenominator;
-
-    // If the new target pixel value is less bright than the max desired shape, boost it's value accordingly
-    float maxLuma = Color::luma(maxLine);
-    float minLuma = Color::luma(minLine);
-    float localLuma = Color::luma(localavg);
-    // TODO: try using delta between origLuma and localLuma to determine strength and direction of the boost/weakening
-    // if new value is brighter than max desired shape, boost strength is 0f and localavg should be multiplied by 1f. Else, boost it.
-    float boost = saturate(maxLuma - localLuma);
-    float weaken = minLuma - localLuma;
-    float origLuma = Color::luma(C);
-    float direction = APB_LUMA_PRESERVATION_BIAS + origLuma - localLuma;
-    direction = saturate(mad(direction, APB_LUMA_PRESERVATION_STRENGTH, .5));
-    float mod = lerp(weaken, boost, direction);
-    localavg *= 1f + mod; // add to 1, because the operation must increase the local avg, not take fraction of it
-
-    return lerp(C, localavg, strength);
   }
 
   void GatherNeighborDeltas(
@@ -402,7 +230,7 @@ namespace PSMAAOld
       // redo to get normal edges, use that to calc filter strength
       cornerNumber = (edges.r + edges.b) * (edges.g + edges.a);
       // Determine filter strength based on the number of corners detected
-      float strength = max(cornerNumber / 4f, PSMAA_PRE_PROCESSING_MIN_STRENGTH);
+      float strength = max(cornerNumber / 4f, APB_MIN_FILTER_STRENGTH);
       strength = strength * PSMAA_PRE_PROCESSING_STRENGTH;
 
       // OUTPUT
@@ -436,7 +264,7 @@ namespace PSMAAOld
       float3 E = PSMAASampleLevelZeroOffset(colorLinearTex, texcoord, float2(1, 0)).rgb;
       float3 SE = PSMAASampleLevelZeroOffset(colorLinearTex, texcoord, float2(1, 1)).rgb;
 
-      float3 filteredLocalAvg = CalcLocalAvg(
+      float3 filteredLocalAvg = AnomalousPixelBlending::CalcLocalAvg(
           NW, N, NE, W, C, E, SW, S, SE,
           strengthAndIsCorner.x);
 
@@ -605,7 +433,91 @@ namespace PSMAAOld
         sampler lumaTex,
         out float3 color)
     {
-      color = BeanSmoothing::smooth(texcoord, offset, colorTex, blendSampler, PSMAA_SMOOTHING_THRESHOLD, 20f);
+      float4 deltas;
+#if __RENDERER__ >= 0xa000 // if DX10 or above
+      // get edge data from the bottom (x), bottom-right (y), right (z),
+      // and current pixels (w), in that order.
+      float4 leftDeltas = SmoothingGatherLeftDeltas(deltaTex, texcoord);
+      float4 topDeltas = SmoothingGatherTopDeltas(deltaTex, texcoord);
+      deltas = float4(
+          leftDeltas.w,
+          topDeltas.w,
+          leftDeltas.z,
+          topDeltas.x);
+#else // if DX9
+      deltas = float4(
+          SmoothingSampleLevelZero(deltaTex, texcoord).rg,
+          SmoothingSampleLevelZero(deltaTex, offset.xy).r,
+          SmoothingSampleLevelZero(deltaTex, offset.zw).g);
+#endif
+
+      float maxLocalLuma = tex2D(lumaTex, texcoord).r;
+
+      float mod = PSMAAOld::getSmoothingIterationsMod(deltas, maxLocalLuma);
+      float threshold = lerp(PSMAA_SMOOTHING_THRESHOLDS.x, PSMAA_SMOOTHING_THRESHOLDS.y, maxLocalLuma);
+
+      float depth = ReShade::GetLinearizedDepth(texcoord);
+      threshold *= BeanSmoothing::calcDepthGrowthFactor(depth);
+
+      // TODO: consider turning into prepreocssor check for performance.
+      // Consider turning into func that can detect early returns too by checking delta between new and old color
+      if (PSMAA_SMOOTHING_DELTA_WEIGHT_DEBUG)
+      {
+        int maxIterations = BeanSmoothing::calcMaxSmoothingIterations(mod);
+        float3 result = BeanSmoothing::smooth(texcoord, offset, colorTex, blendSampler, threshold, maxIterations);
+
+        // Check if there's a diff between original and result
+        // Helps to detect cases where smooth() did an early return and changed nothing
+        float3 original = tex2D(colorTex, texcoord).rgb;
+        // increase the change to make it more visible, especially for small changes
+        float change = saturate(sqrt(GetDelta(original, result) * 9f));
+        color = float3(0f, change, mod);
+        return;
+      }
+
+      // if close to 0f, discard.
+      if (mod < 1e-5f)
+        discard; // TODO: make standard 'nullish' function check.
+
+      uint maxIterations = BeanSmoothing::calcMaxSmoothingIterations(mod);
+
+      color = BeanSmoothing::smooth(texcoord, offset, colorTex, blendSampler, threshold, maxIterations);
+    }
+
+    void BlendingPS(
+        float2 texcoord,
+        float4 offset,
+        sampler colorLinearSampler,
+        sampler blendWeightSampler,
+        sampler filterStrengthSampler,
+        out float4 color)
+    {
+      color = SMAANeighborhoodBlendingPS(
+                  texcoord,
+                  offset,
+                  colorLinearSampler,
+                  blendWeightSampler)
+                  .rgba;
+
+      float2 strengthAndIsCorner = PSMAASamplePoint(filterStrengthSampler, texcoord).rg;
+      if (strengthAndIsCorner.y < .9f || strengthAndIsCorner.x <= PSMAA_PRE_PROCESSING_STRENGTH_THRESH)
+        return;
+
+      float3 NW = PSMAASampleLevelZeroOffset(colorLinearSampler, texcoord, float2(-1, -1)).rgb;
+      float3 W = PSMAASampleLevelZeroOffset(colorLinearSampler, texcoord, float2(-1, 0)).rgb;
+      float3 SW = PSMAASampleLevelZeroOffset(colorLinearSampler, texcoord, float2(-1, 1)).rgb;
+      float3 N = PSMAASampleLevelZeroOffset(colorLinearSampler, texcoord, float2(0, -1)).rgb;
+      float3 S = PSMAASampleLevelZeroOffset(colorLinearSampler, texcoord, float2(0, 1)).rgb;
+      float3 NE = PSMAASampleLevelZeroOffset(colorLinearSampler, texcoord, float2(1, -1)).rgb;
+      float3 E = PSMAASampleLevelZeroOffset(colorLinearSampler, texcoord, float2(1, 0)).rgb;
+      float3 SE = PSMAASampleLevelZeroOffset(colorLinearSampler, texcoord, float2(1, 1)).rgb;
+
+      float3 filteredLocalAvg = AnomalousPixelBlending::CalcLocalAvg(
+          NW, N, NE, W, color.rgb, E, SW, S, SE,
+          strengthAndIsCorner.x);
+
+      // OUTPUT with localavg and original alpha
+      color = float4(filteredLocalAvg, color.a);
     }
 
     void SharpeningPS(

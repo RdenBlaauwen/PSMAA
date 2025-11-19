@@ -353,6 +353,7 @@ ui_items = "None\0Max Local Luma\0Luma\0Filter strength weights\0Filtered image 
 
 #include ".\SMAA.fxh"
 #include ".\PSMAA.fxh"
+#include ".\PSMAA.old.fxh"
 
 texture colorInputTex : COLOR;
 sampler colorGammaSampler
@@ -467,6 +468,12 @@ void PSMAAPreProcessingPSWrapper(
 		out float originalLuma : SV_TARGET1,
 		out float2 filteringStrength : SV_TARGET2)
 {
+	if (_ShowOldPreProcessing)
+	{
+		PSMAAOld::Pass::PreProcessingPS(texcoord, colorGammaSampler, maxLocalLuma, originalLuma, filteringStrength);
+		return;
+	}
+
 	PSMAA::Pass::PreProcessingPS(texcoord, colorGammaSampler, maxLocalLuma, originalLuma, filteringStrength);
 }
 
@@ -475,6 +482,11 @@ void PSMAAFilteringPSWrapper(
 		float2 texcoord : TEXCOORD0,
 		out float4 color : SV_Target)
 {
+	if (_ShowOldPreProcessing)
+	{
+		PSMAAOld::Pass::FilteringPS(texcoord, colorLinearSampler, filterStrengthSampler, color);
+		return;
+	}
 	PSMAA::Pass::FilteringPS(texcoord, colorLinearSampler, filterStrengthSampler, color);
 }
 
