@@ -77,6 +77,18 @@ ui_tooltip = "How much higher is the pre-processing threshold than the edge dete
 						 "Recommended values [2..6]";
 > = 3.5f;
 
+uniform float _PreProcessingThresholdMargin <
+		ui_category = "Pre-Processing";
+ui_label = "_PreProcessingThresholdMargin";
+ui_type = "slider";
+ui_min = 1f;
+ui_max = 2f;
+ui_step = .01;
+ui_tooltip = "Turns the threshold into a soft threshold.\n"
+	"Higher values mean deltas just below the threshold count more,\n"
+	"while those just above count less, making the effect more gradual and precise.";
+> = 1.8f;
+
 uniform float _PreProcessingCmaaLCAMultiplier <
 		ui_category = "Pre-Processing";
 ui_label = "CmaaLCAMultiplier";
@@ -311,6 +323,7 @@ ui_items = "None\0Max Local Luma\0Luma\0Filter strength weights\0Filtered image 
 #define PSMAA_PRE_PROCESSING_STRENGTH _PreProcessingStrength
 #define PSMAA_PRE_PROCESSING_STRENGTH_THRESH _PreProcessingStrengthThresh
 #define PSMAA_PRE_PROCESSING_GREATEST_CORNER_CORRECTION_STRENGTH _PreProcessingGreatestCornerCorrectionStrength
+#define PSMAA_PRE_PROCESSING_THRESHOLD_MARGIN_FACTOR _PreProcessingThresholdMargin
 #define PSMAA_EDGE_DETECTION_FACTORS_HIGH_LUMA float4(_EdgeDetectionThreshold.y, _CMAALCAFactor.y, _SMAALCAFactor.y, _CMAALCAforSMAALCAFactor.y)
 #define PSMAA_EDGE_DETECTION_FACTORS_LOW_LUMA float4(_EdgeDetectionThreshold.x, _CMAALCAFactor.x, _SMAALCAFactor.x, _CMAALCAforSMAALCAFactor.x)
 // #define SMOOTHING_BUFFER_RCP_HEIGHT BUFFER_RCP_HEIGHT

@@ -38,35 +38,14 @@ namespace AnomalousPixelBlending
     return cornerNumber == 1f;
   }
 
-  float calcBlendingStrength(float4 edges)
+  float calcBlendingStrength(float4 deltas, float threshold, float marginFactor)
   {
-    // TODO: use deltas instead, and use sharpening's logic mebi
-    // redo to get normal edges, use that to calc filter strength
-    float cornerNumber = (edges.r + edges.b) * (edges.g + edges.a);
+    float4 edges = smoothstep(threshold / marginFactor, threshold * marginFactor, deltas);
+    // redo to get normal deltas, use that to calc filter strength
+    float cornerAmount = (edges.r + edges.b) * (edges.g + edges.a);
     // Determine filter strength based on the number of corners detected
-    return max(cornerNumber / 4f, APB_MIN_FILTER_STRENGTH);
+    return max(cornerAmount / 4f, APB_MIN_FILTER_STRENGTH);
   }
-
-  // TODO: test this experimental function
-  // float calcBlendingStrength(float4 deltas)
-  // {
-  //   static const float4 Weights = APB_FILTER_STRENGTH_DELTA_WEIGHTS;
-
-  //   float2 transverseMax = max(deltas.rg, deltas.ba);
-  //   float2 transverseMin = min(deltas.rg, deltas.ba);
-
-  //   float4 factors;
-  //   // thin line delta
-  //   factors.r = Functions::max(transverseMin);
-  //   // corner delta
-  //   factors.g = Functions::min(transverseMax);
-  //   // cup delta
-  //   factors.b = Functions::min(factors.rg);
-  //   // isolated pixel delta
-  //   factors.a = Functions::min(transverseMin);
-
-  //   return dot(factors, Weights);
-  // }
 
   /**
    * Calculates a weighted average of a 9 tap pattern of pixels.

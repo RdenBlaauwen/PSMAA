@@ -50,6 +50,7 @@
 // #define PSMAA_PRE_PROCESSING_STRENGTH 1f
 // #define PSMAA_PRE_PROCESSING_STRENGTH_THRESH .15
 // #define PSMAA_PRE_PROCESSING_EXPLICIT_ZERO true
+// #define PSMAA_PRE_PROCESSING_THRESHOLD_MARGIN_FACTOR 1.5
 // #define PSMAA_THRESHOLD_FLOOR 0.018
 // #define PSMAA_EDGE_DETECTION_FACTORS_HIGH_LUMA float4(threshold, CMAALCAFactor, SMAALCAFactor, SMAALCAAdjustmentBiasByCMAALocalContrast)
 // #define PSMAA_EDGE_DETECTION_FACTORS_LOW_LUMA float4(threshold, CMAALCAFactor, SMAALCAFactor, SMAALCAAdjustmentBiasByCMAALocalContrast)
@@ -57,6 +58,7 @@
 // #define APB_LUMA_PRESERVATION_BIAS .5
 // #define APB_LUMA_PRESERVATION_STRENGTH 1f
 #define APB_MIN_FILTER_STRENGTH .15
+#define APB_FILTER_STRENGTH_DELTA_WEIGHTS float4(.15, .15, .15, .65)
 
 #include ".\AnomalousPixelBlending.fxh"
 
@@ -313,7 +315,7 @@ namespace PSMAA
       // greatest corner correction and corner check
       float isCorner = AnomalousPixelBlending::checkIfCorner(deltas, PSMAA_PRE_PROCESSING_GREATEST_CORNER_CORRECTION_STRENGTH, threshold) ? 1f : 0f;
 
-      float strength = AnomalousPixelBlending::calcBlendingStrength(edges) * PSMAA_PRE_PROCESSING_STRENGTH;
+      float strength = AnomalousPixelBlending::calcBlendingStrength(deltas, threshold, PSMAA_PRE_PROCESSING_THRESHOLD_MARGIN_FACTOR) * PSMAA_PRE_PROCESSING_STRENGTH;
 
       // OUTPUT
       filteringStrength = float2(strength, isCorner);
