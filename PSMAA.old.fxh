@@ -200,11 +200,8 @@ namespace PSMAAOld
       // Minimum threshold to prevent blending in very dark areas
       float threshold = max(detectionFactors.x, PSMAA_THRESHOLD_FLOOR);
 
-      // CMAA LCA START
-      float4 maxLocalDeltas = Functions::max(deltas.gbar, deltas.barg, deltas.argb);
-
-      deltas -= maxLocalDeltas * detectionFactors.y;
-      // CMAA LCA END
+      // Local contrast adaptation
+      deltas = AnomalousPixelBlending::applyLCA(deltas, detectionFactors.y);
 
       float4 edges = step(threshold, deltas);
       if (Functions::sum(edges) < 2f) // Leave filter strength as 0f for straight lines, to prevent blur
@@ -213,25 +210,10 @@ namespace PSMAAOld
         return;
       }
 
-      // GREATEST CORNER DELTA CORRECTION START
-      float2 greatestCornerDeltas = max(deltas.rg, deltas.ba);
-      float avgGreatestCornerDelta = (greatestCornerDeltas.x + greatestCornerDeltas.y) / 2f;
-      // taking the square, then dividing by the average greatest corner delta diminishes smaller deltas
-      // and preserves the deltas of the largest corner
-      float4 correctedDeltas = (deltas * deltas) / avgGreatestCornerDelta;
+      // greatest corner correction and corner check
+      float isCorner = AnomalousPixelBlending::checkIfCorner(deltas, PSMAA_PRE_PROCESSING_GREATEST_CORNER_CORRECTION_STRENGTH, threshold) ? 1f : 0f;
 
-      correctedDeltas = lerp(deltas, correctedDeltas, PSMAA_PRE_PROCESSING_GREATEST_CORNER_CORRECTION_STRENGTH);
-
-      float4 correctedEdges = step(threshold, correctedDeltas);
-      float cornerNumber = (correctedEdges.r + correctedEdges.b) * (correctedEdges.g + correctedEdges.a);
-      float isCorner = cornerNumber == 1f ? 1f : 0f;
-      // GREATEST CORNER DELTA CORRECTION END
-
-      // redo to get normal edges, use that to calc filter strength
-      cornerNumber = (edges.r + edges.b) * (edges.g + edges.a);
-      // Determine filter strength based on the number of corners detected
-      float strength = max(cornerNumber / 4f, APB_MIN_FILTER_STRENGTH);
-      strength = strength * PSMAA_PRE_PROCESSING_STRENGTH;
+      float strength = AnomalousPixelBlending::calcBlendingStrength(edges) * PSMAA_PRE_PROCESSING_STRENGTH;
 
       // OUTPUT
       filteringStrength = float2(strength, isCorner);
@@ -453,7 +435,7 @@ namespace PSMAAOld
 
       float maxLocalLuma = tex2D(lumaTex, texcoord).r;
 
-      float mod = PSMAAOld::getSmoothingIterationsMod(deltas, maxLocalLuma);
+      float mod = PSMAA::getSmoothingIterationsMod(deltas, maxLocalLuma);
       float threshold = lerp(PSMAA_SMOOTHING_THRESHOLDS.x, PSMAA_SMOOTHING_THRESHOLDS.y, maxLocalLuma);
 
       float depth = ReShade::GetLinearizedDepth(texcoord);

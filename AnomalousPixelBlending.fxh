@@ -42,9 +42,9 @@ namespace AnomalousPixelBlending
   {
     // TODO: use deltas instead, and use sharpening's logic mebi
     // redo to get normal edges, use that to calc filter strength
-    cornerNumber = (edges.r + edges.b) * (edges.g + edges.a);
+    float cornerNumber = (edges.r + edges.b) * (edges.g + edges.a);
     // Determine filter strength based on the number of corners detected
-    return = max(cornerNumber / 4f, APB_MIN_FILTER_STRENGTH);
+    return max(cornerNumber / 4f, APB_MIN_FILTER_STRENGTH);
   }
 
   // TODO: test this experimental function
