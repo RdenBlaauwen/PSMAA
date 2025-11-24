@@ -124,4 +124,87 @@ namespace AnomalousPixelBlending
 
     return lerp(C, localavg, strength);
   }
+
+  /**
+   * Calculates a weighted average of a 9 tap pattern of pixels.
+   * returns float3 localavg
+   */
+  float3 CalcLocalAvgOptimised(
+      float3 NW, float3 N, float3 NE,
+      float3 W, float3 C, float3 E,
+      float3 SW, float3 S, float3 SE,
+      float strength)
+  {
+    // pattern:
+    //  e f g
+    //  h a b
+    //  i c d
+    // TODO: optimise by:
+    //   - dividing end result by 6 instead of dividing each component sum by 6
+    //   - caching repeating values
+    //   - calculating inverse constants and applying them to the sums using MAD operations
+
+    // Reinforced
+    float3 bottomHalf = W + C + E + SW + S + SE;
+    float3 topHalf = N + C + E + NW + W + NE;
+    float3 leftHalf = NW + W + SW + N + C + S;
+    float3 rightHalf = N + C + S + NE + E + SE;
+
+    float3 diagHalfNW = SW + C + NE + N + W + NW;
+    float3 diagHalfSE = SW + C + NE + E + SE + S;
+    float3 diagHalfNE = NW + C + SE + NE + E + N;
+    float3 diagHalfSW = NW + C + SE + W + S + SW;
+
+    float3 diag1 = (NW + C + SE) * 2;
+    float3 diag2 = (SW + C + NE) * 2;
+
+    float3 horz = (W + C + E) * 2;
+    float3 vert = (N + C + S) * 2;
+
+    float3 maxDesired = Functions::max(leftHalf, bottomHalf, diag1, diag2, topHalf, rightHalf, diagHalfNE, diagHalfNW, diagHalfSE, diagHalfSW);
+    float3 minDesired = Functions::min(leftHalf, bottomHalf, diag1, diag2, topHalf, rightHalf, diagHalfNE, diagHalfNW, diagHalfSE, diagHalfSW);
+
+    float3 maxLine = Functions::max(horz, vert, maxDesired);
+    float3 minLine = Functions::min(horz, vert, minDesired);
+
+    // Weakened
+    float3 surround = (W + N + E + S + C) * 1.2;
+    float3 diagSurround = (NW + NE + SW + SE + C) * 1.2;
+
+    float3 maxUndesired = max(surround, diagSurround);
+    float3 minUndesired = min(surround, diagSurround);
+
+    // Constants for local average calculation
+    static const float undesiredAmount = 2f;
+    static const float DesiredPatternsWeight = 2f;
+    static const float LineWeight = 1.3f;
+    // Multiply by 2f, because each sum is from a pair of values
+    static const float LocalAvgDenominator = mad(DesiredPatternsWeight + LineWeight, 2f, -undesiredAmount);
+
+    float3 undesiredSum = -maxUndesired - minUndesired;
+    float3 lineSum = maxLine + minLine;
+    float3 desiredSum = maxDesired + minDesired;
+
+    lineSum = mad(lineSum, LineWeight, undesiredSum);
+    desiredSum = mad(desiredSum, DesiredPatternsWeight, lineSum);
+    float3 localavg = desiredSum / LocalAvgDenominator;
+    localavg /= 6; // normalise components. Temp fix to counteract fact that patterns of 6 pixels are no longer divided by 6
+    // TODO: integrate with LocalAvgDenominator calculation?
+
+    // If the new target pixel value is less bright than the max desired shape, boost it's value accordingly
+    float maxLuma = Color::luma(maxLine);
+    float minLuma = Color::luma(minLine);
+    float localLuma = Color::luma(localavg);
+    // TODO: try using delta between origLuma and localLuma to determine strength and direction of the boost/weakening
+    // if new value is brighter than max desired shape, boost strength is 0f and localavg should be multiplied by 1f. Else, boost it.
+    float boost = saturate(maxLuma - localLuma);
+    float weaken = minLuma - localLuma;
+    float origLuma = Color::luma(C);
+    float direction = APB_LUMA_PRESERVATION_BIAS + origLuma - localLuma;
+    direction = saturate(mad(direction, APB_LUMA_PRESERVATION_STRENGTH, .5));
+    float mod = lerp(weaken, boost, direction);
+    localavg *= 1f + mod; // add to 1, because the operation must increase the local avg, not take fraction of it
+
+    return lerp(C, localavg, strength);
+  }
 }

@@ -213,7 +213,7 @@ namespace PSMAAOld
       // greatest corner correction and corner check
       float isCorner = AnomalousPixelBlending::checkIfCorner(deltas, PSMAA_PRE_PROCESSING_GREATEST_CORNER_CORRECTION_STRENGTH, threshold) ? 1f : 0f;
 
-      float strength = AnomalousPixelBlending::calcBlendingStrength(deltas, threshold, 1.5) * PSMAA_PRE_PROCESSING_STRENGTH;
+      float strength = AnomalousPixelBlending::calcBlendingStrength(deltas, threshold, PSMAA_PRE_PROCESSING_THRESHOLD_MARGIN_FACTOR) * PSMAA_PRE_PROCESSING_STRENGTH;
 
       // OUTPUT
       filteringStrength = float2(strength, isCorner);

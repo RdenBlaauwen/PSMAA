@@ -348,7 +348,7 @@ namespace PSMAA
       float3 E = PSMAASampleLevelZeroOffset(colorLinearTex, texcoord, float2(1, 0)).rgb;
       float3 SE = PSMAASampleLevelZeroOffset(colorLinearTex, texcoord, float2(1, 1)).rgb;
 
-      float3 filteredLocalAvg = AnomalousPixelBlending::CalcLocalAvg(
+      float3 filteredLocalAvg = AnomalousPixelBlending::CalcLocalAvgOptimised(
           NW, N, NE, W, C, E, SW, S, SE,
           strengthAndIsCorner.x);
 
