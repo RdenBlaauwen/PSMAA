@@ -577,11 +577,11 @@ namespace PSMAA
         out float4 color)
     {
       color = SMAANeighborhoodBlendingPS(
-                  texcoord,
-                  offset,
-                  colorLinearSampler,
-                  blendWeightSampler)
-                  .rgba;
+        texcoord,
+        offset,
+        colorLinearSampler,
+        blendWeightSampler
+      ).rgba;
 
       float2 strengthAndIsCorner = PSMAASamplePoint(filterStrengthSampler, texcoord).rg;
       if (strengthAndIsCorner.y < .9f || strengthAndIsCorner.x <= PSMAA_PRE_PROCESSING_STRENGTH_THRESH)
