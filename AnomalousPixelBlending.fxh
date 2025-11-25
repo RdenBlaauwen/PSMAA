@@ -61,24 +61,26 @@ namespace AnomalousPixelBlending
     //  e f g
     //  h a b
     //  i c d
-    // TODO: optimise by caching repeating values, and by calculating inverse of the constants
-    // and applying them to the sums using MAD operations where possible.
+    // TODO: optimise by:
+    //   - caching repeating values
+    //   - calculating inverse constants and applying them to the sums using MAD operations
+
     // Reinforced
-    float3 bottomHalf = (W + C + E + SW + S + SE) / 6f;
-    float3 topHalf = (N + C + E + NW + W + NE) / 6f;
-    float3 leftHalf = (NW + W + SW + N + C + S) / 6f;
-    float3 rightHalf = (N + C + S + NE + E + SE) / 6f;
+    float3 bottomHalf = W + C + E + SW + S + SE;
+    float3 topHalf = N + C + E + NW + W + NE;
+    float3 leftHalf = NW + W + SW + N + C + S;
+    float3 rightHalf = N + C + S + NE + E + SE;
 
-    float3 diagHalfNW = (SW + C + NE + N + W + NW) / 6f;
-    float3 diagHalfSE = (SW + C + NE + E + SE + S) / 6f;
-    float3 diagHalfNE = (NW + C + SE + NE + E + N) / 6f;
-    float3 diagHalfSW = (NW + C + SE + W + S + SW) / 6f;
+    float3 diagHalfNW = SW + C + NE + N + W + NW;
+    float3 diagHalfSE = SW + C + NE + E + SE + S;
+    float3 diagHalfNE = NW + C + SE + NE + E + N;
+    float3 diagHalfSW = NW + C + SE + W + S + SW;
 
-    float3 diag1 = (NW + C + SE) / 3f;
-    float3 diag2 = (SW + C + NE) / 3f;
+    float3 diag1 = (NW + C + SE) * 2f;
+    float3 diag2 = (SW + C + NE) * 2f;
 
-    float3 horz = (W + C + E) / 3f;
-    float3 vert = (N + C + S) / 3f;
+    float3 horz = (W + C + E) * 2f;
+    float3 vert = (N + C + S) * 2f;
 
     float3 maxDesired = Functions::max(leftHalf, bottomHalf, diag1, diag2, topHalf, rightHalf, diagHalfNE, diagHalfNW, diagHalfSE, diagHalfSW);
     float3 minDesired = Functions::min(leftHalf, bottomHalf, diag1, diag2, topHalf, rightHalf, diagHalfNE, diagHalfNW, diagHalfSE, diagHalfSW);
@@ -87,8 +89,8 @@ namespace AnomalousPixelBlending
     float3 minLine = Functions::min(horz, vert, minDesired);
 
     // Weakened
-    float3 surround = (W + N + E + S + C) / 5f;
-    float3 diagSurround = (NW + NE + SW + SE + C) / 5f;
+    float3 surround = (W + N + E + S + C) * 1.2;
+    float3 diagSurround = (NW + NE + SW + SE + C) * 1.2;
 
     float3 maxUndesired = max(surround, diagSurround);
     float3 minUndesired = min(surround, diagSurround);
@@ -107,6 +109,10 @@ namespace AnomalousPixelBlending
     lineSum = mad(lineSum, LineWeight, undesiredSum);
     desiredSum = mad(desiredSum, DesiredPatternsWeight, lineSum);
     float3 localavg = desiredSum / LocalAvgDenominator;
+    // normalise components. Counteracts fact that patterns of 6 pixels are no longer divided by 6
+    localavg /= 6; 
+    maxLine /= 6;
+    minLine /= 6;
 
     // If the new target pixel value is less bright than the max desired shape, boost it's value accordingly
     float maxLuma = Color::luma(maxLine);
@@ -140,7 +146,6 @@ namespace AnomalousPixelBlending
     //  h a b
     //  i c d
     // TODO: optimise by:
-    //   - dividing end result by 6 instead of dividing each component sum by 6
     //   - caching repeating values
     //   - calculating inverse constants and applying them to the sums using MAD operations
 
@@ -155,11 +160,11 @@ namespace AnomalousPixelBlending
     float3 diagHalfNE = NW + C + SE + NE + E + N;
     float3 diagHalfSW = NW + C + SE + W + S + SW;
 
-    float3 diag1 = (NW + C + SE) * 2;
-    float3 diag2 = (SW + C + NE) * 2;
+    float3 diag1 = (NW + C + SE) * 2f;
+    float3 diag2 = (SW + C + NE) * 2f;
 
-    float3 horz = (W + C + E) * 2;
-    float3 vert = (N + C + S) * 2;
+    float3 horz = (W + C + E) * 2f;
+    float3 vert = (N + C + S) * 2f;
 
     float3 maxDesired = Functions::max(leftHalf, bottomHalf, diag1, diag2, topHalf, rightHalf, diagHalfNE, diagHalfNW, diagHalfSE, diagHalfSW);
     float3 minDesired = Functions::min(leftHalf, bottomHalf, diag1, diag2, topHalf, rightHalf, diagHalfNE, diagHalfNW, diagHalfSE, diagHalfSW);
@@ -188,8 +193,10 @@ namespace AnomalousPixelBlending
     lineSum = mad(lineSum, LineWeight, undesiredSum);
     desiredSum = mad(desiredSum, DesiredPatternsWeight, lineSum);
     float3 localavg = desiredSum / LocalAvgDenominator;
-    localavg /= 6; // normalise components. Temp fix to counteract fact that patterns of 6 pixels are no longer divided by 6
-    // TODO: integrate with LocalAvgDenominator calculation?
+    // normalise components. Counteracts fact that patterns of 6 pixels are no longer divided by 6
+    localavg /= 6; 
+    maxLine /= 6;
+    minLine /= 6;
 
     // If the new target pixel value is less bright than the max desired shape, boost it's value accordingly
     float maxLuma = Color::luma(maxLine);
