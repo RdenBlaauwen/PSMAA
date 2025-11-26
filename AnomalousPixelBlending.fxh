@@ -12,6 +12,10 @@
 
 namespace AnomalousPixelBlending
 {
+  /**
+  * Apply some local contrast adaptation to the deltas which are going to be used to determine blending strength.
+  * Assumes deltas are in the order RGBA.
+  */
   float4 applyLCA(float4 deltas, float lcaFactor)
   {
     float4 maxLocalDeltas = Functions::max(deltas.gbar, deltas.barg, deltas.argb);
@@ -19,6 +23,12 @@ namespace AnomalousPixelBlending
     return mad(maxLocalDeltas, -lcaFactor, deltas);
   }
 
+  /**
+  * Diminishes the deltas that aren't part of the greatest corner.
+  * Can be used to detect if a pixel is part of a corner without significantly smaller yet relevant deltas 
+  * interfering with any deltas making up the actual corner.
+  * Assumes deltas are in the order RGBA.
+  */
   float4 applyCornerCorrection(float4 deltas)
   {
     float2 greatestCornerDeltas = max(deltas.rg, deltas.ba);
@@ -28,6 +38,17 @@ namespace AnomalousPixelBlending
     return (deltas * deltas) / avgGreatestCornerDelta;
   }
 
+  /**
+  * Checks if the deltas correspond to a corner shape. Useful for filtering images before applying
+  * an AA technique which needs to detect corners to work properly.
+  * Assumes deltas are in the order RGBA.
+  *
+  * @param deltas: float4 containing the deltas for each edge (R: left, G: top, B: right, A: bottom)
+  * @param cornerCorrectionStrength: how much the corner correction is applied to the detlas before checking
+  *                                  how many corners there are.
+  * @param edgeThreshold: threshold above which a delta is considered an edge.
+  * @returns true if the deltas correspond to a corner shape, false otherwise.
+  */
   bool checkIfCorner(float4 deltas, float cornerCorrectionStrength, float edgeThreshold)
   {
     float4 correctedDeltas = applyCornerCorrection(deltas);
@@ -38,6 +59,16 @@ namespace AnomalousPixelBlending
     return cornerNumber == 1f;
   }
 
+  /**
+  * Calculates the blending strength based on the deltas provided.
+  * Uses a soft threshold to determine the weight of each delta.
+  * Assumes deltas are in the order RGBA.
+  *
+  * @param deltas: float4 containing the deltas for each edge (R: left, G: top, B: right, A: bottom)
+  * @param threshold: determines the approximate center of the range above which a delta is considered a full edge.
+  * @param marginFactor: Factor to expand the threshold range for smoothstep.
+  * @returns blending strength in the range [APB_MIN_FILTER_STRENGTH, 1f]
+  */
   float calcBlendingStrength(float4 deltas, float threshold, float marginFactor)
   {
     float4 edges = smoothstep(threshold / marginFactor, threshold * marginFactor, deltas);
@@ -49,13 +80,16 @@ namespace AnomalousPixelBlending
 
   /**
    * Calculates a weighted average of a 9 tap pattern of pixels.
-   * returns float3 localavg
+   *
+   * @param float strength: strength of the effect, how much the calculated local average is applied to the final result.
+   * @returns float3 localavg
    */
   float3 CalcLocalAvg(
-      float3 NW, float3 N, float3 NE,
-      float3 W, float3 C, float3 E,
-      float3 SW, float3 S, float3 SE,
-      float strength)
+    float3 NW, float3 N, float3 NE,
+    float3 W, float3 C, float3 E,
+    float3 SW, float3 S, float3 SE,
+    float strength
+  )
   {
     // idea behind this algo is to arrange neighbouring pixels into "patterns" of pixels which represent certain
     // shapes (local morphology) which we want to reinforce or weaken. Then by taking the max and min of these patterns,
