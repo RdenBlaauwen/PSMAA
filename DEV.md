@@ -10,6 +10,7 @@
     - artificial boost with some saturation control?
     - LordBean's hysteresis?
     - Something that takes the original pixel luma into consideration?
+  - Test if returning a float3 without explicit alpha passthrough overwrites the original alpha or not, and if it even matters or you can just use gathers.
 - Update libraries:
   - Build solution for calculating luminosity from color, and weighting components for luma in shared library.
   - make standard 'nullish' function check for vals close, but not equal, to 0.

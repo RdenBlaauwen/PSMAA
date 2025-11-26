@@ -265,19 +265,32 @@ namespace PSMAA
         out float2 filteringStrength   // strength at which FilteringPS is determned to run on this pixel
     )
     {
-      // TODO: optimise using gathers
       // NW N NE
       // W  C  E
       // SW S SE
+      float3 C, E, S, SE;
+      #if __RENDERER__ >= 0xa000 // if DX10 or above
+        // get RGB values from the c, d, b, and a positions, in order.
+        float4 cdbared = tex2Dgather(colorGammaTex, texcoord, 0);
+        float4 cdbagreen = tex2Dgather(colorGammaTex, texcoord, 1);
+        float4 cdbablue = tex2Dgather(colorGammaTex, texcoord, 2);
+
+        C = float3(cdbared.w, cdbagreen.w, cdbablue.w);
+        E = float3(cdbared.z, cdbagreen.z, cdbablue.z);
+        S = float3(cdbared.x, cdbagreen.x, cdbablue.x);
+        SE = float3(cdbared.y, cdbagreen.y, cdbablue.y);
+      #else // if DX9
+        C = PSMAASampleLevelZero(colorGammaTex, texcoord).rgb;
+        E = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(1, 0)).rgb;
+        S = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(0, 1)).rgb;
+        SE = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(1, 1)).rgb;
+      #endif
+
       float3 NW = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(-1, -1)).rgb;
       float3 W = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(-1, 0)).rgb;
       float3 SW = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(-1, 1)).rgb;
       float3 N = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(0, -1)).rgb;
-      float3 C = PSMAASampleLevelZero(colorGammaTex, texcoord).rgb;
-      float3 S = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(0, 1)).rgb;
       float3 NE = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(1, -1)).rgb;
-      float3 E = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(1, 0)).rgb;
-      float3 SE = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(1, 1)).rgb;
 
       float3 maxLocalColor = Functions::max(NW, W, SW, N, S, NE, E, SE, C);
       // These make sure that Red and Blue don't count as much as Green,
@@ -308,6 +321,7 @@ namespace PSMAA
       float4 edges = step(threshold, deltas);
       if (Functions::sum(edges) < 2f) // Leave filter strength as 0f for straight lines, to prevent blur
       {
+        // OUTPUT
         filteringStrength = float2(0f, 0f);
         return;
       }
@@ -332,7 +346,6 @@ namespace PSMAA
       if (strengthAndIsCorner.y >= .9f || strengthAndIsCorner.x <= PSMAA_PRE_PROCESSING_STRENGTH_THRESH)
         discard; // skip if corner or no filtering needed
 
-      // TODO: optimise using gathers
       // NW N NE
       // W  C  E
       // SW S SE
@@ -348,9 +361,10 @@ namespace PSMAA
       float3 E = PSMAASampleLevelZeroOffset(colorLinearTex, texcoord, float2(1, 0)).rgb;
       float3 SE = PSMAASampleLevelZeroOffset(colorLinearTex, texcoord, float2(1, 1)).rgb;
 
-      float3 filteredLocalAvg = AnomalousPixelBlending::CalcLocalAvgOptimised(
-          NW, N, NE, W, C, E, SW, S, SE,
-          strengthAndIsCorner.x);
+      float3 filteredLocalAvg = AnomalousPixelBlending::CalcLocalAvg(
+        NW, N, NE, W, C, E, SW, S, SE,
+        strengthAndIsCorner.x
+      );
 
       // OUTPUT with localavg and original alpha
       filteredColor = float4(filteredLocalAvg, CRaw.a);
