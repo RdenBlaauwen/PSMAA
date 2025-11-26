@@ -148,11 +148,11 @@ ui_max = 1f;
 ui_step = .01;
 > = .85;
 
-uniform bool _ShowOldPreProcessing <
-		ui_category = "Pre-Processing";
-ui_label = "Show Old Pre-Processing";
-ui_tooltip = "Use the old pre-processing method.";
-> = false;
+// uniform bool _ShowOldPreProcessing <
+// 		ui_category = "Pre-Processing";
+// ui_label = "Show Old Pre-Processing";
+// ui_tooltip = "Use the old pre-processing method.";
+// > = false;
 
 uniform bool _UseOldBlending <
 		ui_category = "Blending";
@@ -481,11 +481,11 @@ void PSMAAPreProcessingPSWrapper(
 		out float originalLuma : SV_TARGET1,
 		out float2 filteringStrength : SV_TARGET2)
 {
-	if (_ShowOldPreProcessing)
-	{
-		PSMAAOld::Pass::PreProcessingPS(texcoord, colorGammaSampler, maxLocalLuma, originalLuma, filteringStrength);
-		return;
-	}
+	// if (_ShowOldPreProcessing)
+	// {
+	// 	PSMAAOld::Pass::PreProcessingPS(texcoord, colorGammaSampler, maxLocalLuma, originalLuma, filteringStrength);
+	// 	return;
+	// }
 
 	PSMAA::Pass::PreProcessingPS(texcoord, colorGammaSampler, maxLocalLuma, originalLuma, filteringStrength);
 }
@@ -495,11 +495,11 @@ void PSMAAFilteringPSWrapper(
 		float2 texcoord : TEXCOORD0,
 		out float4 color : SV_Target)
 {
-	if (_ShowOldPreProcessing)
-	{
-		PSMAAOld::Pass::FilteringPS(texcoord, colorLinearSampler, filterStrengthSampler, color);
-		return;
-	}
+	// if (_ShowOldPreProcessing)
+	// {
+	// 	PSMAAOld::Pass::FilteringPS(texcoord, colorLinearSampler, filterStrengthSampler, color);
+	// 	return;
+	// }
 	PSMAA::Pass::FilteringPS(texcoord, colorLinearSampler, filterStrengthSampler, color);
 }
 
