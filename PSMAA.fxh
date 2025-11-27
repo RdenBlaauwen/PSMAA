@@ -1,50 +1,14 @@
 //// IMPLEMENTATION
-// MACROS
-// The following preprocessor variables should be defined in the main file:
-// #define PSMAA_USE_SIMPLIFIED_DELTA_CALCULATION
-// #define PSMAA_BUFFER_METRICS
-// #define PSMAA_PIXEL_SIZE
-// #define PSMAATexture2D(tex)
-// #define PSMAASamplePoint(tex, coord)
-// #define PSMAASampleLevelZero(tex, coord)
-// #define PSMAASampleLevelZeroOffset(tex, coord, offset)
-// #define PSMAAGatherLeftEdges(tex, coord)
-// #define PSMAAGatherTopEdges(tex, coord)
-// #define PSMAA_PRE_PROCESSING_THRESHOLD_MULTIPLIER
-// #define PSMAA_PRE_PROCESSING_CMAA_LCA_FACTOR_MULTIPLIER
-// #define APB_LUMA_PRESERVATION_BIAS
-// #define APB_LUMA_PRESERVATION_STRENGTH
-// #define PSMAA_PRE_PROCESSING_STRENGTH
-// #define PSMAA_PRE_PROCESSING_MIN_STRENGTH
-// #define PSMAA_PRE_PROCESSING_STRENGTH_THRESH
-// #define PSMAA_PRE_PROCESSING_EXPLICIT_ZERO
-// #define PSMAA_THRESHOLD_FLOOR
-// #define PSMAA_EDGE_DETECTION_FACTORS_HIGH_LUMA
-// #define PSMAA_EDGE_DETECTION_FACTORS_LOW_LUM
-// These are float4's with the following values:
-// x: threshold
-// y: CMAA LCA factor
-// z: SMAA LCA factor
-// w: SMAA LCA adjustment bias by CMAA local contrast
-// #define PSMAA_PRE_PROCESSING_GREATEST_CORNER_CORRECTION_STRENGTH //TODO: turn into proper macrp withd efault value and right location
-// #define PSMAA_SHARPENING_COMPENSATION_STRENGTH
-// #define PSMAA_SHARPENING_COMPENSATION_CUTOFF
-// #define PSMAA_SHARPENING_EDGE_BIAS (range -4f..0f)
-// #define PSMAA_SHARPENING_EDGE_BIAS_WEIGHTS
-// #define PSMAA_SHARPENING_SHARPNESS
-// #define PSMAA_SHARPENING_BLENDING_STRENGTH
-// #define PSMAA_SHARPENING_DEBUG
-//
-// Reshade example:
+// MACROS with example values for the ReShade language:
 // #define PSMAA_USE_SIMPLIFIED_DELTA_CALCULATION 0
 // #define PSMAA_BUFFER_METRICS float4(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT, BUFFER_WIDTH, BUFFER_HEIGHT)
-// #define PSMAA_PIXEL_SIZE BUFFER_PIXEL_SIZE
+#define PSMAA_PIXEL_SIZE BUFFER_PIXEL_SIZE
 // #define PSMAATexture2D(tex) sampler tex
 // #define PSMAASamplePoint(tex, coord) tex2D(tex, coord)
-// #define PSMAASampleLevelZero(tex, coord) tex2Dlod(tex, float4(coord, 0.0, 0.0))
+// #define PSMAASampleLevelZero(tex, coord) tex2Dlod(tex, float4(coord, 0f, 0f))
 // #define PSMAASampleLevelZeroOffset(tex, coord, offset) tex2Dlodoffset(tex, float4(coord, coord), offset)
-// #define PSMAAGatherLeftEdges(tex, coord) tex2Dgather(tex, texcoord, 0);
-// #define PSMAAGatherTopEdges(tex, coord) tex2Dgather(tex, texcoord, 1);
+#define PSMAAGatherLeftEdges(tex, coord) tex2Dgather(tex, texcoord, 0);
+#define PSMAAGatherTopEdges(tex, coord) tex2Dgather(tex, texcoord, 1);
 // #define PSMAA_PRE_PROCESSING_THRESHOLD_MULTIPLIER 1f
 // #define PSMAA_PRE_PROCESSING_CMAA_LCA_FACTOR_MULTIPLIER 1f
 // #define PSMAA_PRE_PROCESSING_STRENGTH 1f
@@ -52,15 +16,18 @@
 // #define PSMAA_PRE_PROCESSING_EXPLICIT_ZERO true
 // #define PSMAA_PRE_PROCESSING_THRESHOLD_MARGIN_FACTOR 1.5
 // #define PSMAA_THRESHOLD_FLOOR 0.018
+//
 // #define PSMAA_EDGE_DETECTION_FACTORS_HIGH_LUMA float4(threshold, CMAALCAFactor, SMAALCAFactor, SMAALCAAdjustmentBiasByCMAALocalContrast)
 // #define PSMAA_EDGE_DETECTION_FACTORS_LOW_LUMA float4(threshold, CMAALCAFactor, SMAALCAFactor, SMAALCAAdjustmentBiasByCMAALocalContrast)
-
+//   These are float4's with the following values:
+//     x: threshold
+//     y: CMAA LCA factor
+//     z: SMAA LCA factor
+//     w: SMAA LCA adjustment bias by CMAA local contrast
+//
 // #define APB_LUMA_PRESERVATION_BIAS .5
 // #define APB_LUMA_PRESERVATION_STRENGTH 1f
 #define APB_MIN_FILTER_STRENGTH .15
-#define APB_FILTER_STRENGTH_DELTA_WEIGHTS float4(.15, .15, .15, .65)
-
-#include ".\AnomalousPixelBlending.fxh"
 
 #define SMOOTHING_SATURATION_DIVISOR_FLOOR 0.01
 #define SMOOTHING_DEBUG false
@@ -84,8 +51,6 @@
 #define SmoothingGatherLeftDeltas(tex, coord) PSMAAGatherLeftEdges(tex, coord)
 #define SmoothingGatherTopDeltas(tex, coord) PSMAAGatherTopEdges(tex, coord)
 
-#include ".\BeanSmoothing.fxh"
-
 // #define PSMAA_SHARPENING_COMPENSATION_STRENGTH .65f
 // #define PSMAA_SHARPENING_COMPENSATION_CUTOFF .5f
 // #define PSMAA_SHARPENING_EDGE_BIAS -1f
@@ -93,12 +58,11 @@
 // #define PSMAA_SHARPENING_SHARPNESS 0f
 // #define PSMAA_SHARPENING_BLENDING_STRENGTH 0f
 // #define PSMAA_SHARPENING_DEBUG false
-
-// DEPENDENCIES START
 #define CAS_BETTER_DIAGONALS 1
 
+#include ".\AnomalousPixelBlending.fxh"
+#include ".\BeanSmoothing.fxh"
 #include ".\CAS.fxh"
-// DEPENDENCIES END
 
 namespace PSMAA
 {
@@ -269,22 +233,22 @@ namespace PSMAA
       // W  C  E
       // SW S SE
       float3 C, E, S, SE;
-      #if __RENDERER__ >= 0xa000 // if DX10 or above
-        // get RGB values from the c, d, b, and a positions, in order.
-        float4 cdbared = tex2Dgather(colorGammaTex, texcoord, 0);
-        float4 cdbagreen = tex2Dgather(colorGammaTex, texcoord, 1);
-        float4 cdbablue = tex2Dgather(colorGammaTex, texcoord, 2);
+#if __RENDERER__ >= 0xa000 // if DX10 or above
+      // get RGB values from the c, d, b, and a positions, in order.
+      float4 cdbared = tex2Dgather(colorGammaTex, texcoord, 0);
+      float4 cdbagreen = tex2Dgather(colorGammaTex, texcoord, 1);
+      float4 cdbablue = tex2Dgather(colorGammaTex, texcoord, 2);
 
-        C = float3(cdbared.w, cdbagreen.w, cdbablue.w);
-        E = float3(cdbared.z, cdbagreen.z, cdbablue.z);
-        S = float3(cdbared.x, cdbagreen.x, cdbablue.x);
-        SE = float3(cdbared.y, cdbagreen.y, cdbablue.y);
-      #else // if DX9
-        C = PSMAASampleLevelZero(colorGammaTex, texcoord).rgb;
-        E = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(1, 0)).rgb;
-        S = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(0, 1)).rgb;
-        SE = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(1, 1)).rgb;
-      #endif
+      C = float3(cdbared.w, cdbagreen.w, cdbablue.w);
+      E = float3(cdbared.z, cdbagreen.z, cdbablue.z);
+      S = float3(cdbared.x, cdbagreen.x, cdbablue.x);
+      SE = float3(cdbared.y, cdbagreen.y, cdbablue.y);
+#else // if DX9
+      C = PSMAASampleLevelZero(colorGammaTex, texcoord).rgb;
+      E = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(1, 0)).rgb;
+      S = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(0, 1)).rgb;
+      SE = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(1, 1)).rgb;
+#endif
 
       float3 NW = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(-1, -1)).rgb;
       float3 W = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(-1, 0)).rgb;
@@ -362,9 +326,8 @@ namespace PSMAA
       float3 SE = PSMAASampleLevelZeroOffset(colorLinearTex, texcoord, float2(1, 1)).rgb;
 
       float3 filteredLocalAvg = AnomalousPixelBlending::CalcLocalAvg(
-        NW, N, NE, W, C, E, SW, S, SE,
-        strengthAndIsCorner.x
-      );
+          NW, N, NE, W, C, E, SW, S, SE,
+          strengthAndIsCorner.x);
 
       // OUTPUT with localavg and original alpha
       filteredColor = float4(filteredLocalAvg, CRaw.a);
@@ -591,11 +554,11 @@ namespace PSMAA
         out float4 color)
     {
       color = SMAANeighborhoodBlendingPS(
-        texcoord,
-        offset,
-        colorLinearSampler,
-        blendWeightSampler
-      ).rgba;
+                  texcoord,
+                  offset,
+                  colorLinearSampler,
+                  blendWeightSampler)
+                  .rgba;
 
       float2 strengthAndIsCorner = PSMAASamplePoint(filterStrengthSampler, texcoord).rg;
       if (strengthAndIsCorner.y < .9f || strengthAndIsCorner.x <= PSMAA_PRE_PROCESSING_STRENGTH_THRESH)
@@ -611,9 +574,8 @@ namespace PSMAA
       float3 SE = PSMAASampleLevelZeroOffset(colorLinearSampler, texcoord, float2(1, 1)).rgb;
 
       float3 filteredLocalAvg = AnomalousPixelBlending::CalcLocalAvg(
-        NW, N, NE, W, color.rgb, E, SW, S, SE,
-        strengthAndIsCorner.x
-      );
+          NW, N, NE, W, color.rgb, E, SW, S, SE,
+          strengthAndIsCorner.x);
 
       // OUTPUT with localavg and original alpha
       color = float4(filteredLocalAvg, color.a);

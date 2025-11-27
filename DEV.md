@@ -1,10 +1,11 @@
 # TODO
 
+- Module structure:
+  - Try to move SMAA inclusion and necessary macros to PSMAA.fxh, see if you can still use SMAA functions in the main file.
 - Smoothing:
   - Replace hard threshold with a smoothstepped threshold where everything between the lower and upper bounds has a lower maxblending and nr of iterations than everything >= the upper bound.
   - Make depth-based threshold growth and usage of SMAA weights, optional in both the module and PSMAA.
 - Filtering:
-  - Consider removing CMAA LCA, as it doesn't seem to be doing much atm.
   - Test functionality where pixels neighbouring pixels with high filter strengths are also treated. Helps preserve detail, but at a higher perf cost.
   - Come up with way to improve luma preservation
     - artificial boost with some saturation control?
