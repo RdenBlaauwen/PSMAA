@@ -1,3 +1,6 @@
+#ifndef PSMAA_FXH // include guard
+#define PSMAA_FXH
+
 //// IMPLEMENTATION
 // MACROS with example values for the ReShade language:
 // #define PSMAA_USE_SIMPLIFIED_DELTA_CALCULATION 0
@@ -7,8 +10,8 @@
 // #define PSMAASamplePoint(tex, coord) tex2D(tex, coord)
 // #define PSMAASampleLevelZero(tex, coord) tex2Dlod(tex, float4(coord, 0f, 0f))
 // #define PSMAASampleLevelZeroOffset(tex, coord, offset) tex2Dlodoffset(tex, float4(coord, coord), offset)
-#define PSMAAGatherLeftEdges(tex, coord) tex2Dgather(tex, texcoord, 0);
-#define PSMAAGatherTopEdges(tex, coord) tex2Dgather(tex, texcoord, 1);
+#define PSMAAGatherLeftEdges(tex, coord) tex2Dgather(tex, coord, 0);
+#define PSMAAGatherTopEdges(tex, coord) tex2Dgather(tex, coord, 1);
 // #define PSMAA_PRE_PROCESSING_THRESHOLD_MULTIPLIER 1f
 // #define PSMAA_PRE_PROCESSING_CMAA_LCA_FACTOR_MULTIPLIER 1f
 // #define PSMAA_PRE_PROCESSING_STRENGTH 1f
@@ -648,3 +651,4 @@ namespace PSMAA
     }
   }
 }
+#endif // PSMAA_FXH include guard

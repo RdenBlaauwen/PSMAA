@@ -1,3 +1,5 @@
+#ifndef BEAN_SMOOTHING_FHX  // include guard
+#define BEAN_SMOOTHING_FHX
 /////////////////////////////////// CREDITS ///////////////////////////////////
 // Do not distribute without giving credit to the original author(s).
 /*               TSMAA for ReShade 3.1.1+
@@ -295,3 +297,4 @@ namespace BeanSmoothing
     return SmoothingSampleLevelZero(colorTex, posM).rgb;
   }
 }
+#endif // BEAN_SMOOTHING_FHX

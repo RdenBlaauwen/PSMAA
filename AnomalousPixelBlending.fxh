@@ -1,3 +1,5 @@
+#ifndef ANOMALOUS_PIXEL_BLENDING_FHX  // include guard
+#define ANOMALOUS_PIXEL_BLENDING_FHX
 // MACROS
 // The following preprocessor variables should be defined in the main file.
 // The values are defaults and can be changed as needed:
@@ -173,3 +175,4 @@ namespace AnomalousPixelBlending
     return lerp(C, localavg, strength);
   }
 }
+#endif // ANOMALOUS_PIXEL_BLENDING_FHX
