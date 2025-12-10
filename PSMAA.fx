@@ -701,7 +701,7 @@ technique PSMAA
 		// TODO: test if these are necessary!
 		// Especially the stencil stuff
 		// https://github.com/crosire/reshade-shaders/blob/slim/REFERENCE.md#techniques
-		ClearRenderTargets = true;
+		ClearRenderTargets = true; // TODO: test if this is needed
 		// StencilEnable = true;
 		// StencilPass = REPLACE;
 		// StencilRef = 1;
