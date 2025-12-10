@@ -24,15 +24,12 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //==============================================================================================================================
 
-// DEPENDENCIES
-// This shader needs:
-// - Functions.fxh
-
 // MACROS
-// #define CAS_BETTER_DIAGONALS
-//
-// examples
+// The following preprocessor variables should be defined in the main file.
+// The values are defaults and can be changed as needed:
 // #define CAS_BETTER_DIAGONALS 1
+
+#include "./reshade-shared/functions.fxh"
 
 namespace CAS {
   float3 CasLoad(sampler colorLinearSampler, float2 texcoord)
@@ -155,4 +152,4 @@ namespace CAS {
     pix = lerp(original, result, blendingStrength);
   }
 }
-#endif // CAS_FHX
+#endif // CAS_FHX include guard

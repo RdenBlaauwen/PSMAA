@@ -68,6 +68,8 @@
  */
 
 // MACROS
+// The following preprocessor variables should be defined in the main file.
+// The values are defaults and can be changed as needed:
 // #define SMOOTHING_SATURATION_DIVISOR_FLOOR 0.01
 // #define SMOOTHING_BUFFER_RCP_HEIGHT BUFFER_RCP_HEIGHT
 // #define SMOOTHING_BUFFER_RCP_WIDTH BUFFER_RCP_WIDTH
@@ -82,6 +84,9 @@
 // #define SmoothingSampleLevelZeroOffset(tex, coord, offset) tex2Dlodoffset(tex, float4(coord, coord), offset)
 // #define SmoothingGatherLeftDeltas(tex, coord) tex2Dgather(tex, texcoord, 0);
 // #define SmoothingGatherTopDeltas(tex, coord) tex2Dgather(tex, texcoord, 1);
+
+#include "./reshade-shared/color.fxh"
+#include "./reshade-shared/functions.fxh"
 
 namespace BeanSmoothing
 {

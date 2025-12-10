@@ -277,6 +277,9 @@ uniform bool _SharpeningDebug <
 	ui_type = "radio";
 > = false;
 
+
+// Debug output options START
+
 #ifndef SHOW_DEBUG
 	#define SHOW_DEBUG 0
 #endif
@@ -294,10 +297,10 @@ uniform int _Debug <
 
 #endif
 
-// Libraries
-#include ".\reshade-shared\functions.fxh"
-#include ".\reshade-shared\color.fxh"
 #include ".\reshade-shared\debug.fxh"
+
+// Debug output options END
+
 
 #ifndef PSMAA_USE_SIMPLIFIED_DELTA_CALCULATION
 	#define PSMAA_USE_SIMPLIFIED_DELTA_CALCULATION 0

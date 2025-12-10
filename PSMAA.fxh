@@ -63,9 +63,12 @@
 // #define PSMAA_SHARPENING_DEBUG false
 #define CAS_BETTER_DIAGONALS 1
 
-#include ".\AnomalousPixelBlending.fxh"
-#include ".\BeanSmoothing.fxh"
-#include ".\CAS.fxh"
+#include "./reshade-shared/color.fxh"
+#include "./reshade-shared/functions.fxh"
+
+#include "./AnomalousPixelBlending.fxh"
+#include "./BeanSmoothing.fxh"
+#include "./CAS.fxh"
 
 namespace PSMAA
 {

@@ -1,5 +1,6 @@
 #ifndef ANOMALOUS_PIXEL_BLENDING_FHX  // include guard
 #define ANOMALOUS_PIXEL_BLENDING_FHX
+
 // MACROS
 // The following preprocessor variables should be defined in the main file.
 // The values are defaults and can be changed as needed:
@@ -8,8 +9,8 @@
 // #define APB_MIN_FILTER_STRENGTH .15
 
 // DEPENDENCIES
-// #include "Functions.fxh"
-// #include "Color.fxh"
+#include "./reshade-shared/functions.fxh"
+#include "./reshade-shared/color.fxh"
 
 namespace AnomalousPixelBlending
 {
