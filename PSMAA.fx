@@ -347,22 +347,7 @@ uniform int _Debug <
 	#define SMAA_CORNER_ROUNDING _CornerRounding
 #endif
 
-#define SMAA_RT_METRICS PSMAA_BUFFER_METRICS
-
-#define SMAATexture2D(tex) PSMAATexture2D(tex)
-#define SMAATexturePass2D(tex) tex
-#define SMAASampleLevelZero(tex, coord) PSMAASampleLevelZero(tex, coord)
-#define SMAASampleLevelZeroPoint(tex, coord) tex2Dlod(tex, float4(coord, 0f, 0f))
-#define SMAASampleLevelZeroOffset(tex, coord, offset) PSMAASampleLevelZeroOffset(tex, coord, offset)
-#define SMAASample(tex, coord) tex2D(tex, coord)
-#define SMAASamplePoint(tex, coord) PSMAASamplePoint(tex, coord)
-#define SMAASampleOffset(tex, coord, offset) tex2D(tex, coord + offset * SMAA_RT_METRICS.xy)
-#define SMAA_FLATTEN [flatten]
-#define SMAA_BRANCH [branch]
-
-#include ".\SMAA.fxh"
-#include ".\PSMAA.fxh"
-#include ".\PSMAA.old.fxh"
+#include "./PSMAA.fxh"
 
 texture colorInputTex : COLOR;
 sampler colorGammaSampler

@@ -1,10 +1,16 @@
 #ifndef PSMAA_FXH // include guard
 #define PSMAA_FXH
 
+#include "./reshade-shared/color.fxh"
+#include "./reshade-shared/functions.fxh"
+
 //// IMPLEMENTATION
 // MACROS with example values for the ReShade language:
 // The following preprocessor variables should be defined in the main file.
 // The values are defaults and can be changed as needed:
+
+//// PSMAA MACROS START
+
 // #define PSMAA_USE_SIMPLIFIED_DELTA_CALCULATION 0
 // #define PSMAA_BUFFER_METRICS float4(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT, BUFFER_WIDTH, BUFFER_HEIGHT)
 #define PSMAA_PIXEL_SIZE BUFFER_PIXEL_SIZE
@@ -29,10 +35,35 @@
 //     y: CMAA LCA factor
 //     z: SMAA LCA factor
 //     w: SMAA LCA adjustment bias by CMAA local contrast
-//
+// #define PSMAA_SMOOTHING_DELTA_WEIGHT_PREDICATION_FACTOR .8
+#define PSMAA_SMOOTHING_DELTA_WEIGHT_FLOOR .06
+#define PSMAA_SMOOTHING_THRESHOLD .05
+// #define PSMAA_SMOOTHING_DELTA_WEIGHTS float2(.02, .25) // min and max delta
+// #define PSMAA_SMOOTHING_DELTA_WEIGHT_DEBUG false
+// #define PSMAA_SMOOTHING_THRESHOLDS float2(.025, .075) //threshold at min and max luma
+// #define PSMAA_SHARPENING_COMPENSATION_STRENGTH .65f
+// #define PSMAA_SHARPENING_COMPENSATION_CUTOFF .5f
+// #define PSMAA_SHARPENING_EDGE_BIAS -1f
+#define PSMAA_SHARPENING_EDGE_BIAS_WEIGHTS float4(.4, .8, 1.2, 1.6)
+// #define PSMAA_SHARPENING_SHARPNESS 0f
+// #define PSMAA_SHARPENING_BLENDING_STRENGTH 0f
+// #define PSMAA_SHARPENING_DEBUG false
+
+//// PSMAA MACROS END
+
+
+//// APB MACROS START
+
 // #define APB_LUMA_PRESERVATION_BIAS .5
 // #define APB_LUMA_PRESERVATION_STRENGTH 1f
 #define APB_MIN_FILTER_STRENGTH .15
+
+#include "./AnomalousPixelBlending.fxh"
+
+//// APB MACROS END
+
+
+//// BEANSMOOTHING MACROS START
 
 #define SMOOTHING_SATURATION_DIVISOR_FLOOR 0.01
 #define SMOOTHING_DEBUG false
@@ -40,13 +71,6 @@
 #define SMOOTHING_BUFFER_RCP_WIDTH PSMAA_BUFFER_METRICS.x
 #define SMOOTHING_MIN_ITERATIONS 5f
 #define SMOOTHING_MAX_ITERATIONS 20f
-
-// #define PSMAA_SMOOTHING_DELTA_WEIGHT_PREDICATION_FACTOR .8
-#define PSMAA_SMOOTHING_DELTA_WEIGHT_FLOOR .06
-#define PSMAA_SMOOTHING_THRESHOLD .05
-// #define PSMAA_SMOOTHING_DELTA_WEIGHTS float2(.02, .25) // min and max delta
-// #define PSMAA_SMOOTHING_DELTA_WEIGHT_DEBUG false
-// #define PSMAA_SMOOTHING_THRESHOLDS float2(.025, .075) //threshold at min and max luma
 // #define SMOOTHING_THRESHOLD_DEPTH_GROWTH_START .5
 // #define SMOOTHING_THRESHOLD_DEPTH_GROWTH_FACTOR 2.5 // threshold multiplier based on depth
 
@@ -56,21 +80,44 @@
 #define SmoothingGatherLeftDeltas(tex, coord) PSMAAGatherLeftEdges(tex, coord)
 #define SmoothingGatherTopDeltas(tex, coord) PSMAAGatherTopEdges(tex, coord)
 
-// #define PSMAA_SHARPENING_COMPENSATION_STRENGTH .65f
-// #define PSMAA_SHARPENING_COMPENSATION_CUTOFF .5f
-// #define PSMAA_SHARPENING_EDGE_BIAS -1f
-#define PSMAA_SHARPENING_EDGE_BIAS_WEIGHTS float4(.4, .8, 1.2, 1.6)
-// #define PSMAA_SHARPENING_SHARPNESS 0f
-// #define PSMAA_SHARPENING_BLENDING_STRENGTH 0f
-// #define PSMAA_SHARPENING_DEBUG false
+#include "./BeanSmoothing.fxh"
+
+//// BEANSMOOTHING MACROS END
+
+
+//// CAS MACROS START
+
 #define CAS_BETTER_DIAGONALS 1
 
-#include "./reshade-shared/color.fxh"
-#include "./reshade-shared/functions.fxh"
-
-#include "./AnomalousPixelBlending.fxh"
-#include "./BeanSmoothing.fxh"
 #include "./CAS.fxh"
+
+//// CAS MACROS END
+
+
+//// SMAA MACROS START
+
+// #ifdef SMAA_PRESET_CUSTOM
+// 	#define SMAA_MAX_SEARCH_STEPS 32
+// 	#define SMAA_MAX_SEARCH_STEPS_DIAG 19
+// 	#define SMAA_CORNER_ROUNDING 10
+// #endif
+
+#define SMAA_RT_METRICS PSMAA_BUFFER_METRICS
+#define SMAATexture2D(tex) PSMAATexture2D(tex)
+#define SMAATexturePass2D(tex) tex
+#define SMAASampleLevelZero(tex, coord) PSMAASampleLevelZero(tex, coord)
+#define SMAASampleLevelZeroPoint(tex, coord) tex2Dlod(tex, float4(coord, 0f, 0f))
+#define SMAASampleLevelZeroOffset(tex, coord, offset) PSMAASampleLevelZeroOffset(tex, coord, offset)
+#define SMAASample(tex, coord) tex2D(tex, coord)
+#define SMAASamplePoint(tex, coord) PSMAASamplePoint(tex, coord)
+#define SMAASampleOffset(tex, coord, offset) tex2D(tex, coord + offset * SMAA_RT_METRICS.xy)
+#define SMAA_FLATTEN [flatten]
+#define SMAA_BRANCH [branch]
+
+#include "./SMAA.fxh"
+
+//// SMAA MACROS START
+
 
 namespace PSMAA
 {
