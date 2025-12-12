@@ -1,4 +1,4 @@
-#include ".\reshade-shared\macros.fxh"
+#include "./reshade-shared/macros.fxh"
 
 #define SMAA_PRESET_CUSTOM
 #define SMAA_CUSTOM_SL 1
@@ -297,7 +297,7 @@ uniform int _Debug <
 
 #endif
 
-#include ".\reshade-shared\debug.fxh"
+#include "./reshade-shared/debug.fxh"
 
 // Debug output options END
 
@@ -519,7 +519,6 @@ void PSMAAEdgeDetectionPSWrapper(
 		out float2 edges : SV_Target)
 {
 	PSMAA::Pass::EdgeDetectionPS(texcoord, offset, deltaSampler, maxLocalLumaSampler, edges);
-	// PSMAA::Pass::HybridDetection(texcoord, offset, colorGammaSampler, _EdgeDetectionThreshold, _SMAALCAFactor, edges);
 }
 
 void SMAABlendingWeightCalculationVSWrapper(
