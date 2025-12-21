@@ -6,97 +6,143 @@
 #include "ReShadeUI.fxh"
 
 uniform int _MaxSearchSteps < __UNIFORM_DRAG_INT1
-	ui_label = "Max Search Steps";
+	ui_label = "Max search steps";
 	ui_min = 0;
 	ui_max = 128;
 	ui_step = 1;
+	ui_tooltip = 
+		"Maximum number of steps to search for edges in a horizontal/vertical fashion.\n"
+		"Higher values detect larger patterns but are more computationally expensive.\n"
+		"Recommended values [4 - 32]";
 > = 32;
 
 uniform int _MaxSearchStepsDiag < __UNIFORM_DRAG_INT1
-	ui_label = "Max Diagonal Search Steps";
+	ui_label = "Max diagonal search steps";
 	ui_min = 0;
 	ui_max = 64;
 	ui_step = 1;
+	ui_tooltip = 
+		"Maximum number of steps to search for edges in diagonal directions.\n"
+		"Higher values detect larger patterns but are more computationally expensive.\n"
+		"Recommended values [8 - 24]";
 > = 19;
 
 uniform int _CornerRounding < __UNIFORM_DRAG_INT1
-	ui_label = "Corner Rounding";
+	ui_label = "Corner rounding";
 	ui_min = 0;
 	ui_max = 100;
 	ui_step = 1;
+	ui_tooltip = 
+		"Specifies how much sharp corners will be rounded.\n"
+		"Higher values create smoother corners but more blur.\n"
+		"Recommended values [0 - 25]";
 > = 10;
 
 uniform float2 _EdgeDetectionThreshold <
-	ui_label = "Edge Threshold";
+	ui_label = "Edge detection threshold";
 	ui_type = "slider";
 	ui_min = .004;
 	ui_max = .15;
 	ui_step = .001;
+	ui_tooltip = 
+		"Thresholds for detecting edges during anti-aliasing.\n"
+		"One is for darker areas, the second for lighter areas.\n"
+		"Recommended values [(.005, 0.05) - (0.025, 0.15)]";
 > = float2(.005, .05);
 
 uniform float2 _CMAALCAFactor <
-	ui_label = "CMAA LCA Factor";
+	ui_label = "Circumferential CMAA LCA factor";
 	ui_type = "slider";
 	ui_min = 0;
 	ui_max = .3;
 	ui_step = .01;
+	ui_tooltip = 
+		"Local contrast adaptation factors for deltas surrounding potential edges.\n"
+		"Makes edge detection less sensitive for pixels where surrounding edges are big.\n"
+		"Higher values tend to reduce artifacts, especially in noisy areas,\n"
+		"but may cause it to miss some edges.\n"
+		"One is for darker areas, the second for lighter areas.\n"
+		"Recommended values [.1 - .3]";
 > = float2(.22, .15);
 
 uniform float2 _SMAALCAFactor <
-	ui_label = "SMAA LCA Factor";
+	ui_label = "Longitudinal LCA factor";
 	ui_type = "slider";
 	ui_min = 1.5;
 	ui_max = 4f;
 	ui_step = .1;
+	ui_tooltip = 
+	  "Local contrast adaptation factors for parallel deltas.\n"
+		"Makes edge detection less sensitive for pixels where paralles edges along\n"
+		"the same axis are big.\n"
+		"Lower values tend to reduce artifacts, especially in gradients,\n"
+		"but may miss some edges.\n"
+		"One is for darker areas, the second for lighter areas.\n"
+		"Recommended values [1.6 - 3.5]";
 > = float2(2f, 2f);
 
 uniform float2 _CMAALCAforSMAALCAFactor <
-	ui_label = "CMAA LCA adjust. of SMAA LCA";
+	ui_label = "CMAA LCA adjustment of SMAA LCA";
 	ui_type = "slider";
 	ui_min = -1;
 	ui_max = 1;
 	ui_step = .01;
+	ui_tooltip =
+		"Adjustment factor for how circumferential LCA affects longitudinal LCA.\n"
+		"Negative values lower the longitudinal LCA when circumferential LCA is strong.\n"
+		"One is for darker areas, the second for lighter areas.\n"
+		"Recommended values [-0.5 - 0]";
 > = float2(-.45, 0);
 
 uniform float _ThreshFloor < __UNIFORM_DRAG_FLOAT1
 	ui_label = "Threshold floor";
-// TODO: build comprehensive texture + bitrate macro system to replace this sad ui_min value
 	ui_min = .004;
 	ui_max = .03;
 	ui_step = .001;
+	ui_tooltip =
+		"The absolute minimum the edge detection threshold can go.\n"
+		"Prevents edge detection in extremely low contrast areas, saving performance.\n"
+		"Recommended values [.001 - .025]";
 > = .01;
 
 uniform float _PreProcessingThresholdMultiplier <
 	ui_category = "Pre-Processing";
-	ui_label = "ThresholdMultiplier";
+	ui_label = "Threshold multiplier";
 	ui_type = "slider";
 	ui_min = 1f;
 	ui_max = 10f;
 	ui_step = .1;
-	ui_tooltip = "How much higher is the pre-processing threshold than the edge detection threshold?\n"
-							"Recommended values [2..6]";
+	ui_tooltip =
+		"How much higher the pre-processing threshold is than\n"
+		"the edge detection threshold. Higher values make pre-processing\n"
+		"less sensitive to edges, preserving detail.\n"
+		"Recommended values [2.2 - 4.5]";
 > = 3.5f;
 
 uniform float _PreProcessingThresholdMargin <
 	ui_category = "Pre-Processing";
-	ui_label = "_PreProcessingThresholdMargin";
+	ui_label = "Threshold margin";
 	ui_type = "slider";
 	ui_min = 1f;
 	ui_max = 2f;
 	ui_step = .01;
-	ui_tooltip = "Turns the threshold into a soft threshold.\n"
-							"Higher values mean deltas just below the threshold count more,\n"
-							"while those just above count less, making the effect more gradual and precise.";
+	ui_tooltip =
+		"Turns the threshold into a soft threshold.\n"
+		"Higher values mean deltas just below the threshold count more,\n"
+		"while those just above count less, making the effect more gradual and precise.\n"
+		"Recommended values [1.5 - 1.9]";
 > = 1.8f;
 
 uniform float _PreProcessingCmaaLCAMultiplier <
 	ui_category = "Pre-Processing";
-	ui_label = "CmaaLCAMultiplier";
+	ui_label = "Circumferential LCA multiplier";
 	ui_type = "slider";
 	ui_min = .1;
 	ui_max = 1f;
 	ui_step = .01;
-	ui_tooltip = "Recommended values [0.25..0.75]";
+	ui_tooltip =
+		"How strongly Circumferential LCA is applied during pre-processing.\n"
+		"Recommended values [.1 - .75]";
 > = .65;
 
 uniform float _PreProcessingStrength <
@@ -106,151 +152,223 @@ uniform float _PreProcessingStrength <
 	ui_min = 0f;
 	ui_max = 1f;
 	ui_step = .01;
-	ui_tooltip = "Strength of the pre-processing step.\n"
-							"Recommended values [0.5..0.85]";
+	ui_tooltip =
+		"How much the result is applied percentually.\n"
+		"Recommended values [.45 - .85]";
 > = .65;
 
 uniform float _PreProcessingStrengthThresh <
 	ui_category = "Pre-Processing";
-	ui_label = "Strength thresh";
+	ui_label = "Strength threshold";
 	ui_type = "slider";
 	ui_min = 0f;
 	ui_max = .15f;
 	ui_step = .001;
-	ui_tooltip = "Strengths below this val are skipped";
+	ui_tooltip =
+		"Threshold for below which the filtering step of pre-processing is skipped.\n"
+		"Higher values improve performance and image clarity,\n"
+		"but may result in more aliasing.\n"
+		"Recommended values [.05 - .15]";
 > = .15;
 
 uniform float _PreProcessingLumaPreservationBias <
 	ui_category = "Pre-Processing";
-	ui_label = "LumaPreservationBias";
+	ui_label = "Luma preservation bias";
 	ui_type = "slider";
 	ui_min = -.8f;
 	ui_max = .8f;
 	ui_step = .05;
+	ui_tooltip =
+		"Bias for preserving pixels' brightness during pre-processing.\n"
+		"Positive values preserve brightness, negative values preserve darkness.\n"
+		"Recommended values [-0.5 - .8]";
 > = .5f;
 
 uniform float _PreProcessingLumaPreservationStrength <
 	ui_category = "Pre-Processing";
-	ui_label = "LumaPreservationStrength";
+	ui_label = "Luma preservation strength";
 	ui_type = "slider";
 	ui_min = 1f;
 	ui_max = 3f;
 	ui_step = .05;
-	ui_tooltip = "1 = normal strength, 5 = max";
+	ui_tooltip =
+		"Strength of luma preservation mechanism during pre-processing.\n"
+		"Recommended values [1 - 2.5]";
 > = 1.5f;
 
 uniform float _PreProcessingGreatestCornerCorrectionStrength <
 	ui_category = "Pre-Processing";
-	ui_label = "Greatest Corner Correction Strength";
+	ui_label = "Greatest corner correction strength";
 	ui_type = "slider";
 	ui_min = 0f;
 	ui_max = 1f;
 	ui_step = .01;
+	ui_tooltip =
+		"The pre-processing pass performs a corner-check to prevent corners\n"
+		"from being softened, to prevent interference with the edge detection pass.\n"
+		"This mechanism makes the algorithm better at differentiating corners from\n"
+		"other shapes, but may cause false negatives during\n"
+		"Anomalous Pixel Blending passes.\n"
+		"Recommended values [.7 - 1.0]";
 > = .85;
 
-// uniform bool _ShowOldPreProcessing <
-// 		ui_category = "Pre-Processing";
-// ui_label = "Show Old Pre-Processing";
-// ui_tooltip = "Use the old pre-processing method.";
+// uniform bool _UseOldBlending < // TODO: remove?
+// 	ui_category = "Blending";
+// 	ui_label = "Use old blending";
+// 	ui_tooltip = "Use the older blending algorithm instead of the newer one.
+// Old blending may be useful for compatibility or specific visual preferences.";
 // > = false;
 
-uniform bool _UseOldBlending <
-	ui_category = "Blending";
-	ui_label = "_UseOldBlendingg";
-> = false;
-
 uniform bool _SmoothingEnabled <
-	ui_category = "Bean Smoothing";
-	ui_label = "Enable Bean Smoothing";
+	ui_category = "Smoothing";
+	ui_label = "Enable smoothing";
+	ui_tooltip = 
+		"This increases the smoothness of anti-aliased edges beyond what\n"
+		"normal SMAA can do, provided PSMAA_SMOOTHING_USE_COLOR_SPACE=0,\n"
+		"and helps reduce residual aliasing artifacts after the main AA passes.\n"
+		"Uses a modified version of an algorithm made by Lord Bean for an \n"
+		"experimental version of his TSMAA shader.\n"
+		"  - enable with PSMAA_SMOOTHING_USE_COLOR_SPACE=1 to\n"
+		"      only eliminate residual aliasing.\n"
+		"  - enable with PSMAA_SMOOTHING_USE_COLOR_SPACE=0 to\n"
+		"      sacrifice clarity for smoothness.\n"
+		"  - disable for best performance.\n";
 > = true;
 
-uniform bool _OldSmoothingEnabled <
-	ui_category = "Bean Smoothing";
-	ui_label = "use old Smoothing";
-> = false;
+// uniform bool _OldSmoothingEnabled < // TODO: remove?
+// 	ui_category = "Smoothing";
+// 	ui_label = "Use old smoothing";
+// 	ui_tooltip = 
+//	  "Use the older smoothing algorithm instead of the newer one.\n"
+//    "Old smoothing may be useful for compatibility or specific visual preferences.";
+// > = false;
 
 uniform bool _SmoothingDeltaWeightDebug <
-	ui_category = "Bean Smoothing";
-	ui_label = "_SmoothingDeltaWeightDebug";
+	ui_category = "Smoothing";
+	ui_label = "Smoothing delta weight debug";
+	ui_tooltip = 
+		"Enable debugging for smoothing delta weights.\n"
+		"This is a development tool and should normally be disabled.";
 > = false;
 
-uniform float2 _SmoothingDeltaWeights <
-	ui_category = "Bean Smoothing";
-	ui_label = "_SmoothingDeltaWeights";
+uniform float2 _SmoothingDeltaWeights < 
+	ui_category = "Smoothing";
+	ui_label = "Smoothing delta weights";
 	ui_type = "slider";
 	ui_min = 0f;
 	ui_max = .75;
 	ui_step = 0.01f;
+	ui_tooltip = 
+		"These values determine how large the largest edges of a pixel must be\n"
+		"for smoothing to apply the maximum number of search steps 'n' to them.\n"
+		"One represents the threshold where the smallest n is used,\n"
+		"the other the threshold above which the largest n is used.\n"
+		"Lower values means the algorithm smoothes small differences more agressively,\n"
+		"which may cause blurriness and worse performance if you overdo it,\n"
+		"while higher values give better performance but may miss some edges.";
 > = float2(.1, .5);
 
 uniform float _SmoothingDeltaWeightDynamicThreshold <
-	ui_category = "Bean Smoothing";
+	ui_category = "Smoothing";
 	ui_label = "Dynamic threshold";
 	ui_type = "slider";
 	ui_min = 0f;
 	ui_max = 1f;
 	ui_step = 0.01f;
+	ui_tooltip = 
+		"A percentage which controls how much the delta weights are scaled with\n"
+		"local luminosity. The higher the value, the more the weights are decreased\n"
+		"in darker areas. Higher values make smoothing more accurate and sensitive\n"
+		"in darker areas, but may cause worse performance and blur.\n"
+		"Recommended values [.6 - .9]";
 > = .8;
 
 uniform float2 _SmoothingThresholds <
-	ui_category = "Bean Smoothing";
-	ui_label = "_SmoothingThresholds";
+	ui_category = "Smoothing";
+	ui_label = "Smoothing thresholds";
 	ui_type = "slider";
 	ui_min = .01;
 	ui_max = .25;
 	ui_step = .001;
+	ui_tooltip = 
+		"Contrast thresholds above which the smoothing algorithm activates.\n"
+		"One is for darker areas, the second for lighter areas.\n"
+		"Controls when smoothing is applied based on pixel brightness.\n"
+		"Recommended values [(.01, .05) - (.25, .15)]";
 > = float2(.01, .075);
 
 uniform float _SmoothingThresholdDepthGrowthStart <
-	ui_category = "Bean Smoothing";
-	ui_label = "_SmoothingThresholdDepthGrowthStart";
+	ui_category = "Smoothing";
+	ui_label = "Smoothing threshold depth growth start";
 	ui_type = "slider";
 	ui_min = 0f;
 	ui_max = 1f;
 	ui_step = .01;
-	ui_label = "At which distance does the smoothing threshold start growing.";
+	ui_tooltip = 
+		"Distance where the smoothing threshold starts growing with depth.\n"
+		"Lower values help prevent blurriness, especially closer up,\n"
+		"but may cause false negatives.\n"
+		"Recommended values [.25 - .5]";
 > = .35;
 
 uniform float _SmoothingThresholdDepthGrowthFactor <
-	ui_category = "Bean Smoothing";
-	ui_label = "_SmoothingThresholdDepthGrowthFactor";
+	ui_category = "Smoothing";
+	ui_label = "Smoothing threshold depth growth factor";
 	ui_type = "slider";
 	ui_min = 1f;
 	ui_max = 4f;
 	ui_step = .1;
-	ui_label = "How much the thresholds grow with distance.";
+	ui_tooltip = 
+		"How much the smoothing thresholds grow with distance.\n"
+		"Lower values help prevent blurriness, especially further away,\n"
+		"but may cause false negatives.\n"
+		"Recommended values [1.5 - 4]";
 > = 2.5;
 
 uniform bool _SharpeningEnabled <
 	ui_category = "Sharpening";
-	ui_label = "Enable CAS Sharpening";
+	ui_label = "Enable sharpening";
+	ui_tooltip = "Enable AMD FX CAS.\n";
 > = false;
 
 uniform float _SharpeningCompensationStrength <
 	ui_category = "Sharpening";
-	ui_label = "Compensation Strength";
+	ui_label = "Compensation strength";
 	ui_type = "slider";
 	ui_min = 0f;
 	ui_max = 2f;
 	ui_step = .1;
+	ui_tooltip = 
+		"Increases sharpening strength the more a pixels has been changed\n"
+		"by the preceding passes. Thus 'compensating' for any blur. This works\n"
+		"even when sharpening blending strength is zero.\n"
+		"Recommended values [.8 - 1.5]";
 > = 1.2;
 
 uniform float _SharpeningCompensationCutoff <
 	ui_category = "Sharpening";
-	ui_label = "Compensation Cutoff";
+	ui_label = "Compensation cutoff";
 	ui_type = "slider";
 	ui_min = 0f;
 	ui_max = 1f;
 	ui_step = .01;
+	ui_tooltip = 
+		"The max pixel change, after which compensation strength stops growing.\n"
+		"Lower values make sure that sharpening doesn't bring back AA artifacts.\n"
+		"Recommended values [.05 - .3]";
 > = .15;
 
 uniform float _SharpeningEdgeBias <
 	ui_category = "Sharpening";
-	ui_label = "Edge Bias";
+	ui_label = "Edge bias";
 	ui_type = "slider";
 	ui_min = -4f;
 	ui_max = 0f;
 	ui_step = .1;
+	ui_tooltip = 
+		"Bias applied to sharpening strength on high-contrast pixels.\n"
+		"Lower values make sharpening weaker at pixels which are already sharp.\n"
+		"Recommended values [-2.0 - -0.5]";
 > = -1.5f;
 
 uniform float _SharpeningSharpness <
@@ -260,21 +378,34 @@ uniform float _SharpeningSharpness <
 	ui_min = 0f;
 	ui_max = 1f;
 	ui_step = .01;
+	ui_tooltip = 
+		"Value of sharpness the 'sharpness' parameter for CAS sharpening.\n"
+		"Equivalent to the 'Contrast Adaptation' parameter in ReShade's\n"
+		"standard CAS implementation.\n"
+		"Higher values make the sharpening effect stronger."
+		"Recommended values [0 - .5]";
 > = 0f;
 
 uniform float _SharpeningBlendingStrength <
 	ui_category = "Sharpening";
-	ui_label = "Blending Strength";
+	ui_label = "Blending strength";
 	ui_type = "slider";
 	ui_min = 0f;
 	ui_max = 1f;
 	ui_step = .01;
+	ui_tooltip = 
+		"The percentage to which the sharpened result is applied to the output.\n"
+		"Basically, higher values = stronger sharpening.";
 > = .75;
 
 uniform bool _SharpeningDebug <
 	ui_category = "Sharpening";
-	ui_label = "_SharpeningDebug";
+	ui_label = "Sharpening debug";
 	ui_type = "radio";
+	ui_tooltip = 
+		"Shows the strength of the sharpening.\n"
+		"Lighter pixels = more sharpening.";
+		// TODO: check if colors are corrent!
 > = false;
 
 
@@ -292,6 +423,7 @@ uniform int _Debug <
 	ui_category = "Debug";
 	ui_type = "combo";
 	ui_label = "Debug output";
+	ui_tooltip = "Outputs the contents of various internal buffers for debugging purposes.";
 	ui_items = "None\0Max Local Luma\0Luma\0Filter strength weights\0Filtered image only\0Deltas\0Edges\0";
 > = 0;
 
