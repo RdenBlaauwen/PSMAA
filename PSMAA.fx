@@ -159,17 +159,17 @@ uniform float _PreProcessingStrength <
 
 uniform float _PreProcessingStrengthThresh <
 	ui_category = "Pre-Processing";
-	ui_label = "Strength threshold";
+	ui_label = "Min strength for filtering";
 	ui_type = "slider";
 	ui_min = 0f;
 	ui_max = .15f;
 	ui_step = .001;
 	ui_tooltip =
-		"Threshold for below which the filtering step of pre-processing is skipped.\n"
+		"Threshold below which the filtering step is skipped.\n"
 		"Higher values improve performance and image clarity,\n"
 		"but may result in more aliasing.\n"
 		"Recommended values [.05 - .15]";
-> = .15;
+> = .149;
 
 uniform float _PreProcessingLumaPreservationBias <
 	ui_category = "Pre-Processing";
@@ -207,9 +207,8 @@ uniform float _PreProcessingGreatestCornerCorrectionStrength <
 		"The pre-processing pass performs a corner-check to prevent corners\n"
 		"from being softened, to prevent interference with the edge detection pass.\n"
 		"This mechanism makes the algorithm better at differentiating corners from\n"
-		"other shapes, but may cause false negatives during\n"
-		"Anomalous Pixel Blending passes.\n"
-		"Recommended values [.7 - 1.0]";
+		"other shapes, but may cause false negatives sometimes.\n"
+		"Recommended values [.6 - 1.0]";
 > = .85;
 
 // uniform bool _UseOldBlending < // TODO: remove?
@@ -340,8 +339,8 @@ uniform float _SharpeningCompensationStrength <
 	ui_step = .1;
 	ui_tooltip = 
 		"Increases sharpening strength the more a pixels has been changed\n"
-		"by the preceding passes. Thus 'compensating' for any blur. This works\n"
-		"even when sharpening blending strength is zero.\n"
+		"by the preceding passes. Thus 'compensating' for any blur.\n"
+		"This works even when sharpening blending strength is zero.\n"
 		"Recommended values [.8 - 1.5]";
 > = 1.2;
 
@@ -382,7 +381,7 @@ uniform float _SharpeningSharpness <
 		"Value of sharpness the 'sharpness' parameter for CAS sharpening.\n"
 		"Equivalent to the 'Contrast Adaptation' parameter in ReShade's\n"
 		"standard CAS implementation.\n"
-		"Higher values make the sharpening effect stronger."
+		"Higher values make the sharpening effect stronger.\n"
 		"Recommended values [0 - .5]";
 > = 0f;
 
@@ -694,11 +693,11 @@ void PSMAABlendingPSWrapper(
 
 	if (_Debug == 0)
 	{
-		if (_UseOldBlending)
-		{
-			color = SMAANeighborhoodBlendingPS(texcoord, offset, colorLinearSampler, weightSampler).rgba;
-			return;
-		}
+		// if (_UseOldBlending)
+		// {
+		// 	color = SMAANeighborhoodBlendingPS(texcoord, offset, colorLinearSampler, weightSampler).rgba;
+		// 	return;
+		// }
 		PSMAA::Pass::BlendingPS(texcoord, offset, colorLinearSampler, weightSampler, filterStrengthSampler, color);
 	}
 	else if (_Debug == 4)
@@ -711,11 +710,11 @@ void PSMAABlendingPSWrapper(
 	}
 
 #else
-	if (_UseOldBlending)
-	{
-		color = SMAANeighborhoodBlendingPS(texcoord, offset, colorLinearSampler, weightSampler).rgba;
-		return;
-	}
+	// if (_UseOldBlending)
+	// {
+	// 	color = SMAANeighborhoodBlendingPS(texcoord, offset, colorLinearSampler, weightSampler).rgba;
+	// 	return;
+	// }
 	PSMAA::Pass::BlendingPS(texcoord, offset, colorLinearSampler, weightSampler, filterStrengthSampler, color);
 
 #endif
