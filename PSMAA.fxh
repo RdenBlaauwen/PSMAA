@@ -1,5 +1,5 @@
-#ifndef PSMAA_FXH // include guard
-#define PSMAA_FXH
+#ifndef _PSMAA_FXH // include guard
+#define _PSMAA_FXH
 
 #include "./reshade-shared/color.fxh"
 #include "./reshade-shared/functions.fxh"
