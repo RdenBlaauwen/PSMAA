@@ -1,5 +1,5 @@
-#ifndef ANOMALOUS_PIXEL_BLENDING_FHX  // include guard
-#define ANOMALOUS_PIXEL_BLENDING_FHX
+#ifndef _ANOMALOUS_PIXEL_BLENDING_FHX  // include guard
+#define _ANOMALOUS_PIXEL_BLENDING_FHX
 
 // MACROS
 // The following preprocessor variables should be defined in the main file.
