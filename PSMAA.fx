@@ -46,7 +46,7 @@ uniform float2 _EdgeDetectionThreshold <
 	ui_step = .001;
 	ui_tooltip = 
 		"Thresholds for detecting edges during anti-aliasing.\n"
-		"One is for darker areas, the second for lighter areas.\n"
+		"The left value is for darker areas, the right is for lighter areas.\n"
 		"Recommended values [(.005, 0.05) - (0.025, 0.15)]";
 > = float2(.005, .05);
 
@@ -58,10 +58,11 @@ uniform float2 _CMAALCAFactor <
 	ui_step = .01;
 	ui_tooltip = 
 		"Local contrast adaptation factors for deltas surrounding potential edges.\n"
-		"Makes edge detection less sensitive for pixels where surrounding edges are big.\n"
+		"Makes edge detection less sensitive for pixels where neighbouring pixels\n"
+		"have large differences between each other, to prevent spurious detections.\n"
 		"Higher values tend to reduce artifacts, especially in noisy areas,\n"
 		"but may cause it to miss some edges.\n"
-		"One is for darker areas, the second for lighter areas.\n"
+		"The left value is for darker areas, the right is for lighter areas.\n"
 		"Recommended values [.1 - .3]";
 > = float2(.22, .15);
 
@@ -73,11 +74,10 @@ uniform float2 _SMAALCAFactor <
 	ui_step = .1;
 	ui_tooltip = 
 	  "Local contrast adaptation factors for parallel deltas.\n"
-		"Makes edge detection less sensitive for pixels where paralles edges along\n"
-		"the same axis are big.\n"
-		"Lower values tend to reduce artifacts, especially in gradients,\n"
-		"but may miss some edges.\n"
-		"One is for darker areas, the second for lighter areas.\n"
+		"Makes edge detection less sensitive for pixels where parallel edges along\n"
+		"the same axis are large. Lower values tend to reduce artifacts, especially\n"
+		"in gradients, but may miss some edges.\n"
+		"The left value is for darker areas, the right is for lighter areas.\n"
 		"Recommended values [1.6 - 3.5]";
 > = float2(2f, 2f);
 
@@ -90,7 +90,8 @@ uniform float2 _CMAALCAforSMAALCAFactor <
 	ui_tooltip =
 		"Adjustment factor for how circumferential LCA affects longitudinal LCA.\n"
 		"Negative values lower the longitudinal LCA when circumferential LCA is strong.\n"
-		"One is for darker areas, the second for lighter areas.\n"
+		"This may reduce artifacts, but may also cause false negatives.\n"
+		"The left value is for darker areas, the right is for lighter areas.\n"
 		"Recommended values [-0.5 - 0]";
 > = float2(-.45, 0);
 
@@ -128,8 +129,8 @@ uniform float _PreProcessingThresholdMargin <
 	ui_step = .01;
 	ui_tooltip =
 		"Turns the threshold into a soft threshold.\n"
-		"Higher values mean deltas just below the threshold count more,\n"
-		"while those just above count less, making the effect more gradual and precise.\n"
+		"Higher values mean deltas just below the threshold count more, while\n"
+		"those just above count less, making the effect more gradual and precise.\n"
 		"Recommended values [1.5 - 1.9]";
 > = 1.8f;
 
@@ -147,13 +148,13 @@ uniform float _PreProcessingCmaaLCAMultiplier <
 
 uniform float _PreProcessingStrength <
 	ui_category = "Pre-Processing";
-	ui_label = "Strength";
+	ui_label = "Blending strength";
 	ui_type = "slider";
 	ui_min = 0f;
 	ui_max = 1f;
 	ui_step = .01;
 	ui_tooltip =
-		"How much the result is applied percentually.\n"
+		"How much the resulting of the pass is applied to the output percentually.\n"
 		"Recommended values [.45 - .85]";
 > = .65;
 
@@ -165,9 +166,10 @@ uniform float _PreProcessingStrengthThresh <
 	ui_max = .15f;
 	ui_step = .001;
 	ui_tooltip =
-		"Threshold below which the filtering step is skipped.\n"
+		"The algorithm assigns each pixel a value representing how anomalous\n"
+		"that pixel is. Values below this threshold are skipped.\n"
 		"Higher values improve performance and image clarity,\n"
-		"but may result in more aliasing.\n"
+		"but may leave more anomalous pixels unchanged.\n"
 		"Recommended values [.05 - .15]";
 > = .149;
 
@@ -198,7 +200,7 @@ uniform float _PreProcessingLumaPreservationStrength <
 
 uniform float _PreProcessingGreatestCornerCorrectionStrength <
 	ui_category = "Pre-Processing";
-	ui_label = "Greatest corner correction strength";
+	ui_label = "Largest corner correction strength";
 	ui_type = "slider";
 	ui_min = 0f;
 	ui_max = 1f;
@@ -260,8 +262,8 @@ uniform float2 _SmoothingDeltaWeights <
 	ui_tooltip = 
 		"These values determine how large the largest edges of a pixel must be\n"
 		"for smoothing to apply the maximum number of search steps 'n' to them.\n"
-		"One represents the threshold where the smallest n is used,\n"
-		"the other the threshold above which the largest n is used.\n"
+		"The left represents the threshold where the smallest n is used,\n"
+		"the right the threshold above which the largest n is used.\n"
 		"Lower values means the algorithm smoothes small differences more agressively,\n"
 		"which may cause blurriness and worse performance if you overdo it,\n"
 		"while higher values give better performance but may miss some edges.";
@@ -291,7 +293,7 @@ uniform float2 _SmoothingThresholds <
 	ui_step = .001;
 	ui_tooltip = 
 		"Contrast thresholds above which the smoothing algorithm activates.\n"
-		"One is for darker areas, the second for lighter areas.\n"
+		"The left value is for darker areas, the right is for lighter areas.\n"
 		"Controls when smoothing is applied based on pixel brightness.\n"
 		"Recommended values [(.01, .05) - (.25, .15)]";
 > = float2(.01, .075);
@@ -365,8 +367,8 @@ uniform float _SharpeningEdgeBias <
 	ui_max = 0f;
 	ui_step = .1;
 	ui_tooltip = 
-		"Bias applied to sharpening strength on high-contrast pixels.\n"
-		"Lower values make sharpening weaker at pixels which are already sharp.\n"
+		"Bias applied to the sharpening strength of high-contrast pixels.\n"
+		"Lower values mean less sharpening at pixels which are already sharp.\n"
 		"Recommended values [-2.0 - -0.5]";
 > = -1.5f;
 
