@@ -16,6 +16,7 @@
 #define PSMAA_PIXEL_SIZE BUFFER_PIXEL_SIZE
 // #define PSMAATexture2D(tex) sampler tex
 // #define PSMAASamplePoint(tex, coord) tex2D(tex, coord)
+// #define PSMAASamplePointOffset(tex, coord, offset) tex2Doffset(tex, coord, offset)
 // #define PSMAASampleLevelZero(tex, coord) tex2Dlod(tex, float4(coord, 0f, 0f))
 // #define PSMAASampleLevelZeroOffset(tex, coord, offset) tex2Dlodoffset(tex, float4(coord, coord), offset)
 #define PSMAAGatherLeftEdges(tex, coord) tex2Dgather(tex, coord, 0);
@@ -182,18 +183,30 @@ namespace PSMAA
       out float4 horzDeltas,
       out float4 vertDeltas)
   {
+    #if __RENDERER__ >= 0xa000 // If DX10 or higher
     horzDeltas = PSMAAGatherTopEdges(deltaTex, gatherOffset.xy);
     horzDeltas = horzDeltas.wzxy;
-    // gathered from left
     // [  ]  [  ]   [  ]
     // [hx]  [hy]   [  ]
     // [hz]  [hw]   [  ]
     vertDeltas = PSMAAGatherLeftEdges(deltaTex, gatherOffset.zw);
     vertDeltas = vertDeltas.wzxy;
-    // gathered from top
     // [  ]  [vx]   [vy]
     // [  ]  [vz]   [vw]
     // [  ]  [  ]   [  ]
+    #else // If DX9 TODO: DX9 test 
+      horzDeltas.x = PSMAASamplePoint(deltaTex, gatherOffset.xy).g;
+      horzDeltas.z = PSMAASamplePointOffset(deltaTex, gatherOffset.xy, int2(0,1)).g;
+      horzDeltas.w = PSMAASamplePointOffset(deltaTex, gatherOffset.xy, int2(1,1)).g;
+
+      vertDeltas.x = PSMAASamplePoint(deltaTex, gatherOffset.zw).r;
+      vertDeltas.y = PSMAASamplePointOffset(deltaTex, gatherOffset.zw, int2(1,0)).r;
+      vertDeltas.w = PSMAASamplePointOffset(deltaTex, gatherOffset.zw, int2(1,1)).r;
+
+      float2 center = PSMAASamplePoint(deltaTex, gatherOffset.xy, int2(1,0)).rg;
+      horzDeltas.y = center.g;
+      vertDeltas.z = center.r;
+    #endif
   }
 
   float2 CalculateCMAALocalContrast(float4 vertDeltas, float4 horzDeltas, float cmaaLCAFactor)
@@ -298,7 +311,7 @@ namespace PSMAA
       E = float3(cdbared.z, cdbagreen.z, cdbablue.z);
       S = float3(cdbared.x, cdbagreen.x, cdbablue.x);
       SE = float3(cdbared.y, cdbagreen.y, cdbablue.y);
-#else // if DX9
+#else // if DX9 TODO: DX9 test
       C = PSMAASampleLevelZero(colorGammaTex, texcoord).rgb;
       E = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(1, 0)).rgb;
       S = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(0, 1)).rgb;
@@ -482,7 +495,7 @@ namespace PSMAA
           topDeltas.w,
           leftDeltas.z,
           topDeltas.x);
-#else // if DX9
+#else // if DX9 TODO: DX9 test
       deltas = float4(
           SmoothingSampleLevelZero(deltaTex, texcoord).rg,
           SmoothingSampleLevelZero(deltaTex, offset.xy).r,
@@ -591,7 +604,7 @@ namespace PSMAA
           topDeltas.w,
           leftDeltas.z,
           topDeltas.x);
-#else // if DX9
+#else // if DX9 TODO: DX9 test
       float offset = mad(PSMAA_BUFFER_METRICS.xyxy, float4(1f, 0f, 0f, 1f), texcoord.xyxy);
       deltas = float4(
           PSMAASampleLevelZero(deltaSampler, texcoord).rg,
