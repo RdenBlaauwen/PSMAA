@@ -51,7 +51,7 @@ uniform float2 _EdgeDetectionThreshold <
 > = float2(.005, .05);
 
 uniform float2 _CMAALCAFactor <
-	ui_label = "Circumferential CMAA LCA factor";
+	ui_label = "Circumferential LCA factor";
 	ui_type = "slider";
 	ui_min = 0;
 	ui_max = .3;
@@ -67,29 +67,30 @@ uniform float2 _CMAALCAFactor <
 > = float2(.22, .15);
 
 uniform float2 _SMAALCAFactor <
-	ui_label = "Longitudinal LCA factor";
+	ui_label = "Parallel LCA factors";
 	ui_type = "slider";
 	ui_min = 1.5;
 	ui_max = 4f;
 	ui_step = .1;
 	ui_tooltip = 
-	  "Local contrast adaptation factors for parallel deltas.\n"
-		"Makes edge detection less sensitive for pixels where parallel edges along\n"
+	  "Local contrast adaptation factors for deltas parallel to potential edges.\n"
+		"Makes edge detection less sensitive for pixels where parallel deltas along\n"
 		"the same axis are large. Lower values tend to reduce artifacts, especially\n"
 		"in gradients, but may miss some edges.\n"
+		"This is the same LCA used in vanilla SMAA.\n"
 		"The left value is for darker areas, the right is for lighter areas.\n"
 		"Recommended values [1.6 - 3.5]";
 > = float2(2f, 2f);
 
 uniform float2 _CMAALCAforSMAALCAFactor <
-	ui_label = "CMAA LCA adjustment of SMAA LCA";
+	ui_label = "LCA synergy factors";
 	ui_type = "slider";
 	ui_min = -1;
 	ui_max = 1;
 	ui_step = .01;
 	ui_tooltip =
-		"Adjustment factor for how circumferential LCA affects longitudinal LCA.\n"
-		"Negative values lower the longitudinal LCA when circumferential LCA is strong.\n"
+		"Factors for how circumferential LCA affects parallel LCA.\n"
+		"Negative values lower the parallel LCA when circumferential LCA is strong.\n"
 		"This may reduce artifacts, but may also cause false negatives.\n"
 		"The left value is for darker areas, the right is for lighter areas.\n"
 		"Recommended values [-0.5 - 0]";
@@ -136,7 +137,7 @@ uniform float _PreProcessingThresholdMargin <
 
 uniform float _PreProcessingCmaaLCAMultiplier <
 	ui_category = "Pre-Processing";
-	ui_label = "Circumferential LCA multiplier";
+	ui_label = "Circumferential LCA strength";
 	ui_type = "slider";
 	ui_min = .1;
 	ui_max = 1f;
@@ -166,10 +167,10 @@ uniform float _PreProcessingStrengthThresh <
 	ui_max = .15f;
 	ui_step = .001;
 	ui_tooltip =
-		"The algorithm assigns each pixel a value representing how anomalous\n"
-		"that pixel is. Values below this threshold are skipped.\n"
+		"The algorithm assigns each pixel a value representing how anomalous that\n"
+		"pixel is. Values below this threshold are skipped (i.e. not softened).\n"
 		"Higher values improve performance and image clarity,\n"
-		"but may leave more anomalous pixels unchanged.\n"
+		"but may leave more anomalous pixels untreated.\n"
 		"Recommended values [.05 - .15]";
 > = .149;
 
@@ -281,7 +282,7 @@ uniform float _SmoothingDeltaWeightDynamicThreshold <
 		"local luminosity. The higher the value, the more the weights are decreased\n"
 		"in darker areas. Higher values make smoothing more accurate and sensitive\n"
 		"in darker areas, but may cause worse performance and blur.\n"
-		"Recommended values [.6 - .9]";
+		"Recommended values [.4 - .9]";
 > = .8;
 
 uniform float2 _SmoothingThresholds <
@@ -293,8 +294,8 @@ uniform float2 _SmoothingThresholds <
 	ui_step = .001;
 	ui_tooltip = 
 		"Contrast thresholds above which the smoothing algorithm activates.\n"
-		"The left value is for darker areas, the right is for lighter areas.\n"
 		"Controls when smoothing is applied based on pixel brightness.\n"
+		"The left value is for darker areas, the right is for lighter areas.\n"
 		"Recommended values [(.01, .05) - (.25, .15)]";
 > = float2(.01, .075);
 
@@ -307,7 +308,9 @@ uniform float _SmoothingThresholdDepthGrowthStart <
 	ui_step = .01;
 	ui_tooltip = 
 		"Distance where the smoothing threshold starts growing with depth.\n"
-		"Lower values help prevent blurriness, especially closer up,\n"
+		"Distance meaning the value of the depth from the depth buffer, where\n"
+		"0 = no distance and 1 = max distance.\n"
+		"Lower values help prevent blur, especially closer up,\n"
 		"but may cause false negatives.\n"
 		"Recommended values [.25 - .5]";
 > = .35;
@@ -320,8 +323,10 @@ uniform float _SmoothingThresholdDepthGrowthFactor <
 	ui_max = 4f;
 	ui_step = .1;
 	ui_tooltip = 
-		"How much the smoothing thresholds grow with distance.\n"
-		"Lower values help prevent blurriness, especially further away,\n"
+		"Multiplier for how much the smoothing thresholds grow with distance.\n"
+		"Distance meaning the value of the depth from the depth buffer, where\n"
+		"0 = no distance and 1 = max distance.\n"
+		"Higher values help prevent blur, especially further away,\n"
 		"but may cause false negatives.\n"
 		"Recommended values [1.5 - 4]";
 > = 2.5;
@@ -334,13 +339,13 @@ uniform bool _SharpeningEnabled <
 
 uniform float _SharpeningCompensationStrength <
 	ui_category = "Sharpening";
-	ui_label = "Compensation strength";
+	ui_label = "Blur compensation";
 	ui_type = "slider";
 	ui_min = 0f;
 	ui_max = 2f;
 	ui_step = .1;
 	ui_tooltip = 
-		"Increases sharpening strength the more a pixels has been changed\n"
+		"Increases sharpening strength the more a pixel has been changed\n"
 		"by the preceding passes. Thus 'compensating' for any blur.\n"
 		"This works even when sharpening blending strength is zero.\n"
 		"Recommended values [.8 - 1.5]";
@@ -380,7 +385,7 @@ uniform float _SharpeningSharpness <
 	ui_max = 1f;
 	ui_step = .01;
 	ui_tooltip = 
-		"Value of sharpness the 'sharpness' parameter for CAS sharpening.\n"
+		"The 'sharpness' parameter for AMD FX CAS sharpening.\n"
 		"Equivalent to the 'Contrast Adaptation' parameter in ReShade's\n"
 		"standard CAS implementation.\n"
 		"Higher values make the sharpening effect stronger.\n"
@@ -395,8 +400,8 @@ uniform float _SharpeningBlendingStrength <
 	ui_max = 1f;
 	ui_step = .01;
 	ui_tooltip = 
-		"The percentage to which the sharpened result is applied to the output.\n"
-		"Basically, higher values = stronger sharpening.";
+		"The percentage by which the sharpened result is applied to the output.\n"
+		"Basically, higher values = stronger sharpening appears on-screen.";
 > = .75;
 
 uniform bool _SharpeningDebug <
@@ -405,8 +410,9 @@ uniform bool _SharpeningDebug <
 	ui_type = "radio";
 	ui_tooltip = 
 		"Shows the strength of the sharpening.\n"
-		"Lighter pixels = more sharpening.";
-		// TODO: check if colors are corrent!
+		"Lighter pixels = more sharpening.\n"
+		"The effect of the \'Sharpness\' value is not included here.\n";
+		// TODO: check if colors are correct!
 > = false;
 
 
