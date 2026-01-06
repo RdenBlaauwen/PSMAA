@@ -441,6 +441,21 @@ uniform int _Debug <
 // Debug output options END
 
 
+uniform int MacroHelpText<
+    ui_type = "radio";
+    ui_category = "Preprocessor variable explanation";
+    ui_label = "    ";
+    ui_text =  
+			"sumtext\n"
+			"SHOW_DEBUG: set this to 1 to enable debug output options in the UI.\n"
+			"PSMAA_USE_SIMPLIFIED_DELTA_CALCULATION: debugging feature. set this to 1\n"
+			"   to use a faster but less precise form of delta calculation.\n"
+			"PSMAA_SMOOTHING_USE_COLOR_SPACE: setting this to 1 will eliminate blur\n"
+			"  and 'darkening' caused by the smoothing pass, but will eliminate its\n"
+			"  ability to make jaggies which have already been anti-aliased by the\n"
+			"  SMAA passes even smoother.\n";
+>;
+
 #ifndef PSMAA_USE_SIMPLIFIED_DELTA_CALCULATION
 	#define PSMAA_USE_SIMPLIFIED_DELTA_CALCULATION 0
 #endif
