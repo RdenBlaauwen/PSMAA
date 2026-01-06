@@ -1,5 +1,7 @@
 # TODO
 
+- Replace PSMAASampleLevelZero(Offset) by PSMAASamplePoint(Offset) to see if there is any difference in function and performance
+  - Do some background reading on the differences between the two b4 doing this!
 - Smoothing:
   - considering making it run in color space by default, as even color space version will correct plenty of jaggies.
   - Replace hard threshold with a smoothstepped threshold where everything between the lower and upper bounds has a lower maxblending and nr of iterations than everything >= the upper bound.

@@ -19,7 +19,7 @@
 // #define PSMAASamplePointOffset(tex, coord, offset) tex2Doffset(tex, coord, offset)
 // #define PSMAASampleLevelZero(tex, coord) tex2Dlod(tex, float4(coord, 0f, 0f))
 // #define PSMAASampleLevelZeroOffset(tex, coord, offset) tex2Dlodoffset(tex, float4(coord, coord), offset)
-#define PSMAAGatherLeftEdges(tex, coord) tex2Dgather(tex, coord, 0);
+#define PSMAAGatherLeftEdges(tex, coord) tex2Dgather(tex, coord, 0); // TODO: test if this works in DX9
 #define PSMAAGatherTopEdges(tex, coord) tex2Dgather(tex, coord, 1);
 // #define PSMAA_PRE_PROCESSING_THRESHOLD_MULTIPLIER 1f
 // #define PSMAA_PRE_PROCESSING_CMAA_LCA_FACTOR_MULTIPLIER 1f
