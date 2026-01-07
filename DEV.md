@@ -1,6 +1,7 @@
 # TODO
 
 - Smoothing:
+  - considering making it run in color space by default, as even color space version will correct plenty of jaggies.
   - Replace hard threshold with a smoothstepped threshold where everything between the lower and upper bounds has a lower maxblending and nr of iterations than everything >= the upper bound.
   - Make depth-based threshold growth and usage of SMAA weights, optional in both the module and PSMAA.
 - Filtering:

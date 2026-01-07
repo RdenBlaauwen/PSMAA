@@ -446,14 +446,15 @@ uniform int MacroHelpText<
     ui_category = "Preprocessor variable explanation";
     ui_label = "    ";
     ui_text =  
-			"sumtext\n"
-			"SHOW_DEBUG: set this to 1 to enable debug output options in the UI.\n"
-			"PSMAA_USE_SIMPLIFIED_DELTA_CALCULATION: debugging feature. set this to 1\n"
-			"   to use a faster but less precise form of delta calculation.\n"
 			"PSMAA_SMOOTHING_USE_COLOR_SPACE: setting this to 1 will eliminate blur\n"
-			"  and 'darkening' caused by the smoothing pass, but will eliminate its\n"
-			"  ability to make jaggies which have already been anti-aliased by the\n"
-			"  SMAA passes even smoother.\n";
+			"and 'darkening' caused by the smoothing pass, but will eliminate its\n"
+			"ability to make jaggies which have already been anti-aliased by the\n"
+			"SMAA passes even smoother.\n"
+			"\n"
+			"PSMAA_USE_SIMPLIFIED_DELTA_CALCULATION: debugging feature. set this to 1\n"
+			"to use a faster but less precise form of delta calculation.\n"
+			"\n"
+			"SHOW_DEBUG: set this to 1 to enable debug output options in the UI.";
 >;
 
 #ifndef PSMAA_USE_SIMPLIFIED_DELTA_CALCULATION
@@ -499,6 +500,18 @@ uniform int MacroHelpText<
 	#define SMAA_MAX_SEARCH_STEPS _MaxSearchSteps
 	#define SMAA_MAX_SEARCH_STEPS_DIAG _MaxSearchStepsDiag
 	#define SMAA_CORNER_ROUNDING _CornerRounding
+
+	// dummy values. These don't do anything, but defining them keeps
+	// them from showing up in the UI as preprocessor variables:
+	#define SMAA_LOCAL_CONTRAST_ADAPTATION_FACTOR _SMAALCAFactor.y
+	#define SMAA_THRESHOLD _EdgeDetectionThreshold.y
+	#define SMAA_DEPTH_THRESHOLD (.1 * SMAA_THRESHOLD)
+	#define SMAA_PREDICATION 0
+	#define SMAA_PREDICATION_THRESHOLD .01
+	#define SMAA_PREDICATION_SCALE 2f
+	#define SMAA_PREDICATION_STRENGTH .4
+	#define SMAA_REPROJECTION 0
+	#define SMAA_REPROJECTION_WEIGHT_SCALE 30.0
 #endif
 
 #include "./PSMAA.fxh"
