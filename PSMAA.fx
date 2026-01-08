@@ -5,10 +5,11 @@
 
 #include "ReShadeUI.fxh"
 
-uniform int UIHelpText<
+uniform int _UIHelpText<
     ui_type = "radio";
     ui_category = "UI Explanation";
     ui_label = "    ";
+		ui_category_closed = false;
     ui_text =  
 			"This is a beta build of PSMAA, and this UI is primarily for development\n"
 			"purposes. They're basically 'advanced' settings, which is why this UI\n"
@@ -33,6 +34,7 @@ uniform float _PreProcessingThresholdMultiplier <
 	ui_min = 1f;
 	ui_max = 10f;
 	ui_step = .1;
+	ui_category_closed = true;
 	ui_tooltip =
 		"How much higher the pre-processing threshold is than\n"
 		"the edge detection threshold. Higher values make pre-processing\n"
@@ -147,6 +149,7 @@ uniform float2 _EdgeDetectionThreshold <
 	ui_min = .004;
 	ui_max = .15;
 	ui_step = .001;
+	ui_category_closed = false;
 	ui_tooltip = 
 		"Thresholds for detecting edges during anti-aliasing.\n"
 		"The left value is for darker areas, the right is for lighter areas.\n"
@@ -220,6 +223,7 @@ uniform int _MaxSearchSteps < __UNIFORM_DRAG_INT1
 	ui_min = 0;
 	ui_max = 128;
 	ui_step = 1;
+	ui_category_closed = true;
 	ui_tooltip = 
 		"Maximum number of steps to search for edges in a horizontal/vertical fashion.\n"
 		"Higher values detect larger patterns but are more computationally expensive.\n"
@@ -253,6 +257,8 @@ uniform int _CornerRounding < __UNIFORM_DRAG_INT1
 uniform bool _SmoothingEnabled <
 	ui_category = "Smoothing";
 	ui_label = "Enable smoothing";
+	ui_category_toggle = true;
+	ui_category_closed = true;
 	ui_tooltip = 
 		"This increases the smoothness of anti-aliased edges beyond what\n"
 		"normal SMAA can do, provided PSMAA_SMOOTHING_USE_COLOR_SPACE=0,\n"
@@ -363,6 +369,8 @@ uniform float _SmoothingThresholdDepthGrowthFactor <
 uniform bool _SharpeningEnabled <
 	ui_category = "Sharpening";
 	ui_label = "Enable sharpening";
+	ui_category_toggle = true;
+	ui_category_closed = true;
 	ui_tooltip = "Enable AMD FX CAS.\n";
 > = false;
 
@@ -470,10 +478,11 @@ uniform int _Debug <
 // Debug output options END
 
 
-uniform int MacroHelpText<
+uniform int _MacroHelpText<
     ui_type = "radio";
     ui_category = "Preprocessor variable explanation";
     ui_label = "    ";
+		ui_category_closed = false;
     ui_text =  
 			"PSMAA_SMOOTHING_USE_COLOR_SPACE: setting this to 1 will eliminate blur\n"
 			"and 'darkening' caused by the smoothing pass, but will eliminate its\n"
