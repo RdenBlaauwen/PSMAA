@@ -5,107 +5,26 @@
 
 #include "ReShadeUI.fxh"
 
-uniform int _MaxSearchSteps < __UNIFORM_DRAG_INT1
-	ui_label = "Max search steps";
-	ui_min = 0;
-	ui_max = 128;
-	ui_step = 1;
-	ui_tooltip = 
-		"Maximum number of steps to search for edges in a horizontal/vertical fashion.\n"
-		"Higher values detect larger patterns but are more computationally expensive.\n"
-		"Recommended values [4 - 32]";
-> = 32;
+uniform int UIHelpText<
+    ui_type = "radio";
+    ui_category = "UI Explanation";
+    ui_label = "    ";
+    ui_text =  
+			"This is a beta build of PSMAA, and this UI is primarily for development\n"
+			"purposes. They're basically 'advanced' settings, which is why this UI\n"
+			"may feel pretty opaque. In case you just want to know which settings are\n"
+			"most important for image quality, see:\n"
+			"  - pre-processing > blending strength\n"
+			"  - Edge detection > Edge detection threshold\n"
+			"  - Smoothing > Enable smoothing\n"
+			"  - Sharpening > Enable Sharpening\n"
+			"               > Blur Compensation\n"
+			"               > Edge bias\n"
+			"               > Blending strength\n"
+			"\n"
+			"For explanation on what these do, check the UI controls' tooltips";
+>;
 
-uniform int _MaxSearchStepsDiag < __UNIFORM_DRAG_INT1
-	ui_label = "Max diagonal search steps";
-	ui_min = 0;
-	ui_max = 64;
-	ui_step = 1;
-	ui_tooltip = 
-		"Maximum number of steps to search for edges in diagonal directions.\n"
-		"Higher values detect larger patterns but are more computationally expensive.\n"
-		"Recommended values [8 - 24]";
-> = 19;
-
-uniform int _CornerRounding < __UNIFORM_DRAG_INT1
-	ui_label = "Corner rounding";
-	ui_min = 0;
-	ui_max = 100;
-	ui_step = 1;
-	ui_tooltip = 
-		"Specifies how much sharp corners will be rounded.\n"
-		"Higher values create smoother corners but more blur.\n"
-		"Recommended values [0 - 25]";
-> = 10;
-
-uniform float2 _EdgeDetectionThreshold <
-	ui_label = "Edge detection threshold";
-	ui_type = "slider";
-	ui_min = .004;
-	ui_max = .15;
-	ui_step = .001;
-	ui_tooltip = 
-		"Thresholds for detecting edges during anti-aliasing.\n"
-		"The left value is for darker areas, the right is for lighter areas.\n"
-		"Recommended values [(.005, 0.05) - (0.025, 0.15)]";
-> = float2(.005, .05);
-
-uniform float2 _CMAALCAFactor <
-	ui_label = "Circumferential LCA factor";
-	ui_type = "slider";
-	ui_min = 0;
-	ui_max = .3;
-	ui_step = .01;
-	ui_tooltip = 
-		"Local contrast adaptation factors for deltas surrounding potential edges.\n"
-		"Makes edge detection less sensitive for pixels where neighbouring pixels\n"
-		"have large differences between each other, to prevent spurious detections.\n"
-		"Higher values tend to reduce artifacts, especially in noisy areas,\n"
-		"but may cause it to miss some edges.\n"
-		"The left value is for darker areas, the right is for lighter areas.\n"
-		"Recommended values [.1 - .3]";
-> = float2(.22, .15);
-
-uniform float2 _SMAALCAFactor <
-	ui_label = "Parallel LCA factors";
-	ui_type = "slider";
-	ui_min = 1.5;
-	ui_max = 4f;
-	ui_step = .1;
-	ui_tooltip = 
-	  "Local contrast adaptation factors for deltas parallel to potential edges.\n"
-		"Makes edge detection less sensitive for pixels where parallel deltas along\n"
-		"the same axis are large. Lower values tend to reduce artifacts, especially\n"
-		"in gradients, but may miss some edges.\n"
-		"This is the same LCA used in vanilla SMAA.\n"
-		"The left value is for darker areas, the right is for lighter areas.\n"
-		"Recommended values [1.6 - 3.5]";
-> = float2(2f, 2f);
-
-uniform float2 _CMAALCAforSMAALCAFactor <
-	ui_label = "LCA synergy factors";
-	ui_type = "slider";
-	ui_min = -1;
-	ui_max = 1;
-	ui_step = .01;
-	ui_tooltip =
-		"Factors for how circumferential LCA affects parallel LCA.\n"
-		"Negative values lower the parallel LCA when circumferential LCA is strong.\n"
-		"This may reduce artifacts, but may also cause false negatives.\n"
-		"The left value is for darker areas, the right is for lighter areas.\n"
-		"Recommended values [-0.5 - 0]";
-> = float2(-.45, 0);
-
-uniform float _ThreshFloor < __UNIFORM_DRAG_FLOAT1
-	ui_label = "Threshold floor";
-	ui_min = .004;
-	ui_max = .03;
-	ui_step = .001;
-	ui_tooltip =
-		"The absolute minimum the edge detection threshold can go.\n"
-		"Prevents edge detection in extremely low contrast areas, saving performance.\n"
-		"Recommended values [.001 - .025]";
-> = .01;
 
 uniform float _PreProcessingThresholdMultiplier <
 	ui_category = "Pre-Processing";
@@ -220,6 +139,116 @@ uniform float _PreProcessingGreatestCornerCorrectionStrength <
 // 	ui_tooltip = "Use the older blending algorithm instead of the newer one.
 // Old blending may be useful for compatibility or specific visual preferences.";
 // > = false;
+
+uniform float2 _EdgeDetectionThreshold <
+	ui_category = "Edge detection";
+	ui_label = "Edge detection threshold";
+	ui_type = "slider";
+	ui_min = .004;
+	ui_max = .15;
+	ui_step = .001;
+	ui_tooltip = 
+		"Thresholds for detecting edges during anti-aliasing.\n"
+		"The left value is for darker areas, the right is for lighter areas.\n"
+		"Recommended values [(.005, 0.05) - (0.025, 0.15)]";
+> = float2(.005, .05);
+
+uniform float2 _CMAALCAFactor <
+	ui_category = "Edge detection";
+	ui_label = "Circumferential LCA factor";
+	ui_type = "slider";
+	ui_min = 0;
+	ui_max = .3;
+	ui_step = .01;
+	ui_tooltip = 
+		"Local contrast adaptation factors for deltas surrounding potential edges.\n"
+		"Makes edge detection less sensitive for pixels where neighbouring pixels\n"
+		"have large differences between each other, to prevent spurious detections.\n"
+		"Higher values tend to reduce artifacts, especially in noisy areas,\n"
+		"but may cause it to miss some edges.\n"
+		"The left value is for darker areas, the right is for lighter areas.\n"
+		"Recommended values [.1 - .3]";
+> = float2(.22, .15);
+
+uniform float2 _SMAALCAFactor <
+	ui_category = "Edge detection";
+	ui_label = "Parallel LCA factors";
+	ui_type = "slider";
+	ui_min = 1.5;
+	ui_max = 4f;
+	ui_step = .1;
+	ui_tooltip = 
+	  "Local contrast adaptation factors for deltas parallel to potential edges.\n"
+		"Makes edge detection less sensitive for pixels where parallel deltas along\n"
+		"the same axis are large. Lower values tend to reduce artifacts, especially\n"
+		"in gradients, but may miss some edges.\n"
+		"This is the same LCA used in vanilla SMAA.\n"
+		"The left value is for darker areas, the right is for lighter areas.\n"
+		"Recommended values [1.6 - 3.5]";
+> = float2(2f, 2f);
+
+uniform float2 _CMAALCAforSMAALCAFactor <
+	ui_category = "Edge detection";
+	ui_label = "LCA synergy factors";
+	ui_type = "slider";
+	ui_min = -1;
+	ui_max = 1;
+	ui_step = .01;
+	ui_tooltip =
+		"Factors for how circumferential LCA affects parallel LCA.\n"
+		"Negative values lower the parallel LCA when circumferential LCA is strong.\n"
+		"This may reduce artifacts, but may also cause false negatives.\n"
+		"The left value is for darker areas, the right is for lighter areas.\n"
+		"Recommended values [-0.5 - 0]";
+> = float2(-.45, 0);
+
+uniform float _ThreshFloor < __UNIFORM_DRAG_FLOAT1
+	ui_category = "Edge detection";
+	ui_label = "Threshold floor";
+	ui_min = .004;
+	ui_max = .03;
+	ui_step = .001;
+	ui_tooltip =
+		"The absolute minimum the edge detection threshold can go.\n"
+		"Prevents edge detection in extremely low contrast areas, saving performance.\n"
+		"Recommended values [.001 - .025]";
+> = .01;
+
+uniform int _MaxSearchSteps < __UNIFORM_DRAG_INT1
+	ui_category = "Blending weight calculation";
+	ui_label = "Max search steps";
+	ui_min = 0;
+	ui_max = 128;
+	ui_step = 1;
+	ui_tooltip = 
+		"Maximum number of steps to search for edges in a horizontal/vertical fashion.\n"
+		"Higher values detect larger patterns but are more computationally expensive.\n"
+		"Recommended values [4 - 32]";
+> = 32;
+
+uniform int _MaxSearchStepsDiag < __UNIFORM_DRAG_INT1
+	ui_category = "Blending weight calculation";
+	ui_label = "Max diagonal search steps";
+	ui_min = 0;
+	ui_max = 64;
+	ui_step = 1;
+	ui_tooltip = 
+		"Maximum number of steps to search for edges in diagonal directions.\n"
+		"Higher values detect larger patterns but are more computationally expensive.\n"
+		"Recommended values [8 - 24]";
+> = 19;
+
+uniform int _CornerRounding < __UNIFORM_DRAG_INT1
+	ui_category = "Blending weight calculation";
+	ui_label = "Corner rounding";
+	ui_min = 0;
+	ui_max = 100;
+	ui_step = 1;
+	ui_tooltip = 
+		"Specifies how much sharp corners will be rounded.\n"
+		"Higher values create smoother corners but more blur.\n"
+		"Recommended values [0 - 25]";
+> = 10;
 
 uniform bool _SmoothingEnabled <
 	ui_category = "Smoothing";
