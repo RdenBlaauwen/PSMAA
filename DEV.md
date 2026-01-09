@@ -1,8 +1,10 @@
 # TODO
 
 - Replace PSMAASampleLevelZero(Offset) by PSMAASamplePoint(Offset) to see if there is any difference in function and performance
+  - Start with FilteringPS and/or PreProcessingPS
   - Do some background reading on the differences between the two b4 doing this!
 - Smoothing:
+  - Replace PSMAA.fxh's smoothing macros with the normal PSMAA ones.
   - Replace hard threshold with a smoothstepped threshold where everything between the lower and upper bounds has a lower maxblending and nr of iterations than everything >= the upper bound.
   - Make depth-based threshold growth and usage of SMAA weights, optional in both the module and PSMAA.
 - Filtering:

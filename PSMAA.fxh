@@ -184,17 +184,20 @@ namespace PSMAA
       out float4 vertDeltas)
   {
     #if __RENDERER__ >= 0xa000 // If DX10 or higher
-    horzDeltas = PSMAAGatherTopEdges(deltaTex, gatherOffset.xy);
-    horzDeltas = horzDeltas.wzxy;
-    // [  ]  [  ]   [  ]
-    // [hx]  [hy]   [  ]
-    // [hz]  [hw]   [  ]
-    vertDeltas = PSMAAGatherLeftEdges(deltaTex, gatherOffset.zw);
-    vertDeltas = vertDeltas.wzxy;
-    // [  ]  [vx]   [vy]
-    // [  ]  [vz]   [vw]
-    // [  ]  [  ]   [  ]
-    #else // If DX9 TODO: DX9 test 
+
+      horzDeltas = PSMAAGatherTopEdges(deltaTex, gatherOffset.xy);
+      horzDeltas = horzDeltas.wzxy;
+      // [  ]  [  ]   [  ]
+      // [hx]  [hy]   [  ]
+      // [hz]  [hw]   [  ]
+      vertDeltas = PSMAAGatherLeftEdges(deltaTex, gatherOffset.zw);
+      vertDeltas = vertDeltas.wzxy;
+      // [  ]  [vx]   [vy]
+      // [  ]  [vz]   [vw]
+      // [  ]  [  ]   [  ]
+
+    #else // If DX9
+
       horzDeltas.x = PSMAASamplePoint(deltaTex, gatherOffset.xy).g;
       horzDeltas.z = PSMAASamplePointOffset(deltaTex, gatherOffset.xy, int2(0,1)).g;
       horzDeltas.w = PSMAASamplePointOffset(deltaTex, gatherOffset.xy, int2(1,1)).g;
@@ -206,6 +209,7 @@ namespace PSMAA
       float2 center = PSMAASamplePoint(deltaTex, gatherOffset.xy, int2(1,0)).rg;
       horzDeltas.y = center.g;
       vertDeltas.z = center.r;
+
     #endif
   }
 
@@ -311,7 +315,7 @@ namespace PSMAA
       E = float3(cdbared.z, cdbagreen.z, cdbablue.z);
       S = float3(cdbared.x, cdbagreen.x, cdbablue.x);
       SE = float3(cdbared.y, cdbagreen.y, cdbablue.y);
-#else // if DX9 TODO: DX9 test
+#else // if DX9
       C = PSMAASampleLevelZero(colorGammaTex, texcoord).rgb;
       E = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(1, 0)).rgb;
       S = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(0, 1)).rgb;
@@ -495,7 +499,7 @@ namespace PSMAA
           topDeltas.w,
           leftDeltas.z,
           topDeltas.x);
-#else // if DX9 TODO: DX9 test
+#else // if DX9
       deltas = float4(
           SmoothingSampleLevelZero(deltaTex, texcoord).rg,
           SmoothingSampleLevelZero(deltaTex, offset.xy).r,
@@ -604,7 +608,7 @@ namespace PSMAA
           topDeltas.w,
           leftDeltas.z,
           topDeltas.x);
-#else // if DX9 TODO: DX9 test
+#else // if DX9
       float offset = mad(PSMAA_BUFFER_METRICS.xyxy, float4(1f, 0f, 0f, 1f), texcoord.xyxy);
       deltas = float4(
           PSMAASampleLevelZero(deltaSampler, texcoord).rg,
