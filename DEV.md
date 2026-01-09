@@ -1,6 +1,7 @@
 # TODO
 
 - Replace PSMAASampleLevelZero(Offset) by PSMAASamplePoint(Offset) to see if there is any difference in function and performance
+  - Start with FilteringPS and/or PreProcessingPS
   - Do some background reading on the differences between the two b4 doing this!
 - Smoothing:
   - considering making it run in color space by default, as even color space version will correct plenty of jaggies.
