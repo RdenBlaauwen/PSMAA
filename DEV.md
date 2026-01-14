@@ -5,6 +5,7 @@
   - Do some background reading on the differences between the two b4 doing this!
 - Smoothing:
   - Replace PSMAA.fxh's smoothing macros with the normal PSMAA ones.
+  - considering making it run in color space by default, as even color space version will correct plenty of jaggies.
   - Replace hard threshold with a smoothstepped threshold where everything between the lower and upper bounds has a lower maxblending and nr of iterations than everything >= the upper bound.
   - Make depth-based threshold growth and usage of SMAA weights, optional in both the module and PSMAA.
 - Filtering:
@@ -35,6 +36,21 @@
 - Test perf difference between using Offset sample methods (LordBean) vs using pre-calculated offsets calculated in a VS (native SMAA)
 - Try to optimise delta calculation's colorfulness min and max calculation to use 3 float2 calcs instead of 4 float calcs.
   - every float2 contains a component from both colors, instead of processing separately.
+
+# Acceptance testing
+
+## Observations and feedback on Advanced UI controls
+
+### Comprehension test
+
+User read tooltips, but did few attempts to change values.
+
+- Most UI controls were readily understood.
+- User thought the amount of Ui controls was very overwhelming
+- More harmony needed between useage of words like "large", "greatest", and "big". Suggestion: use large
+- Local Contrast adaptation is still a bit vague. What does it do, how does it chagne anything?
+- change "one is for dark areas, one is for bright areas" to "the left is for dark areas, the right is for light areas"
+- Blending strength vs effect strength isn't always clear. Give blending strength separate names from 'normal ' strength.
 
 # Testing
 
