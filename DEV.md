@@ -1,5 +1,6 @@
 # TODO
 
+- Add NO_DEPTH_BUFFER option maybe?
 - Replace PSMAASampleLevelZero(Offset) by PSMAASamplePoint(Offset) to see if there is any difference in function and performance
   - Start with FilteringPS and/or PreProcessingPS
   - Do some background reading on the differences between the two b4 doing this!

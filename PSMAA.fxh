@@ -12,13 +12,13 @@
 //// PSMAA MACROS START
 
 // #define PSMAA_USE_SIMPLIFIED_DELTA_CALCULATION 0
-// #define PSMAA_BUFFER_METRICS float4(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT, BUFFER_WIDTH, BUFFER_HEIGHT)
+#define PSMAA_BUFFER_METRICS float4(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT, BUFFER_WIDTH, BUFFER_HEIGHT)
 #define PSMAA_PIXEL_SIZE BUFFER_PIXEL_SIZE
-// #define PSMAATexture2D(tex) sampler tex
-// #define PSMAASamplePoint(tex, coord) tex2D(tex, coord)
-// #define PSMAASamplePointOffset(tex, coord, offset) tex2Doffset(tex, coord, offset)
-// #define PSMAASampleLevelZero(tex, coord) tex2Dlod(tex, float4(coord, 0f, 0f))
-// #define PSMAASampleLevelZeroOffset(tex, coord, offset) tex2Dlodoffset(tex, float4(coord, coord), offset)
+#define PSMAATexture2D(tex) sampler tex
+#define PSMAASamplePoint(tex, coord) tex2D(tex, coord)
+#define PSMAASamplePointOffset(tex, coord, offset) tex2Doffset(tex, coord, offset)
+#define PSMAASampleLevelZero(tex, coord) tex2Dlod(tex, float4(coord, 0f, 0f))
+#define PSMAASampleLevelZeroOffset(tex, coord, offset) tex2Dlodoffset(tex, float4(coord, coord), offset)
 #define PSMAAGatherLeftEdges(tex, coord) tex2Dgather(tex, coord, 0); // TODO: test if this works in DX9
 #define PSMAAGatherTopEdges(tex, coord) tex2Dgather(tex, coord, 1);
 // #define PSMAA_PRE_PROCESSING_THRESHOLD_MULTIPLIER 1f
@@ -206,7 +206,7 @@ namespace PSMAA
       vertDeltas.y = PSMAASamplePointOffset(deltaTex, gatherOffset.zw, int2(1,0)).r;
       vertDeltas.w = PSMAASamplePointOffset(deltaTex, gatherOffset.zw, int2(1,1)).r;
 
-      float2 center = PSMAASamplePoint(deltaTex, gatherOffset.xy, int2(1,0)).rg;
+      float2 center = PSMAASamplePointOffset(deltaTex, gatherOffset.xy, int2(1,0)).rg;
       horzDeltas.y = center.g;
       vertDeltas.z = center.r;
 
@@ -609,7 +609,7 @@ namespace PSMAA
           leftDeltas.z,
           topDeltas.x);
 #else // if DX9
-      float offset = mad(PSMAA_BUFFER_METRICS.xyxy, float4(1f, 0f, 0f, 1f), texcoord.xyxy);
+      float4 offset = mad(PSMAA_BUFFER_METRICS.xyxy, float4(1f, 0f, 0f, 1f), texcoord.xyxy);
       deltas = float4(
           PSMAASampleLevelZero(deltaSampler, texcoord).rg,
           PSMAASampleLevelZero(deltaSampler, offset.xy).r,
