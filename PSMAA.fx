@@ -503,11 +503,6 @@ uniform int _MacroHelpText<
 #include "ReShade.fxh"
 
 // PSMAA preprocessor variables
-#define PSMAA_BUFFER_METRICS float4(BUFFER_RCP_WIDTH, BUFFER_RCP_HEIGHT, BUFFER_WIDTH, BUFFER_HEIGHT)
-#define PSMAATexture2D(tex) sampler tex
-#define PSMAASamplePoint(tex, coord) tex2D(tex, coord)
-#define PSMAASampleLevelZero(tex, coord) tex2Dlod(tex, float4(coord, 0f, 0f))
-#define PSMAASampleLevelZeroOffset(tex, coord, offset) tex2Dlodoffset(tex, float4(coord, coord), offset)
 #define PSMAA_THRESHOLD_FLOOR _ThreshFloor
 #define PSMAA_PRE_PROCESSING_THRESHOLD_MULTIPLIER _PreProcessingThresholdMultiplier
 #define PSMAA_PRE_PROCESSING_CMAA_LCA_FACTOR_MULTIPLIER _PreProcessingCmaaLCAMultiplier
