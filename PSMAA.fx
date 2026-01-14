@@ -386,13 +386,13 @@ uniform float _SharpeningCompensationStrength <
 		"by the preceding passes. Thus 'compensating' for any blur.\n"
 		"This works even when sharpening blending strength is zero.\n"
 		"Recommended values [.8 - 1.5]";
-> = 1.2;
+> = 1.5;
 
 uniform float _SharpeningCompensationCutoff <
 	ui_category = "Sharpening";
 	ui_label = "Compensation cutoff";
 	ui_type = "slider";
-	ui_min = 0f;
+	ui_min = .05;
 	ui_max = 1f;
 	ui_step = .01;
 	ui_tooltip = 
@@ -439,7 +439,7 @@ uniform float _SharpeningBlendingStrength <
 	ui_tooltip = 
 		"The percentage by which the sharpened result is applied to the output.\n"
 		"Basically, higher values = stronger sharpening appears on-screen.";
-> = .75;
+> = .5;
 
 uniform bool _SharpeningDebug <
 	ui_category = "Sharpening";
@@ -484,10 +484,11 @@ uniform int _MacroHelpText<
     ui_label = "    ";
 		ui_category_closed = false;
     ui_text =  
-			"PSMAA_SMOOTHING_USE_COLOR_SPACE: setting this to 1 will eliminate blur\n"
-			"and 'darkening' caused by the smoothing pass, but will eliminate its\n"
-			"ability to make jaggies which have already been anti-aliased by the\n"
-			"SMAA passes even smoother.\n"
+			"PSMAA_SMOOTHING_USE_COLOR_SPACE: setting this to 1 will get rid of\n"
+			"blur and 'darkening' the smoothing pass normally causes, but will\n"
+			"mostly eliminate its ability to make jaggies which have already been\n"
+			"anti-aliased by the SMAA passes even smoother.\n"
+			"If this is left off (0), using sharpening is recommended.\n"
 			"\n"
 			"PSMAA_USE_SIMPLIFIED_DELTA_CALCULATION: debugging feature. set this to 1\n"
 			"to use a faster but less precise form of delta calculation.\n"
