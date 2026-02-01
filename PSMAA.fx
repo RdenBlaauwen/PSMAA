@@ -1,5 +1,3 @@
-#include "./reshade-shared/macros.fxh"
-
 #define SMAA_PRESET_CUSTOM
 #define SMAA_CUSTOM_SL 1
 
@@ -473,7 +471,7 @@ uniform int _Debug <
 
 #endif
 
-#include "./reshade-shared/debug.fxh"
+#include "./reshade-shared/libraries/debug.fxh"
 
 // Debug output options END
 

@@ -1,8 +1,8 @@
 #ifndef _PSMAA_FXH // include guard
 #define _PSMAA_FXH
 
-#include "./reshade-shared/color.fxh"
-#include "./reshade-shared/functions.fxh"
+#include "./reshade-shared/libraries/color.fxh"
+#include "./reshade-shared/libraries/functions.fxh"
 
 //// IMPLEMENTATION
 // MACROS with example values for the ReShade language:
@@ -59,7 +59,7 @@
 // #define APB_LUMA_PRESERVATION_STRENGTH 1f
 #define APB_MIN_FILTER_STRENGTH .15
 
-#include "./AnomalousPixelBlending.fxh"
+#include "./reshade-shared/modules/AnomalousPixelBlending.fxh"
 
 //// APB MACROS END
 
@@ -81,7 +81,7 @@
 #define SmoothingGatherLeftDeltas(tex, coord) PSMAAGatherLeftEdges(tex, coord)
 #define SmoothingGatherTopDeltas(tex, coord) PSMAAGatherTopEdges(tex, coord)
 
-#include "./BeanSmoothing.fxh"
+#include "./reshade-shared/modules/BeanSmoothing.fxh"
 
 //// BEANSMOOTHING MACROS END
 
@@ -90,7 +90,7 @@
 
 #define CAS_BETTER_DIAGONALS 1
 
-#include "./CAS.fxh"
+#include "./reshade-shared/modules/CAS.fxh"
 
 //// CAS MACROS END
 
@@ -115,7 +115,7 @@
 #define SMAA_FLATTEN [flatten]
 #define SMAA_BRANCH [branch]
 
-#include "./SMAA.fxh"
+#include "./reshade-shared/modules/SMAA.fxh"
 
 //// SMAA MACROS START
 
