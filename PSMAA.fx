@@ -76,7 +76,7 @@ uniform float _PreProcessingStrength <
 	ui_tooltip =
 		"How much the resulting of the pass is applied to the output percentually.\n"
 		"Recommended values [.45 - .85]";
-> = .65;
+> = .7;
 
 uniform float _PreProcessingStrengthThresh <
 	ui_category = "Pre-Processing";
@@ -116,7 +116,7 @@ uniform float _PreProcessingLumaPreservationStrength <
 	ui_tooltip =
 		"Strength of luma preservation mechanism during pre-processing.\n"
 		"Recommended values [1 - 2.5]";
-> = 1.5f;
+> = 2f;
 
 uniform float _PreProcessingGreatestCornerCorrectionStrength <
 	ui_category = "Pre-Processing";
@@ -152,7 +152,7 @@ uniform float2 _EdgeDetectionThreshold <
 		"Thresholds for detecting edges during anti-aliasing.\n"
 		"The left value is for darker areas, the right is for lighter areas.\n"
 		"Recommended values [(.005, 0.05) - (0.025, 0.15)]";
-> = float2(.005, .05);
+> = float2(.005, .07);
 
 uniform float2 _CMAALCAFactor <
 	ui_category = "Edge detection";
@@ -213,7 +213,7 @@ uniform float _ThreshFloor < __UNIFORM_DRAG_FLOAT1
 		"The absolute minimum the edge detection threshold can go.\n"
 		"Prevents edge detection in extremely low contrast areas, saving performance.\n"
 		"Recommended values [.001 - .025]";
-> = .01;
+> = .015;
 
 uniform int _MaxSearchSteps < __UNIFORM_DRAG_INT1
 	ui_category = "Blending weight calculation";
@@ -250,7 +250,7 @@ uniform int _CornerRounding < __UNIFORM_DRAG_INT1
 		"Specifies how much sharp corners will be rounded.\n"
 		"Higher values create smoother corners but more blur.\n"
 		"Recommended values [0 - 25]";
-> = 10;
+> = 0;
 
 uniform bool _SmoothingEnabled <
 	ui_category = "Smoothing";
@@ -316,7 +316,7 @@ uniform float _SmoothingDeltaWeightDynamicThreshold <
 		"in darker areas. Higher values make smoothing more accurate and sensitive\n"
 		"in darker areas, but may cause worse performance and blur.\n"
 		"Recommended values [.4 - .9]";
-> = .8;
+> = .65;
 
 uniform float2 _SmoothingThresholds <
 	ui_category = "Smoothing";
@@ -330,7 +330,7 @@ uniform float2 _SmoothingThresholds <
 		"Controls when smoothing is applied based on pixel brightness.\n"
 		"The left value is for darker areas, the right is for lighter areas.\n"
 		"Recommended values [(.01, .05) - (.25, .15)]";
-> = float2(.01, .075);
+> = float2(.015, .09);
 
 uniform float _SmoothingThresholdDepthGrowthStart <
 	ui_category = "Smoothing";
@@ -437,7 +437,7 @@ uniform float _SharpeningBlendingStrength <
 	ui_tooltip = 
 		"The percentage by which the sharpened result is applied to the output.\n"
 		"Basically, higher values = stronger sharpening appears on-screen.";
-> = .5;
+> = .7;
 
 uniform bool _SharpeningDebug <
 	ui_category = "Sharpening";
