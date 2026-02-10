@@ -24,6 +24,10 @@ uniform int _UIHelpText<
 			"For explanation on what these do, check the UI controls' tooltips";
 >;
 
+// uniform bool _ShowOldPreProcessing < // TODO: remove?
+// 	ui_category = "Pre-Processing";
+// 	ui_label = "Use old pre-processing";
+// > = false;
 
 uniform float _PreProcessingThresholdMultiplier <
 	ui_category = "Pre-Processing";
@@ -53,18 +57,6 @@ uniform float _PreProcessingThresholdMargin <
 		"those just above count less, making the effect more gradual and precise.\n"
 		"Recommended values [1.5 - 1.9]";
 > = 1.8f;
-
-uniform float _PreProcessingCmaaLCAMultiplier <
-	ui_category = "Pre-Processing";
-	ui_label = "Circumferential LCA strength";
-	ui_type = "slider";
-	ui_min = .1;
-	ui_max = 1f;
-	ui_step = .01;
-	ui_tooltip =
-		"How strongly Circumferential LCA is applied during pre-processing.\n"
-		"Recommended values [.1 - .75]";
-> = .65;
 
 uniform float _PreProcessingStrength <
 	ui_category = "Pre-Processing";
@@ -503,7 +495,6 @@ uniform int _MacroHelpText<
 // PSMAA preprocessor variables
 #define PSMAA_THRESHOLD_FLOOR _ThreshFloor
 #define PSMAA_PRE_PROCESSING_THRESHOLD_MULTIPLIER _PreProcessingThresholdMultiplier
-#define PSMAA_PRE_PROCESSING_CMAA_LCA_FACTOR_MULTIPLIER _PreProcessingCmaaLCAMultiplier
 #define APB_LUMA_PRESERVATION_BIAS _PreProcessingLumaPreservationBias
 #define APB_LUMA_PRESERVATION_STRENGTH _PreProcessingLumaPreservationStrength
 #define PSMAA_PRE_PROCESSING_STRENGTH _PreProcessingStrength
@@ -661,7 +652,7 @@ void PSMAAPreProcessingPSWrapper(
 {
 	// if (_ShowOldPreProcessing)
 	// {
-	// 	PSMAAOld::Pass::PreProcessingPS(texcoord, colorGammaSampler, maxLocalLuma, originalLuma, filteringStrength);
+	// 	PSMAA::Pass::PreProcessingPSOld(texcoord, colorGammaSampler, maxLocalLuma, originalLuma, filteringStrength);
 	// 	return;
 	// }
 
