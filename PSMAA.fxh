@@ -81,7 +81,7 @@
 #define SmoothingGatherLeftDeltas(tex, coord) PSMAAGatherLeftEdges(tex, coord)
 #define SmoothingGatherTopDeltas(tex, coord) PSMAAGatherTopEdges(tex, coord)
 
-#include "./reshade-shared/modules/BeanSmoothing.fxh"
+#include "./reshade-shared/vendor/modules/BeanSmoothing.fxh"
 
 //// BEANSMOOTHING MACROS END
 
@@ -90,7 +90,7 @@
 
 #define CAS_BETTER_DIAGONALS 1
 
-#include "./reshade-shared/modules/CAS.fxh"
+#include "./reshade-shared/vendor/modules/CAS.fxh"
 
 //// CAS MACROS END
 
@@ -115,7 +115,7 @@
 #define SMAA_FLATTEN [flatten]
 #define SMAA_BRANCH [branch]
 
-#include "./reshade-shared/modules/SMAA.fxh"
+#include "./reshade-shared/vendor/SMAA.fxh"
 
 //// SMAA MACROS START
 
