@@ -13,6 +13,12 @@ It also has some optional functions:
 - Make the jaggies even smoother than normal SMAA, but at the cost of image sharpness.
 - A specially integrated sharpening pass, which can sharpen the image without bringing back jaggies and pixelation, and/or can sharpen heavily blended pixels more.
 
+## Compared to SMAA
+
+- Space Engineers: 
+- NieR:Automata: 
+- The Witcher III (DX12): 
+
 # Installation
 
 Downloading the latest release is recommended. Make sure you have a (preferably dedicated) folder for my shaders in the <>, then dump the release's contents into it.
@@ -26,7 +32,11 @@ PSMAA.fxh
 ```
 # Usage 
 
+The UI has explanations on how to configure and use the effect.
 
+PSMAA should be applied *before* any sharpening, blur, and other effects which affect pixel morphology and clarity. I can't recommend combining it with any other forms of AA.
+
+If the game you're using it on has sharpening, make sure to *turn it off*. Use the built-in sharpening instead, or just use a ReShade sharpening effect that you like. Same with in-game blur effects. Bloom probably won't cause issues, but if you see weird artifacts you can try turning that off too.
 
 # Credits
 Runs on ReShade by Crosire.
