@@ -2,19 +2,6 @@ PSMAA (Progressive Subpixel Morphological Anti Aliasing) is a variation on SMAA 
 
 **Note:** This shader is still in beta. It is *mostly* feature complete, but it still needs optimisations, a user-friendly UI and some polishing. It's in a usable state, but it's not yet in its final form.
 
-# Image comparison
-
-The following examples show how PSMAA performs versus SMAA at fairly aggressive settings:
-
-- Fine details: ImgSlider | [Diffchecker](https://www.diffchecker.com/image-compare/ApOWef9k/)
-- Low-contrast environment: ImgSlider | [Diffchecker](https://www.diffchecker.com/image-compare/TjwS6MAg/)
-- Foliage: ImgSlider | [Diffchecker](https://www.diffchecker.com/image-compare/oA11GJVr/)
-
-For those who prefer more conservative AA, here are examples with light smoothing and filtering, and no sharpening:
-
-- Versus SMAA: ImgSlider | Diffchecker
-- Versus aggressive settings: ImgSlider | Diffchecker
-
 # Features
 
 Compared to SMAA 1x, PSMAA has the following additions and improvements:
@@ -25,6 +12,14 @@ Compared to SMAA 1x, PSMAA has the following additions and improvements:
 It also has some optional functions:
 - Make the jaggies even smoother than normal SMAA, but at the cost of image sharpness.
 - A specially integrated sharpening pass, which can sharpen the image without bringing back jaggies and pixelation. It can also sharpen heavily blended pixels more.
+
+# Image comparison
+
+These examples show how PSMAA performs (with fairly aggressive settings) versus SMAA:
+
+- Fine details: ImgSlider | [Diffchecker](https://www.diffchecker.com/image-compare/ApOWef9k/)
+- Low-contrast environment: ImgSlider | [Diffchecker](https://www.diffchecker.com/image-compare/TjwS6MAg/)
+- Foliage: ImgSlider | [Diffchecker](https://www.diffchecker.com/image-compare/oA11GJVr/)
 
 # Installation
 
