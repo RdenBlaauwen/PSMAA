@@ -13,6 +13,15 @@ It also has some optional functions:
 - Make the jaggies even smoother than normal SMAA, but at the cost of image sharpness.
 - A specially integrated sharpening pass, which can sharpen the image without bringing back jaggies and pixelation. It can also sharpen heavily blended pixels more.
 
+## Image comparison
+
+These screenshots may give you some idea of how PSMAA performs (at fairly aggressive settings) versus SMAA. Unfortunately the comparison websites blur the screenshots so much that a lot of the details and differences are lost. So keep in mind that they don't fully represent how these AA algorithms really perform.
+
+- Fine details:  [Diffchecker](https://www.diffchecker.com/image-compare/ApOWef9k/) | [ImgSlider](https://imgslider.com/a93a755d-ef1a-4fbb-925e-a861f704d83f)
+- Low-contrast environment:  [Diffchecker](https://www.diffchecker.com/image-compare/TjwS6MAg/) | [ImgSlider](https://imgslider.com/9af4186c-7568-444d-8744-4335384c6ea5)
+- Foliage: [Diffchecker](https://www.diffchecker.com/image-compare/oA11GJVr/) | [ImgSlider](https://imgslider.com/5791be1a-1862-4baa-a57f-c3522b23bdc6)
+
+
 # Installation
 
 The recommended way to install this shader is to download the latest release for this repo. Then make sure you have a (preferably dedicated) folder for my shaders in the `reshade-shaders\Shaders\` directory, and dump the release's contents into it. Also make sure you have ReShade's standard SMAA implementation installed, as PSMAA needs its `AreaTex.png` and `SearchTex.png` textures.
