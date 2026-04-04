@@ -13,17 +13,17 @@ It also has some optional functions:
 - Make the jaggies even smoother than normal SMAA, but at the cost of image sharpness.
 - A specially integrated sharpening pass, which can sharpen the image without bringing back jaggies and pixelation. It can also sharpen heavily blended pixels more.
 
-# Image comparison
+## Image comparison
 
-These examples show how PSMAA performs (with fairly aggressive settings) versus SMAA:
+These screenshots may give you some idea of how PSMAA performs (at fairly aggressive settings) versus SMAA. Unfortunately the comparison websites blur the screenshots so much that a lot of the details and differences are lost. So keep in mind that they don't fully represent how these AA algorithms really perform.
 
-- Fine details: ImgSlider | [Diffchecker](https://www.diffchecker.com/image-compare/ApOWef9k/)
+- Fine details: [ImgSlider](https://imgslider.com/a93a755d-ef1a-4fbb-925e-a861f704d83f) | [Diffchecker](https://www.diffchecker.com/image-compare/ApOWef9k/)
 - Low-contrast environment: ImgSlider | [Diffchecker](https://www.diffchecker.com/image-compare/TjwS6MAg/)
 - Foliage: ImgSlider | [Diffchecker](https://www.diffchecker.com/image-compare/oA11GJVr/)
 
 # Installation
 
-Downloading the latest release is recommended. Make sure you have a (preferably dedicated) folder for my shaders in the <>, then dump the release's contents into it.
+The recommended way to install this shader is to download the latest release for this repo. Then make sure you have a (preferably dedicated) folder for my shaders in the `reshade-shaders\Shaders\` directory, and dump the release's contents into it. Also make sure you have ReShade's standard SMAA implementation installed, as PSMAA needs its `AreaTex.png` and `SearchTex.png` textures.
 
 If you decide to download the PSMAA files directly from the repo, make sure to also download the contents of the [`reshade-shared`](https://github.com/RdenBlaauwen/reshade-shared) repo and put it into a folder with the name name, in the same folder which contains the PSMAA files. It should look something like:
 ```
