@@ -1,3 +1,6 @@
 .vscode/
 reshade-shared/
 testing/
+*.stackdump
+*.zip
+*.h
