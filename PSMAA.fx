@@ -578,7 +578,7 @@ texture filterStrengthTex
 {
 	Width = BUFFER_WIDTH;
 	Height = BUFFER_HEIGHT;
-	Format = RG8;
+	Format = R8;
 };
 sampler filterStrengthSampler
 {
@@ -589,12 +589,23 @@ texture deltaTex
 {
 	Width = BUFFER_WIDTH;
 	Height = BUFFER_HEIGHT;
-	Format = RG8;
+	Format = RGBA8;
 };
 sampler deltaSampler
 {
 	Texture = deltaTex;
 };
+
+// texture deltaTex
+// {
+// 	Width = BUFFER_WIDTH;
+// 	Height = BUFFER_HEIGHT;
+// 	Format = RG8;
+// };
+// sampler deltaSampler
+// {
+// 	Texture = deltaTex;
+// };
 
 texture edgesTex
 {
@@ -644,52 +655,15 @@ sampler searchSampler
 };
 
 void PSMAAPreProcessingPSWrapper(
-		float4 position : SV_POSITION,
-		float2 texcoord : TEXCOORD0,
-		out float maxLocalLuma : SV_TARGET0,
-		out float originalLuma : SV_TARGET1,
-		out float2 filteringStrength : SV_TARGET2)
+	float4 position : SV_POSITION,
+	float2 texcoord : TEXCOORD0,
+	out float maxLocalLuma : SV_TARGET0,
+	out float originalLuma : SV_TARGET1,
+	out float filteringStrength : SV_TARGET2,
+	out float4 deltas : SV_TARGET3
+)
 {
-	// if (_ShowOldPreProcessing)
-	// {
-	// 	PSMAA::Pass::PreProcessingPSOld(texcoord, colorGammaSampler, maxLocalLuma, originalLuma, filteringStrength);
-	// 	return;
-	// }
-
-	PSMAA::Pass::PreProcessingPS(texcoord, colorGammaSampler, maxLocalLuma, originalLuma, filteringStrength);
-}
-
-void PSMAAFilteringPSWrapper(
-		float4 position : SV_Position,
-		float2 texcoord : TEXCOORD0,
-		out float4 color : SV_Target)
-{
-	// if (_ShowOldPreProcessing)
-	// {
-	// 	PSMAAOld::Pass::FilteringPS(texcoord, colorLinearSampler, filterStrengthSampler, color);
-	// 	return;
-	// }
-	PSMAA::Pass::FilteringPS(texcoord, colorLinearSampler, filterStrengthSampler, color);
-}
-
-// TODO: consider trying to calculate this in the PS instead.
-void PSMAADeltaCalulationVSWrapper(
-		in uint id : SV_VertexID,
-		out float4 position : SV_Position,
-		out float2 texcoord : TEXCOORD0,
-		out float4 offset[1] : TEXCOORD1)
-{
-	PostProcessVS(id, position, texcoord);
-	PSMAA::Pass::DeltaCalculationVS(texcoord, offset);
-}
-
-void PSMAADeltaCalulationPSWrapper(
-		float4 position : SV_Position,
-		float2 texcoord : TEXCOORD0,
-		float4 offset[1] : TEXCOORD1,
-		out float2 deltas : SV_Target0)
-{
-	PSMAA::Pass::DeltaCalculationPS(texcoord, offset, colorGammaSampler, deltas);
+	PSMAA::Pass::PreProcessingPS(texcoord, colorGammaSampler, maxLocalLuma, originalLuma, filteringStrength, deltas);
 }
 
 void PSMAAEdgeDetectionVSWrapper(
@@ -859,26 +833,8 @@ technique PSMAA
 		RenderTarget0 = maxLocalLumaTex;
 		RenderTarget1 = originalLumaTex;
 		RenderTarget2 = filterStrengthTex;
+		RenderTarget3 = deltaTex;
 		// ClearRenderTargets = true;
-	}
-	pass Filtering
-	{
-		VertexShader = PostProcessVS;
-		PixelShader = PSMAAFilteringPSWrapper;
-		SRGBWriteEnable = true;
-	}
-	pass DeltaCalculation
-	{
-		VertexShader = PSMAADeltaCalulationVSWrapper;
-		PixelShader = PSMAADeltaCalulationPSWrapper;
-		RenderTarget = deltaTex;
-		// TODO: test if these are necessary!
-		// Especially the stencil stuff
-		// https://github.com/crosire/reshade-shaders/blob/slim/REFERENCE.md#techniques
-		ClearRenderTargets = true; // TODO: test if this is needed
-		// StencilEnable = true;
-		// StencilPass = REPLACE;
-		// StencilRef = 1;
 	}
 	pass EdgeDetection
 	{

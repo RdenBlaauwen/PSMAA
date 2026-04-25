@@ -294,41 +294,25 @@ namespace PSMAA
   namespace Pass
   {
     void PreProcessingPS(
-        float2 texcoord,
-        PSMAATexture2D(colorGammaTex), // input color texture (C)
-        out float maxLocalLuma,        // output maximum luma from all nine samples
-        out float originalLuma,        // luma of the original color, for change detection
-        out float2 filteringStrength   // strength at which FilteringPS is determned to run on this pixel
+      float2 texcoord,
+      PSMAATexture2D(colorGammaTex), // input color texture (C)
+      out float maxLocalLuma,        // output maximum luma from all nine samples
+      out float originalLuma,        // luma of the original color, for change detection
+      out float filteringStrength,   // strength at which FilteringPS is determned to run on this pixel
+      out float4 finalDeltas // resulting deltas (RTLB)
     )
     {
-      // NW N NE
+      //    N
       // W  C  E
-      // SW S SE
-      float3 C, E, S, SE;
-#if __RENDERER__ >= 0xa000 // if DX10 or above
-      // get RGB values from the c, d, b, and a positions, in order.
-      float4 cdbared = tex2Dgather(colorGammaTex, texcoord, 0);
-      float4 cdbagreen = tex2Dgather(colorGammaTex, texcoord, 1);
-      float4 cdbablue = tex2Dgather(colorGammaTex, texcoord, 2);
-
-      C = float3(cdbared.w, cdbagreen.w, cdbablue.w);
-      E = float3(cdbared.z, cdbagreen.z, cdbablue.z);
-      S = float3(cdbared.x, cdbagreen.x, cdbablue.x);
-      SE = float3(cdbared.y, cdbagreen.y, cdbablue.y);
-#else // if DX9
+      //    S 
+      float3 C, E, S, W, N;
       C = PSMAASampleLevelZero(colorGammaTex, texcoord).rgb;
       E = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(1, 0)).rgb;
       S = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(0, 1)).rgb;
-      SE = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(1, 1)).rgb;
-#endif
+      W = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(-1, 0)).rgb;
+      N = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(0, -1)).rgb;
 
-      float3 NW = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(-1, -1)).rgb;
-      float3 W = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(-1, 0)).rgb;
-      float3 SW = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(-1, 1)).rgb;
-      float3 N = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(0, -1)).rgb;
-      float3 NE = PSMAASampleLevelZeroOffset(colorGammaTex, texcoord, float2(1, -1)).rgb;
-
-      float3 maxLocalColor = Functions::max(NW, W, SW, N, S, NE, E, SE, C);
+      float3 maxLocalColor = Functions::max(W, N, S, E, C);
       // These make sure that Red and Blue don't count as much as Green,
       // without making all results darker when taking the greatest component
       static const float3 LumaCorrection = float3(.297, 1f, .101);
@@ -344,62 +328,59 @@ namespace PSMAA
       deltas.b = GetDelta(E, C);
       deltas.a = GetDelta(S, C);
 
-      // Use detection factors for edge detection here too, so that the results of this pass scale proportionally to the needs of edge detection.
-      float2 detectionFactor = lerp(PSMAA_EDGE_DETECTION_FACTORS_LOW_LUMA.x, PSMAA_EDGE_DETECTION_FACTORS_HIGH_LUMA.x, maxLocalLuma);
-      // scale with multipliers specific to this pass
-      detectionFactor *= PSMAA_PRE_PROCESSING_THRESHOLD_MULTIPLIER;
-      // Minimum threshold to prevent blending in very dark areas
-      float threshold = max(detectionFactor, PSMAA_THRESHOLD_FLOOR);
+      float2 transverseMax = max(deltas.rg, deltas.ba);
+      float2 sortedDeltas; // x = 1st largest, y = 2nd largest, z = 3rd largest, w = smallest
+      sortedDeltas.x = Functions::max(transverseMax);
 
-      float4 edges = step(threshold, deltas);
-      if (Functions::sum(edges) < 2f) // Leave filter strength as 0f for straight lines, to prevent blur
-      {
-        // OUTPUT
-        filteringStrength = float2(0f, 0f);
-        return;
-      }
+      
+      // if(maxDelta < PSMAA_THRESHOLD_FLOOR)
+      // {
+      //   // OUTPUT
+      //   filteringStrength = 0f;
+      //   finalDeltas = deltas;
+      //   return;
+      // }
+
+      // // Use detection factors for edge detection here too, so that the results of this pass scale proportionally to the needs of edge detection.
+      // float2 detectionFactor = lerp(PSMAA_EDGE_DETECTION_FACTORS_LOW_LUMA.x, PSMAA_EDGE_DETECTION_FACTORS_HIGH_LUMA.x, maxLocalLuma);
+      // // scale with multipliers specific to this pass
+      // detectionFactor *= PSMAA_PRE_PROCESSING_THRESHOLD_MULTIPLIER;
+      // // Minimum threshold to prevent blending in very dark areas
+      // float threshold = max(detectionFactor, PSMAA_THRESHOLD_FLOOR);
+
+      // float4 edges = step(threshold, deltas);
+      // if (Functions::sum(edges) < 2f) // Leave filter strength as 0f for straight lines, to prevent blur
+      // {
+      //   // OUTPUT
+      //   filteringStrength = float2(0f, 0f);
+      //   return;
+      // }
+
+      float4 edges = smoothstep(PSMAA_THRESHOLD_FLOOR, PSMAA_THRESHOLD_FLOOR + PSMAA_PRE_PROCESSING_THRESHOLD_MARGIN_FACTOR, deltas);
+      // redo to get normal deltas, use that to calc filter strength
+      float cornerAmount = (edges.r + edges.b) * (edges.g + edges.a);
+      // Determine filter strength based on the number of corners detected
+      filteringStrength = (cornerAmount / 4f) * PSMAA_PRE_PROCESSING_STRENGTH;
+
+      float2 transverseMin = min(deltas.rg, deltas.ba);
+      // sortedDeltas.w = Functions::min(transverseMin);
+      float middleDelta1 = Functions::min(transverseMax);
+      float middleDelta2 = Functions::max(transverseMin);
+      sortedDeltas.y = max(middleDelta1, middleDelta2);
+      // sortedDeltas.z = min(middleDelta1, middleDelta2);
+
+      float4 adaptedDeltas = (deltas * deltas) / Functions::avg(sortedDeltas.xy);
+      adaptedDeltas = min(adaptedDeltas, sortedDeltas.x); // clamp to max delta to prevent making largest delta bigger than it was before
+
+      finalDeltas = adaptedDeltas;
 
       // greatest corner correction and corner check
-      float isCorner = AnomalousPixelBlending::checkIfCorner(deltas, PSMAA_PRE_PROCESSING_GREATEST_CORNER_CORRECTION_STRENGTH, threshold) ? 1f : 0f;
+      // float isCorner = AnomalousPixelBlending::checkIfCorner(deltas, PSMAA_PRE_PROCESSING_GREATEST_CORNER_CORRECTION_STRENGTH, threshold) ? 1f : 0f;
 
-      float strength = AnomalousPixelBlending::calcBlendingStrength(deltas, threshold, PSMAA_PRE_PROCESSING_THRESHOLD_MARGIN_FACTOR) * PSMAA_PRE_PROCESSING_STRENGTH;
+      // float strength = AnomalousPixelBlending::calcBlendingStrength(deltas, threshold, PSMAA_PRE_PROCESSING_THRESHOLD_MARGIN_FACTOR) * PSMAA_PRE_PROCESSING_STRENGTH;
 
       // OUTPUT
-      filteringStrength = float2(strength, isCorner);
-    }
-
-    void FilteringPS(
-        float2 texcoord,
-        PSMAATexture2D(colorLinearTex),
-        PSMAATexture2D(filterStrengthTex),
-        out float4 filteredColor)
-    {
-      float2 strengthAndIsCorner = PSMAASamplePoint(filterStrengthTex, texcoord).rg;
-
-      if (strengthAndIsCorner.y >= .9f || strengthAndIsCorner.x <= PSMAA_PRE_PROCESSING_STRENGTH_THRESH)
-        discard; // skip if corner or no filtering needed
-
-      // NW N NE
-      // W  C  E
-      // SW S SE
-      // Keep the alpha from the original texture
-      float4 CRaw = PSMAASampleLevelZero(colorLinearTex, texcoord);
-      float3 C = CRaw.rgb;
-      float3 NW = PSMAASampleLevelZeroOffset(colorLinearTex, texcoord, float2(-1, -1)).rgb;
-      float3 W = PSMAASampleLevelZeroOffset(colorLinearTex, texcoord, float2(-1, 0)).rgb;
-      float3 SW = PSMAASampleLevelZeroOffset(colorLinearTex, texcoord, float2(-1, 1)).rgb;
-      float3 N = PSMAASampleLevelZeroOffset(colorLinearTex, texcoord, float2(0, -1)).rgb;
-      float3 S = PSMAASampleLevelZeroOffset(colorLinearTex, texcoord, float2(0, 1)).rgb;
-      float3 NE = PSMAASampleLevelZeroOffset(colorLinearTex, texcoord, float2(1, -1)).rgb;
-      float3 E = PSMAASampleLevelZeroOffset(colorLinearTex, texcoord, float2(1, 0)).rgb;
-      float3 SE = PSMAASampleLevelZeroOffset(colorLinearTex, texcoord, float2(1, 1)).rgb;
-
-      float3 filteredLocalAvg = AnomalousPixelBlending::CalcLocalAvg(
-          NW, N, NE, W, C, E, SW, S, SE,
-          strengthAndIsCorner.x);
-
-      // OUTPUT with localavg and original alpha
-      filteredColor = float4(filteredLocalAvg, CRaw.a);
+      // filteringStrength = float2(strength, isCorner);
     }
 
     /**
