@@ -48,7 +48,7 @@ uniform float _PreProcessingThresholdMargin <
 	ui_category = "Pre-Processing";
 	ui_label = "Threshold margin";
 	ui_type = "slider";
-	ui_min = 1f;
+	ui_min = 0f;
 	ui_max = 2f;
 	ui_step = .01;
 	ui_tooltip =
@@ -57,6 +57,15 @@ uniform float _PreProcessingThresholdMargin <
 		"those just above count less, making the effect more gradual and precise.\n"
 		"Recommended values [1.5 - 1.9]";
 > = 1.8f;
+
+uniform float _PreProcessingAdaptationStrength <
+	ui_category = "Pre-Processing";
+	ui_label = "Adaptation strength";
+	ui_type = "slider";
+	ui_min = 1f;
+	ui_max = 4f;
+	ui_step = .01;
+> = 1f;
 
 uniform float _PreProcessingStrength <
 	ui_category = "Pre-Processing";
@@ -75,7 +84,7 @@ uniform float _PreProcessingStrengthThresh <
 	ui_label = "Min strength for filtering";
 	ui_type = "slider";
 	ui_min = 0f;
-	ui_max = .15f;
+	ui_max = .2f;
 	ui_step = .001;
 	ui_tooltip =
 		"The algorithm assigns each pixel a value representing how anomalous that\n"
@@ -497,6 +506,7 @@ uniform int _MacroHelpText<
 #define PSMAA_PRE_PROCESSING_THRESHOLD_MULTIPLIER _PreProcessingThresholdMultiplier
 #define APB_LUMA_PRESERVATION_BIAS _PreProcessingLumaPreservationBias
 #define APB_LUMA_PRESERVATION_STRENGTH _PreProcessingLumaPreservationStrength
+#define PSMAA_PRE_PROCESSING_ADAPTATION_STRENGTH _PreProcessingAdaptationStrength
 #define PSMAA_PRE_PROCESSING_STRENGTH _PreProcessingStrength
 #define PSMAA_PRE_PROCESSING_STRENGTH_THRESH _PreProcessingStrengthThresh
 #define PSMAA_PRE_PROCESSING_GREATEST_CORNER_CORRECTION_STRENGTH _PreProcessingGreatestCornerCorrectionStrength
@@ -663,7 +673,8 @@ void PSMAAPreProcessingPSWrapper(
 	out float4 deltas : SV_TARGET3
 )
 {
-	PSMAA::Pass::PreProcessingPS(texcoord, colorGammaSampler, maxLocalLuma, originalLuma, filteringStrength, deltas);
+	// PSMAA::Pass::PreProcessingPS(texcoord, colorGammaSampler, maxLocalLuma, originalLuma, filteringStrength, deltas);
+	PSMAA::Pass::PreProcessingPS(texcoord, colorGammaSampler, maxLocalLuma, originalLuma, filteringStrength, PSMAA_PRE_PROCESSING_ADAPTATION_STRENGTH, deltas);
 }
 
 void PSMAAEdgeDetectionVSWrapper(

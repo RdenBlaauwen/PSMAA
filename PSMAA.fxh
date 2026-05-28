@@ -299,6 +299,7 @@ namespace PSMAA
       out float maxLocalLuma,        // output maximum luma from all nine samples
       out float originalLuma,        // luma of the original color, for change detection
       out float filteringStrength,   // strength at which FilteringPS is determned to run on this pixel
+      float adaptationStrength,     // strength at which deltas are adapted based on local contrast
       out float4 finalDeltas // resulting deltas (RTLB)
     )
     {
@@ -335,10 +336,10 @@ namespace PSMAA
       
       // if(maxDelta < PSMAA_THRESHOLD_FLOOR)
       // {
-      //   // OUTPUT
-      //   filteringStrength = 0f;
-      //   finalDeltas = deltas;
-      //   return;
+        // OUTPUT
+        // filteringStrength = 0f;
+        // finalDeltas = deltas;
+        // return;
       // }
 
       // // Use detection factors for edge detection here too, so that the results of this pass scale proportionally to the needs of edge detection.
@@ -369,7 +370,8 @@ namespace PSMAA
       sortedDeltas.y = max(middleDelta1, middleDelta2);
       // sortedDeltas.z = min(middleDelta1, middleDelta2);
 
-      float4 adaptedDeltas = (deltas * deltas) / Functions::avg(sortedDeltas.xy);
+      // float4 adaptedDeltas = (deltas * deltas)/ Functions::avg(sortedDeltas.xy);
+      float4 adaptedDeltas = pow(deltas, adaptationStrength) / pow(Functions::avg(sortedDeltas.xy), adaptationStrength -1f);
       adaptedDeltas = min(adaptedDeltas, sortedDeltas.x); // clamp to max delta to prevent making largest delta bigger than it was before
 
       finalDeltas = adaptedDeltas;
@@ -532,8 +534,8 @@ namespace PSMAA
                   blendWeightSampler)
                   .rgba;
 
-      float2 strengthAndIsCorner = PSMAASamplePoint(filterStrengthSampler, texcoord).rg;
-      if (strengthAndIsCorner.y < .9f || strengthAndIsCorner.x <= PSMAA_PRE_PROCESSING_STRENGTH_THRESH)
+      float strength = PSMAASamplePoint(filterStrengthSampler, texcoord).r;
+      if (strength <= PSMAA_PRE_PROCESSING_STRENGTH_THRESH)
         return;
 
       float3 NW = PSMAASampleLevelZeroOffset(colorLinearSampler, texcoord, float2(-1, -1)).rgb;
@@ -547,7 +549,7 @@ namespace PSMAA
 
       float3 filteredLocalAvg = AnomalousPixelBlending::CalcLocalAvg(
           NW, N, NE, W, color.rgb, E, SW, S, SE,
-          strengthAndIsCorner.x);
+          strength);
 
       // OUTPUT with localavg and original alpha
       color = float4(filteredLocalAvg, color.a);
