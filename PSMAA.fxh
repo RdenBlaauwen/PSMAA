@@ -330,7 +330,7 @@ namespace PSMAA
       deltas.a = GetDelta(S, C);
 
       float2 transverseMax = max(deltas.rg, deltas.ba);
-      float2 sortedDeltas; // x = 1st largest, y = 2nd largest, z = 3rd largest, w = smallest
+      float4 sortedDeltas; // x = 1st largest, y = 2nd largest, z = 3rd largest, w = smallest
       sortedDeltas.x = Functions::max(transverseMax);
 
       
@@ -364,14 +364,25 @@ namespace PSMAA
       filteringStrength = (cornerAmount / 4f) * PSMAA_PRE_PROCESSING_STRENGTH;
 
       float2 transverseMin = min(deltas.rg, deltas.ba);
-      // sortedDeltas.w = Functions::min(transverseMin);
+      sortedDeltas.w = Functions::min(transverseMin);
       float middleDelta1 = Functions::min(transverseMax);
       float middleDelta2 = Functions::max(transverseMin);
       sortedDeltas.y = max(middleDelta1, middleDelta2);
-      // sortedDeltas.z = min(middleDelta1, middleDelta2);
+      sortedDeltas.z = min(middleDelta1, middleDelta2);
 
-      // float4 adaptedDeltas = (deltas * deltas)/ Functions::avg(sortedDeltas.xy);
-      float4 adaptedDeltas = pow(deltas, adaptationStrength) / pow(Functions::avg(sortedDeltas.xy), adaptationStrength -1f);
+      float smallestToSecondRatio = saturate((sortedDeltas.w / sortedDeltas.y)-.5f)/2f; // 1f means 2nd and smallest delta are equal. The smaller, the larger the difference
+      float divisor = lerp(sortedDeltas.y, sortedDeltas.x, smallestToSecondRatio); // If 2nd and smallest delta are equal, use largest as divisor instead
+
+      float finalAdaptationStrength = (sortedDeltas.w / sortedDeltas.x) * (adaptationStrength-1f);
+
+      // float4 adaptedDeltas = (deltas * deltas)/ sortedDeltas.y;
+      // adaptedDeltas = lerp(deltas, adaptedDeltas, adaptationStrength-1f);
+      // float4 adaptedDeltas = pow(deltas, adaptationStrength) / pow(Functions::avg(sortedDeltas.xy), adaptationStrength -1f);
+      // float4 adaptedDeltas = pow(deltas, finalAdaptationStrength) / pow(divisor, finalAdaptationStrength -1f);
+      // float4 adaptedDeltas = pow(deltas, finalAdaptationStrength);
+      float4 adaptedDeltas = pow(deltas, 1f + finalAdaptationStrength) / 1f + (divisor * finalAdaptationStrength);
+      // float4 adaptedDeltas = pow(deltas, 1f + finalAdaptationStrength + (sortedDeltas.x - sortedDeltas.w)) / 1f + (divisor * finalAdaptationStrength);
+      // adaptedDeltas = pow(adaptedDeltas, 1f + (sortedDeltas.x - sortedDeltas.w));
       adaptedDeltas = min(adaptedDeltas, sortedDeltas.x); // clamp to max delta to prevent making largest delta bigger than it was before
 
       finalDeltas = adaptedDeltas;

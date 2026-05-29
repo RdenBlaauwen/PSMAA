@@ -63,7 +63,7 @@ uniform float _PreProcessingAdaptationStrength <
 	ui_label = "Adaptation strength";
 	ui_type = "slider";
 	ui_min = 1f;
-	ui_max = 4f;
+	ui_max = 2f;
 	ui_step = .01;
 > = 1f;
 
